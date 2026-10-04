@@ -423,7 +423,9 @@ public static class GameStates
     public static bool InGame = false;
     public static bool AlreadyDied = false;
     /**********Check Game Status***********/
-    public static bool IsModHost => Main.playerVersion.ContainsKey(AmongUsClient.Instance.HostId);
+    public static bool IsModHost => AmongUsClient.Instance != null && (IsFreePlay
+        ? FreeplayInitialization.IsReady
+        : AmongUsClient.Instance.AmHost || Main.playerVersion.ContainsKey(AmongUsClient.Instance.HostId));
     public static bool IsNormalGame => GameOptionsManager.Instance.CurrentGameOptions.GameMode is GameModes.Normal or GameModes.NormalFools;
     public static bool IsHideNSeek => GameOptionsManager.Instance.CurrentGameOptions.GameMode is GameModes.HideNSeek or GameModes.SeekFools;
     public static bool SkeldIsActive => (MapNames)GameOptionsManager.Instance.CurrentGameOptions.MapId == MapNames.Skeld;
@@ -432,10 +434,12 @@ public static class GameStates
     public static bool DleksIsActive => (MapNames)GameOptionsManager.Instance.CurrentGameOptions.MapId == MapNames.Dleks;
     public static bool AirshipIsActive => (MapNames)GameOptionsManager.Instance.CurrentGameOptions.MapId == MapNames.Airship;
     public static bool FungleIsActive => (MapNames)GameOptionsManager.Instance.CurrentGameOptions.MapId == MapNames.Fungle;
-    public static bool IsLobby => AmongUsClient.Instance.GameState == InnerNet.InnerNetClient.GameStates.Joined;
+    public static bool IsLobby => !IsFreePlay && AmongUsClient.Instance.GameState == InnerNet.InnerNetClient.GameStates.Joined;
     public static bool IsCoStartGame => !InGame && !DestroyableSingleton<GameStartManager>.InstanceExists;
     public static bool IsInGame => InGame;
-    public static bool IsEnded => AmongUsClient.Instance.IsGameOver || GameStates.IsLobby || GameEndCheckerForNormal.GameIsEnded;
+    public static bool IsEnded => IsFreePlay
+        ? IsNotJoined || AmongUsClient.Instance.IsGameOver
+        : AmongUsClient.Instance.IsGameOver || GameStates.IsLobby || GameEndCheckerForNormal.GameIsEnded;
     public static bool IsNotJoined => AmongUsClient.Instance.GameState == InnerNet.InnerNetClient.GameStates.NotJoined;
     public static bool IsOnlineGame => AmongUsClient.Instance.NetworkMode == NetworkModes.OnlineGame;
     public static bool IsVanillaServer

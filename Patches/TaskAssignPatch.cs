@@ -116,6 +116,8 @@ class RpcSetTasksPatch
     {
         if (!AmongUsClient.Instance.AmHost) return;
         if (GameStates.IsHideNSeek) return;
+        // The tutorial and its task picker own the practice task list.
+        if (GameStates.IsFreePlay) return;
 
         // null measure
         if (Main.RealOptionsData == null)

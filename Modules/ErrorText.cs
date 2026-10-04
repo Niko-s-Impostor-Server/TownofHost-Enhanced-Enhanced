@@ -1,3 +1,4 @@
+using Il2CppInterop.Runtime.Attributes;
 using UnityEngine;
 using static TOHE.Translator;
 
@@ -30,6 +31,7 @@ public class ErrorText : MonoBehaviour
     #endregion
     public static void Create(TMPro.TextMeshPro baseText)
     {
+        if (_instance != null) return;
         var Text = Instantiate(baseText);
         var instance = Text.gameObject.AddComponent<ErrorText>();
         instance.Text = Text;
@@ -64,7 +66,7 @@ public class ErrorText : MonoBehaviour
     }
     public void LateUpdate()
     {
-        if (!Text.enabled) return;
+        if (Text == null || !Text.enabled) return;
 
         if (Camera == null) Camera = !HudManager.InstanceExists ? Camera.main : HudManager.Instance.PlayerCam.GetComponent<Camera>();
 
@@ -73,6 +75,8 @@ public class ErrorText : MonoBehaviour
             transform.position = AspectPosition.ComputeWorldPosition(Camera, AspectPosition.EdgeAlignments.Top, TextOffset);
         }
     }
+    // ErrorCode is a managed mod enum; only managed callers use this method.
+    [HideFromIl2Cpp]
     public void AddError(ErrorCode code)
     {
         var error = new ErrorData(code);

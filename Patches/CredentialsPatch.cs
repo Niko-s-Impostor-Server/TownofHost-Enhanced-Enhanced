@@ -147,31 +147,40 @@ class VersionShowerStartPatch
         var buildtype = "";
 
 #if RELEASE
-            Main.credentialsText += $"\r\n<color=#a54aff>By <color=#f34c50>The Enhanced Network</color>";
+            Main.credentialsText += $"\r\n<color=#a54aff>By <color=#f34c50>The Enhanced Network</color></color>";
             buildtype = "Release";
 #endif
 
 #if CANARY
         Main.credentialsText += $"\r\n<color=#ffc0cb>Canary:</color><color=#f34c50>{ThisAssembly.Git.Branch}</color>(<color=#ffc0cb>{ThisAssembly.Git.Commit}</color>)";
-        Main.credentialsText += $"\r\n<color=#a54aff>By <color=#f34c50>The Enhanced Network</color>";
+        Main.credentialsText += $"\r\n<color=#a54aff>By <color=#f34c50>The Enhanced Network</color></color>";
         buildtype = "Canary";
 #endif
 
 #if DEBUG
             Main.credentialsText += $"\r\n<color=#ffc0cb>Debug:</color><color=#f34c50>{ThisAssembly.Git.Branch}</color>(<color=#ffc0cb>{ThisAssembly.Git.Commit}</color>)";
-            Main.credentialsText += $"\r\n<color=#a54aff>By <color=#f34c50>The Enhanced Network</color>";
+            Main.credentialsText += $"\r\n<color=#a54aff>By <color=#f34c50>The Enhanced Network</color></color>";
             buildtype = "Debug";
 #endif
+        Main.credentialsText += "</size>";
         Logger.Info($"v{Main.PluginVersion}, {buildtype}:{ThisAssembly.Git.Branch}:({ThisAssembly.Git.Commit}), link [{ThisAssembly.Git.RepositoryUrl}], dirty: [{ThisAssembly.Git.IsDirty}]", "TOHE version");
 
         if (Main.IsAprilFools)
             Main.credentialsText = $"<color=#00bfff>Town Of Host</color> v11.45.14";
 
         var credentials = Object.Instantiate(__instance.text);
+        credentials.name = "TOHEECredentials";
         credentials.text = Main.credentialsText;
-        credentials.alignment = TextAlignmentOptions.Right;
-        credentials.transform.position = new Vector3(1f, 2.67f, -2f);
+        credentials.alignment = TextAlignmentOptions.Top;
+        credentials.rectTransform.pivot = new Vector2(0.5f, 1f);
+        credentials.rectTransform.sizeDelta = new Vector2(4.8f, 0.9f);
         credentials.fontSize = credentials.fontSizeMax = credentials.fontSizeMin = 2f;
+        // The current menu reserves its top bar for account and friends controls.
+        // Anchor below it so resolution changes cannot move credits onto those buttons.
+        var position = credentials.GetComponent<AspectPosition>() ?? credentials.gameObject.AddComponent<AspectPosition>();
+        position.Alignment = AspectPosition.EdgeAlignments.Top;
+        position.DistanceFromEdge = new Vector3(0f, 0.78f, __instance.text.transform.position.z);
+        position.AdjustPosition();
 
         ErrorText.Create(__instance.text);
         if (Main.hasArgumentException && ErrorText.Instance != null)
@@ -195,7 +204,7 @@ class VersionShowerStartPatch
         {
             SpecialEventText.enabled = MainMenuManagerStartPatch.amongUsLogo != null;
         }
-        if (Main.IsInitialRelease)
+        if (Main.IsInitialRelease && SpecialEventText != null)
         {
             SpecialEventText.text = $"Happy Birthday to {Main.ModName}!";
             if (ColorUtility.TryParseHtmlString(Main.ModColor, out var col))

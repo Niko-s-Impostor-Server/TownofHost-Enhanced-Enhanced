@@ -300,7 +300,17 @@ public class GameSettingMenuPatch
     {
         if (menu == null || !GameOptionsMenuPatch.CanEdit ||
             !OptionItem.FastOptions.TryGetValue(OptionItem.PresetId, out var preset)) return;
+        var previousMode = Options.CurrentGameMode;
         preset.SetValue(preset.CurrentValue + delta);
+        if (Options.GameMode.GetInt() == 2 && !GameStates.IsHideNSeek)
+            Options.GameMode.SetValue(0);
+        else if (Options.GameMode.GetInt() != 2 && GameStates.IsHideNSeek)
+            Options.GameMode.SetValue(2);
+        if (previousMode != Options.CurrentGameMode)
+        {
+            GameOptionsMenuPatch.ReOpenSettings(1);
+            return;
+        }
         foreach (var tab in ModSettingsTabs.Values)
         {
             if (tab == null || tab.Children == null) continue;
@@ -410,6 +420,28 @@ public class GameSettingMenuPatch
         {
             TemplateGameOptionsMenu = Object.Instantiate(__instance.GameSettingsTab, __instance.GameSettingsTab.transform.parent);
             TemplateGameOptionsMenu.gameObject.SetActive(false);
+            // The vanilla tab can already contain runtime rows. Unity clones their
+            // objects but not OptionBehaviour's nonserialized data binding.
+            // Detach them before copying this template into each custom tab.
+            foreach (var row in TemplateGameOptionsMenu.settingsContainer.GetComponentsInChildren<OptionBehaviour>(true))
+            {
+                if (row == TemplateGameOptionsMenu.checkboxOrigin || row == TemplateGameOptionsMenu.numberOptionOrigin
+                    || row == TemplateGameOptionsMenu.stringOptionOrigin || row == TemplateGameOptionsMenu.playerOptionOrigin
+                    || row == TemplateGameOptionsMenu.MapPicker) continue;
+                row.gameObject.SetActive(false);
+                row.transform.SetParent(null);
+                Object.Destroy(row.gameObject);
+            }
+            foreach (var header in TemplateGameOptionsMenu.settingsContainer.GetComponentsInChildren<CategoryHeaderMasked>(true))
+            {
+                if (header == TemplateGameOptionsMenu.categoryHeaderOrigin) continue;
+                header.gameObject.SetActive(false);
+                header.transform.SetParent(null);
+                Object.Destroy(header.gameObject);
+            }
+            TemplateGameOptionsMenu.Children = new();
+            TemplateGameOptionsMenu.ControllerSelectable.Clear();
+            TemplateGameOptionsMenu.cachedData = null;
         }
         if (TemplateGameSettingsButton == null)
         {

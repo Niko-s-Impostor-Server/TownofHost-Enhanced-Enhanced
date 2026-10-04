@@ -44,7 +44,7 @@ class HudManagerPatch
             }
         }
 
-        if (!AmongUsClient.Instance.IsGameStarted || GameStates.IsHideNSeek) return;
+        if ((!AmongUsClient.Instance.IsGameStarted && !GameStates.IsFreePlay) || GameStates.IsHideNSeek) return;
 
         Utils.CountAlivePlayers(sendLog: false, checkGameEnd: false);
 
