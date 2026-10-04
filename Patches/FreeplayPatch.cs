@@ -41,6 +41,8 @@ internal static class FreeplayInitialization
         Main.AllPlayerKillCooldown.Clear();
         Main.AllPlayerSpeed.Clear();
         Main.AllPlayerCustomRoles.Clear();
+        Main.AllPlayerNames.Clear();
+        Main.PlayerColors.Clear();
         Main.LastNotifyNames.Clear();
         Main.LastEnteredVent.Clear();
         Main.LastEnteredVentLocation.Clear();
@@ -84,6 +86,9 @@ internal static class FreeplayInitialization
         {
             if (player == null || player.Data == null) continue;
             var outfit = player.Data.DefaultOutfit;
+            Main.AllPlayerNames[player.PlayerId] = outfit.PlayerName;
+            Main.PlayerColors[player.PlayerId] = outfit.ColorId >= 0 && outfit.ColorId < Palette.PlayerColors.Length
+                ? Palette.PlayerColors[outfit.ColorId] : Color.white;
             var savedOutfit = new NetworkedPlayerInfo.PlayerOutfit().Set(outfit.PlayerName,
                 outfit.ColorId, outfit.HatId, outfit.SkinId, outfit.VisorId, outfit.PetId, outfit.NamePlateId);
             var state = new PlayerState(player.PlayerId) { NormalOutfit = savedOutfit, HasSpawned = true };
@@ -135,6 +140,10 @@ internal static class FreeplayInitialization
         state.RoleClass.OnAdd(player.PlayerId);
         state.InitTask(player);
         CustomRoleManager.Add();
+        // The native HUD rebuilds task text on its next dirty tick. A role switch
+        // must also invalidate that text even when the native tasks stay the same.
+        if (player.AmOwner && HudManager.Instance != null)
+            HudManager.Instance.taskDirtyTimer = 0.25f;
     }
 
     public static void Release(TutorialManager owner)

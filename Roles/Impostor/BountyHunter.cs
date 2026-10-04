@@ -243,7 +243,8 @@ internal class BountyHunter : RoleBase
         if (isForMeeting) return string.Empty;
 
         var targetId = GetTarget(seer);
-        return targetId != 0xff ? $"{(isForHud ? GetString("BountyCurrentTarget") : GetString("Target"))}: {Main.AllPlayerNames[targetId].RemoveHtmlTags().Replace("\r\n", string.Empty)}" : string.Empty;
+        if (targetId == 0xff || !Main.AllPlayerNames.TryGetValue(targetId, out var targetName)) return string.Empty;
+        return $"{(isForHud ? GetString("BountyCurrentTarget") : GetString("Target"))}: {targetName.RemoveHtmlTags().Replace("\r\n", string.Empty)}";
     }
     public override string GetSuffix(PlayerControl seer, PlayerControl seen = null, bool isForMeeting = false)
     {

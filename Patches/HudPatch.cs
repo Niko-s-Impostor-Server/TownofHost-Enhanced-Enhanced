@@ -281,9 +281,11 @@ class TaskPanelBehaviourPatch
         PlayerControl player = PlayerControl.LocalPlayer;
 
         var taskText = __instance.taskText.text;
-        if (taskText == "None") return;
+        // Taskless custom roles still need their role description and help text.
+        if (taskText == "None") taskText = string.Empty;
 
-        if (player == null) return;
+        if (player == null || !Main.PlayerStates.TryGetValue(player.PlayerId, out var playerState)
+            || playerState.MainRole == CustomRoles.NotAssigned) return;
 
         // Display Description
         if (!player.GetCustomRole().IsVanilla())
@@ -306,7 +308,7 @@ class TaskPanelBehaviourPatch
                         sb.Append(line + "\r\n");
                     }
                     
-                    if (sb.Length > 1)
+                    if (sb.Length > 1 && !string.IsNullOrWhiteSpace(taskText))
                     {
                         var text = sb.ToString().TrimEnd('\n').TrimEnd('\r');
                         if (!Utils.HasTasks(player.Data, false) && sb.ToString().Count(s => (s == '\n')) >= 2)
@@ -317,10 +319,10 @@ class TaskPanelBehaviourPatch
                     if (MeetingStates.FirstMeeting)
                     {
                         AllText += $"\r\n\r\n</color><size=70%>{GetString("PressF1ShowMainRoleDes")}";
-                        if (Main.PlayerStates.TryGetValue(PlayerControl.LocalPlayer.PlayerId, out var ps) && ps.SubRoles.Count >= 1)
+                        if (playerState.SubRoles.Count >= 1)
                             AllText += $"\r\n{GetString("PressF2ShowAddRoleDes")}";
                         AllText += $"\r\n{GetString("PressF3ShowRoleSettings")}";
-                        if (ps.SubRoles.Count >= 1)
+                        if (playerState.SubRoles.Count >= 1)
                             AllText += $"\r\n{GetString("PressF4ShowAddOnsSettings")}";
                         AllText += "</size>";
                     }
