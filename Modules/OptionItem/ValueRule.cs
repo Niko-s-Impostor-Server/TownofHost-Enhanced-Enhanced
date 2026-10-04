@@ -31,7 +31,7 @@ public class IntegerValueRule : ValueRule<int>
     {
         int MaxIndex = (MaxValue - MinValue) / Step;
         value %= (MaxIndex + 1);
-        if (value < 0) value = MaxIndex;
+        if (value < 0) value += MaxIndex + 1;
         return value;
     }
 
@@ -58,7 +58,7 @@ public class FloatValueRule : ValueRule<float>
     {
         int MaxIndex = (int)((MaxValue - MinValue) / Step);
         value %= (MaxIndex + 1);
-        if (value < 0) value = MaxIndex;
+        if (value < 0) value += MaxIndex + 1;
         return value;
     }
 

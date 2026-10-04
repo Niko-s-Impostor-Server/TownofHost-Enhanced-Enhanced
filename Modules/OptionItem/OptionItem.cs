@@ -13,7 +13,12 @@ public abstract class OptionItem
     private static readonly Dictionary<int, OptionItem> _fastOptions = new(1024);
     private static readonly Dictionary<int, string> nameSettings = [];
 
-    public static int CurrentPreset { get; set; }
+    private static int currentPreset;
+    public static int CurrentPreset
+    {
+        get => currentPreset;
+        set => currentPreset = Math.Clamp(value, 0, NumPresets - 1);
+    }
     #endregion
 
     // Constructor variables
@@ -181,7 +186,7 @@ public abstract class OptionItem
     // Deprecated IsHidden function
     public virtual bool IsHiddenOn(CustomGameMode mode)
     {
-        return IsHidden || this.Parent?.IsHiddenOn(Options.CurrentGameMode) == true || (HideOptionInFFA != CustomGameMode.All && HideOptionInFFA == mode) || (HideOptionInHnS != CustomGameMode.All && HideOptionInHnS == mode) || (GameMode != CustomGameMode.All && GameMode != mode);
+        return IsHidden || this.Parent?.IsHiddenOn(mode) == true || (HideOptionInFFA != CustomGameMode.All && HideOptionInFFA == mode) || (HideOptionInHnS != CustomGameMode.All && HideOptionInHnS == mode) || (GameMode != CustomGameMode.All && GameMode != mode);
     }
     public string ApplyFormat(string value)
     {
@@ -235,16 +240,16 @@ public abstract class OptionItem
     }
     public void SetAllValues(int[] values)
     {
-        AllValues = values;
+        var restoredValues = new int[NumPresets];
+        Array.Fill(restoredValues, DefaultValue);
+        if (values != null)
+            Array.Copy(values, restoredValues, Math.Min(values.Length, NumPresets));
+        AllValues = restoredValues;
     }
     // This Code For Reset All TOHE Setting To Default
     public virtual void SetValueNoRpc(int value)
     {
-        int beforeValue = CurrentValue;
-        int afterValue = CurrentValue = value;
-
-        CallUpdateValueEvent(beforeValue, afterValue);
-        Refresh();
+        SetValue(value, doSave: false, doSync: false);
     }
 
     public static OptionItem operator ++(OptionItem item)
@@ -252,19 +257,20 @@ public abstract class OptionItem
     public static OptionItem operator --(OptionItem item)
         => item.Do(item => item.SetValue(item.CurrentValue - 1));
 
-    public static void SwitchPreset(int newPreset)
+    public static void SwitchPreset(int newPreset, bool doSync = true)
     {
         CurrentPreset = Math.Clamp(newPreset, 0, NumPresets - 1);
 
         foreach (var op in AllOptions.ToArray())
             op.Refresh();
 
-        SyncAllOptions();
+        if (doSync) SyncAllOptions();
     }
     public static void SyncAllOptions(int targetId = -1)
     {
         if (
             Main.AllPlayerControls.Length <= 1 ||
+            AmongUsClient.Instance == null ||
             AmongUsClient.Instance.AmHost == false ||
             PlayerControl.LocalPlayer == null
         ) return;

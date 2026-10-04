@@ -28,6 +28,8 @@ public class FloatOptionItem(int id, string name, float defaultValue, TabGroup t
     // Setter
     public override void SetValue(int value, bool doSync = true)
     {
-        base.SetValue(Rule.RepeatIndex(value), doSync);
+        SetValue(value, doSave: true, doSync: doSync);
     }
+    public override void SetValue(int value, bool doSave, bool doSync = true)
+        => base.SetValue(Rule.RepeatIndex(value), doSave, doSync);
 }

@@ -31,12 +31,12 @@ public class PresetOptionItem(int defaultValue, TabGroup tab, bool vanilla) : Op
     // Setter
     public override void SetValue(int value, bool doSync = true)
     {
-        base.SetValue(Rule.RepeatIndex(value), doSync);
-        SwitchPreset(Rule.RepeatIndex(value));
+        SetValue(value, doSave: true, doSync: doSync);
     }
     public override void SetValue(int afterValue, bool doSave, bool doSync = true)
     {
-        base.SetValue(Rule.RepeatIndex(afterValue), doSave, doSync);
-        SwitchPreset(Rule.RepeatIndex(afterValue));
+        var preset = Rule.RepeatIndex(afterValue);
+        base.SetValue(preset, doSave, doSync: false);
+        SwitchPreset(preset, doSync);
     }
 }

@@ -1,5 +1,6 @@
 ﻿using System.IO;
 using System.Text.Json;
+using System;
 
 namespace TOHE.Modules;
 
@@ -35,7 +36,7 @@ public static class OptionSaver
                     Logger.Warn($"Duplicate SingleOption ID: {option.Id}", "Option Saver");
                 }
             }
-            else if (!presetOptions.TryAdd(option.Id, option.AllValues))
+            else if (!presetOptions.TryAdd(option.Id, (int[])option.AllValues.Clone()))
             {
                 Logger.Warn($"Duplicate preset option ID: {option.Id}", "Option Saver");
             }
@@ -53,58 +54,78 @@ public static class OptionSaver
         if (serializableOptionsData.Version != Version)
         {
             // If you want to provide a method for migrating between versions in the future, you can distribute the conversion method for each version here
-            Logger.Info($"Loaded option version {serializableOptionsData.Version} does not match current version {Version}, overwriting with default value", "Option Saver");
-            Save();
+            Logger.Warn($"Loaded option version {serializableOptionsData.Version} does not match current version {Version}; keeping defaults and preserving the saved file", "Option Saver");
             return;
         }
+        if (serializableOptionsData.SingleOptions == null || serializableOptionsData.PresetOptions == null)
+            throw new JsonException("Option data is missing its option dictionaries");
         Dictionary<int, int> singleOptions = serializableOptionsData.SingleOptions;
         Dictionary<int, int[]> presetOptions = serializableOptionsData.PresetOptions;
         foreach (var singleOption in singleOptions)
         {
             var id = singleOption.Key;
             var value = singleOption.Value;
-            if (OptionItem.FastOptions.TryGetValue(id, out var optionItem))
+            if (OptionItem.FastOptions.TryGetValue(id, out var optionItem) && optionItem.IsSingleValue)
             {
-                optionItem.SetValue(value, doSave: false);
+                optionItem.SetValue(value, doSave: false, doSync: false);
             }
         }
         foreach (var presetOption in presetOptions)
         {
             var id = presetOption.Key;
             var values = presetOption.Value;
-            if (OptionItem.FastOptions.TryGetValue(id, out var optionItem))
+            if (OptionItem.FastOptions.TryGetValue(id, out var optionItem) && !optionItem.IsSingleValue)
             {
                 optionItem.SetAllValues(values);
             }
         }
+        foreach (var option in OptionItem.AllOptions)
+            option.Refresh();
     }
     /// <summary>Save current options to json file</summary>
     public static void Save()
     {
         if (AmongUsClient.Instance != null && !AmongUsClient.Instance.AmHost) return;
 
+        var temporaryPath = OptionSaverFileInfo.FullName + "." + Guid.NewGuid().ToString("N") + ".tmp";
         try
         {
             var jsonString = JsonSerializer.Serialize(GenerateOptionsData(), new JsonSerializerOptions { WriteIndented = true, });
-            File.WriteAllText(OptionSaverFileInfo.FullName, jsonString);
+            Directory.CreateDirectory(SaveDataDirectoryInfo.FullName);
+            File.WriteAllText(temporaryPath, jsonString);
+            File.Move(temporaryPath, OptionSaverFileInfo.FullName, overwrite: true);
         }
         catch (System.Exception error)
         {
             Logger.Error($"Error: {error}", "OptionSaver.Save");
         }
+        finally
+        {
+            try { if (File.Exists(temporaryPath)) File.Delete(temporaryPath); }
+            catch (Exception error) { Logger.Error($"Temporary option file cleanup failed: {error}", "OptionSaver.Save"); }
+        }
     }
     /// <summary>Read options from json file</summary>
     public static void Load()
     {
-        var jsonString = File.ReadAllText(OptionSaverFileInfo.FullName);
-        // if empty, do not read, save default value
-        if (jsonString.Length <= 0)
+        try
         {
-            Logger.Info("Save default value as option data is empty", "Option Saver");
-            Save();
-            return;
+            var jsonString = File.ReadAllText(OptionSaverFileInfo.FullName);
+            // if empty, do not read, save default value
+            if (string.IsNullOrWhiteSpace(jsonString))
+            {
+                Logger.Info("Save default value as option data is empty", "Option Saver");
+                Save();
+                return;
+            }
+            var data = JsonSerializer.Deserialize<SerializableOptionsData>(jsonString)
+                ?? throw new JsonException("Option data is null");
+            LoadOptionsData(data);
         }
-        LoadOptionsData(JsonSerializer.Deserialize<SerializableOptionsData>(jsonString));
+        catch (Exception error)
+        {
+            Logger.Error($"Unable to load options; keeping defaults and preserving the saved file: {error}", "OptionSaver.Load");
+        }
     }
 
     /// <summary>Optional data suitable for json storage</summary>

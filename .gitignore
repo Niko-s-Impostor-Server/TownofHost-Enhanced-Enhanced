@@ -1,6 +1,11 @@
 /.vs
 /bin
 /obj
+**/bin/
+**/obj/
+/artifacts/
+*.user
+*.log
 /.editorconfig
 /.vscode
 /.idea

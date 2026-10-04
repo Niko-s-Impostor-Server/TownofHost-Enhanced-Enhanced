@@ -25,6 +25,8 @@ public class BooleanOptionItem(int id, string name, bool defaultValue, TabGroup 
     // Setter
     public override void SetValue(int value, bool doSync = true)
     {
-        base.SetValue(value % 2 == 0 ? 0 : 1, doSync);
+        SetValue(value, doSave: true, doSync: doSync);
     }
+    public override void SetValue(int value, bool doSave, bool doSync = true)
+        => base.SetValue(value % 2 == 0 ? 0 : 1, doSave, doSync);
 }

@@ -8,12 +8,17 @@ class LateTask
     public float timer;
     public bool shouldLog;
     public Action action;
+    private bool completed;
     public static List<LateTask> Tasks = [];
     public bool Run(float deltaTime)
     {
+        if (completed) return true;
         timer -= deltaTime;
         if (timer <= 0)
         {
+            // Remove before invoking callbacks so a nested update cannot run this task twice.
+            completed = true;
+            Tasks.Remove(this);
             action();
             return true;
         }
@@ -21,7 +26,7 @@ class LateTask
     }
     public LateTask(Action action, float time, string name = "No Name Task", bool shoudLog = true)
     {
-        this.action = action;
+        this.action = action ?? throw new ArgumentNullException(nameof(action));
         this.timer = time;
         this.name = name;
         this.shouldLog = shoudLog;
@@ -35,6 +40,8 @@ class LateTask
         var TasksToRemove = new List<LateTask>();
         foreach (var task in Tasks.ToArray())
         {
+            // An earlier callback may have cancelled pending tasks.
+            if (!Tasks.Contains(task)) continue;
             try
             {
                 if (task.Run(deltaTime))
