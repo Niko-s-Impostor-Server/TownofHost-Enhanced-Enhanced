@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <LangVersion>12.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <AssemblyName>TOHEE.RuntimeSmoke</AssemblyName>
+    <LocalAmongUsPath Condition="'$(LocalAmongUsPath)' == ''">D:\Game\20260818\Itch</LocalAmongUsPath>
+    <TOHEAssemblyPath Condition="'$(TOHEAssemblyPath)' == ''">$(MSBuildThisFileDirectory)..\..\bin\$(Configuration)\net6.0\TOHE.dll</TOHEAssemblyPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="$(LocalAmongUsPath)/BepInEx/interop/*.dll" Private="false" />
+    <Reference Include="$(LocalAmongUsPath)/BepInEx/core/0Harmony.dll" Private="false" />
+    <Reference Include="$(LocalAmongUsPath)/BepInEx/core/BepInEx.Core.dll" Private="false" />
+    <Reference Include="$(LocalAmongUsPath)/BepInEx/core/BepInEx.Unity.Common.dll" Private="false" />
+    <Reference Include="$(LocalAmongUsPath)/BepInEx/core/BepInEx.Unity.IL2CPP.dll" Private="false" />
+    <Reference Include="$(LocalAmongUsPath)/BepInEx/core/Il2CppInterop.Common.dll" Private="false" />
+    <Reference Include="$(LocalAmongUsPath)/BepInEx/core/Il2CppInterop.Runtime.dll" Private="false" />
+    <Reference Include="TOHE" HintPath="$(TOHEAssemblyPath)" Private="false" />
+  </ItemGroup>
+  <Target Name="ValidateInputs" BeforeTargets="ResolveReferences">
+    <Error Condition="!Exists('$(LocalAmongUsPath)/BepInEx/interop/Assembly-CSharp.dll')" Text="LocalAmongUsPath needs generated IL2CPP interop assemblies." />
+    <Error Condition="!Exists('$(TOHEAssemblyPath)')" Text="Build TOHE first, or supply TOHEAssemblyPath pointing to that build." />
+  </Target>
+</Project>
