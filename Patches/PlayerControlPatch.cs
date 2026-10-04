@@ -1145,20 +1145,28 @@ class FixedUpdateInNormalGamePatch
                         if (Rainbow.IsEnabled && Main.IntroDestroyed)
                             Rainbow.OnFixedUpdate();
 
-                        if (Main.UnShapeShifter.Any(x => Utils.GetPlayerById(x) != null && Utils.GetPlayerById(x).CurrentOutfitType != PlayerOutfitType.Shapeshifted)
+                        if (Main.UnShapeShifter.Any()
                             && !player.IsMushroomMixupActive() && Main.GameIsLoaded)
                         {
-                            foreach (var UnShapeshifterId in Main.UnShapeShifter)
+                            foreach (var UnShapeshifterId in Main.UnShapeShifter.ToArray())
                             {
                                 var UnShapeshifter = Utils.GetPlayerById(UnShapeshifterId);
-                                if (UnShapeshifter == null)
+                                if (UnShapeshifter == null || UnShapeshifter.Data == null || UnShapeshifter.Data.Disconnected)
                                 {
                                     Main.UnShapeShifter.Remove(UnShapeshifterId);
                                     continue;
                                 }
                                 if (UnShapeshifter.CurrentOutfitType == PlayerOutfitType.Shapeshifted) continue;
+                                var role = UnShapeshifter.GetRoleClass();
+                                if (role == null || !Utils.IsMethodOverridden(role, "UnShapeShiftButton"))
+                                {
+                                    Main.UnShapeShifter.Remove(UnShapeshifterId);
+                                    continue;
+                                }
 
-                                var randomPlayer = Main.AllPlayerControls.FirstOrDefault(x => x != UnShapeshifter);
+                                var randomPlayer = Main.AllPlayerControls.FirstOrDefault(x => x != UnShapeshifter
+                                    && x.Data != null && !x.Data.Disconnected);
+                                if (randomPlayer == null) continue;
                                 UnShapeshifter.RpcShapeshift(randomPlayer, false);
                                 UnShapeshifter.RpcRejectShapeshift();
                                 UnShapeshifter.ResetPlayerOutfit(setNamePlate: true);

@@ -4,7 +4,7 @@ using System.Linq;
 static class Program
 {
     static int assertions;
-    static void Check(bool condition, string description)
+    internal static void Check(bool condition, string description)
     {
         if (!condition) throw new Exception("FAIL: " + description);
         assertions++;
@@ -170,6 +170,7 @@ static class Program
         TimeoutStops();
         ReadySendsOnceAndSessionIdentity();
         DeduplicationAndRelease();
+        UnShapeShiftRegression.Run();
         global::Main.Instance.Clear();
         Console.WriteLine($"SESSION_LIFECYCLE_PASS ({assertions} assertions; extracted production methods, offline stubs)");
     }

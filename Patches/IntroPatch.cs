@@ -594,17 +594,48 @@ class IntroCutsceneDestroyPatch
 
             if (Main.UnShapeShifter.Any())
             {
+                var generation = OnGameJoinedPatch.Generation;
+                var client = AmongUsClient.Instance;
+                var gameId = client.GameId;
+                var hostId = client.HostId;
+                var currentGame = GameManager.Instance;
+                var playerStates = Main.PlayerStates;
+                var unShapeShifters = Main.UnShapeShifter.Select(id =>
+                {
+                    var pc = id.GetPlayer();
+                    return (Id: id, Player: pc, Role: pc == null ? null : pc.GetRoleClass());
+                }).ToArray();
                 _ = new LateTask(() =>
                 {
-                    Main.UnShapeShifter.Do(x =>
+                    if (!OnGameJoinedPatch.IsCurrentSession(generation) || AmongUsClient.Instance != client
+                        || !client.AmHost || client.HostId != hostId || client.GameId != gameId
+                        || client.IsGameOver || GameStates.IsLobby || !GameStates.IsInGame
+                        || currentGame == null || GameManager.Instance != currentGame
+                        || Main.PlayerStates != playerStates) return;
+
+                    foreach (var captured in unShapeShifters)
                     {
-                        var PC = x.GetPlayer();
-                        var firstPlayer = Main.AllPlayerControls.FirstOrDefault(x => x != PC);
+                        var id = captured.Id;
+                        if (!Main.UnShapeShifter.Contains(id)) continue;
+                        var PC = id.GetPlayer();
+                        var role = PC == null ? null : PC.GetRoleClass();
+                        // The ID may now belong to a new player or role registration.
+                        // An old callback must not remove that registration either.
+                        if (PC != null && (PC != captured.Player || role != captured.Role)) continue;
+                        if (PC == null || PC.Data == null || PC.Data.Disconnected || role == null
+                            || !Utils.IsMethodOverridden(role, "UnShapeShiftButton"))
+                        {
+                            Main.UnShapeShifter.Remove(id);
+                            continue;
+                        }
+                        var firstPlayer = Main.AllPlayerControls.FirstOrDefault(x => x != PC
+                            && x.Data != null && !x.Data.Disconnected);
+                        if (firstPlayer == null) continue;
                         PC.RpcShapeshift(firstPlayer, false);
                         PC.RpcRejectShapeshift();
                         PC.ResetPlayerOutfit(force: true);
-                        Main.CheckShapeshift[x] = false;
-                    });
+                        Main.CheckShapeshift[id] = false;
+                    }
                     Main.GameIsLoaded = true;
                 }, 3f, "Set UnShapeShift Button");
             }
