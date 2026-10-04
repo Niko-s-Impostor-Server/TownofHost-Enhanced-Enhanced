@@ -15,9 +15,44 @@ namespace TOHE;
 [HarmonyPatch(typeof(AmongUsClient), nameof(AmongUsClient.OnGameJoined))]
 class OnGameJoinedPatch
 {
+    internal static uint Generation { get; private set; }
+    internal static bool IsCurrentSession(uint generation)
+        => Generation == generation && AmongUsClient.Instance != null && AmongUsClient.Instance.AmConnected;
+
+    internal static bool IsCurrentClient(ClientData client, uint generation)
+    {
+        if (client == null || !IsCurrentSession(generation)) return false;
+        var current = Utils.GetClientById(client.Id);
+        return current != null && current.Pointer == client.Pointer;
+    }
+
     public static void Postfix(AmongUsClient __instance)
     {
-        while (!Options.IsLoaded) System.Threading.Tasks.Task.Delay(1);
+        var generation = ++Generation;
+        if (Options.IsLoaded) InitializeSession(__instance);
+        else Main.Instance.StartCoroutine(WaitForOptions(__instance, generation));
+    }
+
+    private static System.Collections.IEnumerator WaitForOptions(AmongUsClient client, uint generation)
+    {
+        var deadline = UnityEngine.Time.realtimeSinceStartup + 10f;
+        while (!Options.IsLoaded)
+        {
+            if (client == null || !client.AmConnected || Generation != generation) yield break;
+            if (UnityEngine.Time.realtimeSinceStartup >= deadline)
+            {
+                Logger.Error("Mod options did not load within 10 seconds", "OnGameJoined");
+                client.ExitGame(DisconnectReasons.Error);
+                yield break;
+            }
+            yield return null;
+        }
+        if (client != null && client.AmConnected && Generation == generation) InitializeSession(client);
+    }
+
+    private static void InitializeSession(AmongUsClient __instance)
+    {
+        var generation = Generation;
         Logger.Info($"{__instance.GameId} Joining room - Room code: {GameCode.IntToGameName(AmongUsClient.Instance.GameId) ?? string.Empty}", "OnGameJoined");
 
         Main.IsHostVersionCheating = false;
@@ -30,7 +65,7 @@ class OnGameJoinedPatch
 
         ChatUpdatePatch.DoBlockChat = false;
         GameStates.InGame = false;
-        ErrorText.Instance.Clear();
+        if (ErrorText.Instance != null) ErrorText.Instance.Clear();
         EAC.Init();
         Main.AllClientRealNames.Clear();
 
@@ -107,6 +142,7 @@ class OnGameJoinedPatch
 
         _ = new LateTask(() =>
         {
+            if (!IsCurrentSession(generation)) return;
             try
             {
                 if (!GameStates.IsOnlineGame) return;
@@ -135,6 +171,7 @@ class OnGameJoinedPatch
                 Logger.Error("Error while trying to log local client data.", "OnGameJoinedPatch");
                 _ = new LateTask(() =>
                 {
+                    if (!IsCurrentSession(generation)) return;
                     try
                     {
                         if (!GameStates.IsOnlineGame && !GameStates.IsLocalGame) return;
@@ -164,15 +201,16 @@ public static class OnPlayerJoinedPatch
     public static bool IsDisconnected(this ClientData client)
     {
         var __instance = AmongUsClient.Instance;
+        if (client == null || __instance == null) return true;
         for (int i = 0; i < __instance.allClients.Count; i++)
         {
             ClientData clientData = __instance.allClients[i];
             if (clientData.Id == client.Id)
             {
-                return true;
+                return false;
             }
         }
-        return false;
+        return true;
         //When a client disconnects, it is removed from allClients in method amongusclient.removeplayer
     }
     public static bool HasInvalidFriendCode(string friendcode)
@@ -202,15 +240,18 @@ public static class OnPlayerJoinedPatch
     }
     public static void Postfix(/*AmongUsClient __instance,*/ [HarmonyArgument(0)] ClientData client)
     {
+        if (client == null) return;
+        var generation = OnGameJoinedPatch.Generation;
         Logger.Info($"{client.PlayerName}(ClientID:{client.Id}/FriendCode:{client.FriendCode}/HashPuid:{client.GetHashedPuid()}/Platform:{client.PlatformData.Platform}) Joining room", "Session: OnPlayerJoined");
 
         Main.AssignRolesIsStarted = false;
 
         _ = new LateTask(() =>
         {
+            if (!OnGameJoinedPatch.IsCurrentClient(client, generation) || !AmongUsClient.Instance.AmHost) return;
             try
             {
-                if (AmongUsClient.Instance.AmHost && !client.IsDisconnected() && client.Character.Data.IsIncomplete)
+                if (client.Character != null && client.Character.Data != null && client.Character.Data.IsIncomplete)
                 {
                     Logger.SendInGame(GetString("Error.InvalidColor") + $" {client.Id}/{client.PlayerName}");
                     AmongUsClient.Instance.KickPlayer(client.Id, false);
@@ -435,9 +476,11 @@ class OnPlayerLeftPatch
                     writer.SendMessage();
                 }
                 Main.HostClientId = AmongUsClient.Instance.HostId;
+                var generation = OnGameJoinedPatch.Generation;
                 //We won;t notify vanilla players for host's quit bcz niko dont know how to prevent message spamming
                 _ = new LateTask(() =>
                 {
+                    if (!OnGameJoinedPatch.IsCurrentSession(generation)) return;
                     if (!GameStates.IsOnlineGame) return;
                     if (Main.playerVersion.ContainsKey(AmongUsClient.Instance.HostId))
                     {
@@ -541,27 +584,35 @@ class InnerNetClientSpawnPatch
         if (!AmongUsClient.Instance.AmHost || flags != SpawnFlags.IsClientCharacter) return;
 
         ClientData client = Utils.GetClientById(ownerId);
+        var generation = OnGameJoinedPatch.Generation;
+
+        LateTask Schedule(Action action, float delay, string name) => new(() =>
+        {
+            if (OnGameJoinedPatch.IsCurrentClient(client, generation) && AmongUsClient.Instance.AmHost
+                && client.Character != null && PlayerControl.LocalPlayer != null) action();
+        }, delay, name);
 
         if (client == null || client.Character == null // client is null
             || client.ColorId < 0 || Palette.PlayerColors.Length <= client.ColorId) // invalid client color
         {
             Logger.Warn("client is null or client have invalid color", "TrySyncAndSendMessage");
+            return;
         }
         else
         {
             Logger.Msg($"Spawn player data: ID {ownerId}: {client.PlayerName}", "InnerNetClientSpawn");
-            _ = new LateTask(() =>
+            _ = Schedule(() =>
             {
                 OptionItem.SyncAllOptions(client.Id);
             }, 3f, "Sync All Options For New Player");
 
-            _ = new LateTask(() =>
+            _ = Schedule(() =>
             {
                 if (Main.OverrideWelcomeMsg != "") Utils.SendMessage(Main.OverrideWelcomeMsg, client.Character.PlayerId);
                 else TemplateManager.SendTemplate("welcome", client.Character.PlayerId, true);
             }, 3f, "Welcome Message");
 
-            _ = new LateTask(() =>
+            _ = Schedule(() =>
             {
                 if (client == null || client.Character == null)
                 {
@@ -575,7 +626,7 @@ class InnerNetClientSpawnPatch
 
             if (GameStates.IsOnlineGame)
             {
-                _ = new LateTask(() =>
+                _ = Schedule(() =>
                 {
                     if (GameStates.IsLobby && client.Character != null && LobbyBehaviour.Instance != null && GameStates.IsVanillaServer)
                     {
@@ -600,7 +651,7 @@ class InnerNetClientSpawnPatch
 
             if (Options.GradientTagsOpt.GetBool())
             {
-                _ = new LateTask(() =>
+                _ = Schedule(() =>
                 {
                     Utils.SendMessage(GetString("Warning.GradientTags"), client.Character.PlayerId);
                 }, 3.3f, "GradientWarning");
@@ -615,7 +666,7 @@ class InnerNetClientSpawnPatch
             {
                 if (Options.AutoDisplayKillLog.GetBool() && Main.PlayerStates.Count != 0 && Main.clientIdList.Contains(client.Id))
                 {
-                    _ = new LateTask(() =>
+                    _ = Schedule(() =>
                     {
                         if (!AmongUsClient.Instance.IsGameStarted && client.Character != null)
                         {
@@ -626,7 +677,7 @@ class InnerNetClientSpawnPatch
                 }
                 if (Options.AutoDisplayLastRoles.GetBool())
                 {
-                    _ = new LateTask(() =>
+                    _ = Schedule(() =>
                     {
                         if (!AmongUsClient.Instance.IsGameStarted && client.Character != null)
                         {
@@ -637,7 +688,7 @@ class InnerNetClientSpawnPatch
                 }
                 if (Options.AutoDisplayLastResult.GetBool())
                 {
-                    _ = new LateTask(() =>
+                    _ = Schedule(() =>
                     {
                         if (!AmongUsClient.Instance.IsGameStarted && client.Character != null)
                         {
@@ -648,7 +699,7 @@ class InnerNetClientSpawnPatch
                 }
                 if (PlayerControl.LocalPlayer.FriendCode.GetDevUser().IsUp && Options.EnableUpMode.GetBool())
                 {
-                    _ = new LateTask(() =>
+                    _ = Schedule(() =>
                     {
                         if (!AmongUsClient.Instance.IsGameStarted && client.Character != null)
                         {

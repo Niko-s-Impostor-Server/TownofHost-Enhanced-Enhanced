@@ -35,6 +35,11 @@ public static class Utils
     
     public static void ErrorEnd(string text)
     {
+        var generation = OnGameJoinedPatch.Generation;
+        var failedGame = GameManager.Instance;
+        bool IsCurrentFailure() => OnGameJoinedPatch.IsCurrentSession(generation)
+            && failedGame != null && GameManager.Instance == failedGame;
+        if (AmongUsClient.Instance == null) return;
         if (AmongUsClient.Instance.AmHost)
         {
             Logger.Fatal($"Error: {text} - triggering critical error", "Anti-black");
@@ -43,6 +48,7 @@ public static class Utils
             
             _ = new LateTask(() =>
             {
+                if (!IsCurrentFailure()) return;
                 Logger.SendInGame(GetString("AntiBlackOutLoggerSendInGame"));
             }, 8f, "Anti-Black Msg SendInGame Error During Loading");
 
@@ -50,6 +56,7 @@ public static class Utils
             {
                 _ = new LateTask(() =>
                 {
+                    if (!IsCurrentFailure() || !AmongUsClient.Instance.AmHost) return;
                     CustomWinnerHolder.ResetAndSetWinner(CustomWinner.Error);
                     GameManager.Instance.LogicFlow.CheckEndCriteria();
                     RPC.ForceEndGame(CustomWinner.Error);
@@ -69,6 +76,7 @@ public static class Utils
         }
         else
         {
+            if (PlayerControl.LocalPlayer == null) return;
             MessageWriter writer = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.AntiBlackout, SendOption.Reliable);
             writer.Write(text);
             AmongUsClient.Instance.FinishRpcImmediately(writer);
@@ -79,6 +87,7 @@ public static class Utils
             {
                 _ = new LateTask(() =>
                 {
+                    if (!IsCurrentFailure()) return;
                     Logger.SendInGame(GetString("AntiBlackOutRequestHostToForceEnd"));
                 }, 8f, "Anti-Black Msg SendInGame Non-Host Modded Has Error During Loading");
             }
@@ -86,12 +95,13 @@ public static class Utils
             {
                 _ = new LateTask(() =>
                 {
+                    if (!IsCurrentFailure()) return;
                     Logger.SendInGame(GetString("AntiBlackOutHostRejectForceEnd"));
                 }, 8f, "Anti-Black Msg SendInGame Host Reject Force End");
                 
                 _ = new LateTask(() =>
                 {
-                    if (AmongUsClient.Instance.AmConnected)
+                    if (IsCurrentFailure())
                     {
                         AmongUsClient.Instance.ExitGame(DisconnectReasons.Custom);
                         Logger.Fatal($"Error: {text} - Disconnected from the game due critical error", "Anti-black");

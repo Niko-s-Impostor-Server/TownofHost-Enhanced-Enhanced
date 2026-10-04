@@ -42,8 +42,36 @@ internal class Shroud : RoleBase
     {
         CustomRoleManager.OnFixedUpdateOthers.Add(OnFixedUpdateOthers);
     }
+    public override void Remove(byte playerId)
+    {
+        ClearShrouds(playerId);
+        CustomRoleManager.OnFixedUpdateOthers.Remove(OnFixedUpdateOthers);
+    }
+    private void ClearShrouds(byte ownerId)
+    {
+        foreach (var targetId in ShroudList.Where(entry => entry.Value == ownerId).Select(entry => entry.Key).ToArray())
+        {
+            ShroudList.Remove(targetId);
+        }
+        SendOwnerClear(ownerId);
+    }
+    private static void SendOwnerClear(byte ownerId)
+    {
+        if (!AmongUsClient.Instance.AmHost || PlayerControl.LocalPlayer == null) return;
+        var writer = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.ClearShroudOwner, SendOption.Reliable, -1);
+        writer.Write(ownerId);
+        AmongUsClient.Instance.FinishRpcImmediately(writer);
+    }
+    public static void ReceiveOwnerClear(MessageReader reader, PlayerControl sender)
+    {
+        if (sender == null || !sender.IsHost()) return;
+        var ownerId = reader.ReadByte();
+        foreach (var targetId in ShroudList.Where(entry => entry.Value == ownerId).Select(entry => entry.Key).ToArray())
+            ShroudList.Remove(targetId);
+    }
     private void SendRPC(byte shroudId, byte targetId, byte typeId)
     {
+        if (!AmongUsClient.Instance.AmHost || _Player == null) return;
         MessageWriter writer = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.SyncRoleSkill, SendOption.Reliable, -1);
         writer.WriteNetObject(_Player); // syncShroud
         writer.Write(typeId);
@@ -99,7 +127,8 @@ internal class Shroud : RoleBase
 
     private void OnFixedUpdateOthers(PlayerControl shroud, bool lowLoad, long nowTime)
     {
-        if (lowLoad || !ShroudList.TryGetValue(shroud.PlayerId, out var shroudId)) return;
+        if (lowLoad || shroud == null || !ShroudList.TryGetValue(shroud.PlayerId, out var shroudId)
+            || _state == null || shroudId != _state.PlayerId) return;
 
         if (!shroud.IsAlive() || Pelican.IsEaten(shroud.PlayerId))
         {
@@ -146,25 +175,27 @@ internal class Shroud : RoleBase
     {
         if (!shroud.IsAlive() || (exiled != null && exiled.PlayerId == shroud.PlayerId))
         {
-            ShroudList.Clear();
-            SendRPC(byte.MaxValue, byte.MaxValue, 0);
+            if (_state != null) ClearShrouds(_state.PlayerId);
         }
     }
     public override void AfterMeetingTasks()
     {
-        if (_Player == null || !_Player.IsAlive()) return;
+        var owner = _Player;
+        if (!owner.IsAlive()) return;
 
-        foreach (var shroudedId in ShroudList.Keys)
+        foreach (var shroudedId in ShroudList.Where(entry => entry.Value == owner.PlayerId).Select(entry => entry.Key).ToArray())
         {
+            if (!ShroudList.TryGetValue(shroudedId, out var ownerId) || ownerId != owner.PlayerId) continue;
+            // Consume before murder callbacks, which can remove the owner or other marks.
+            ShroudList.Remove(shroudedId);
+            SendRPC(byte.MaxValue, shroudedId, 2);
             PlayerControl shrouded = shroudedId.GetPlayer();
             if (!shrouded.IsAlive()) continue;
 
             shrouded.SetDeathReason(PlayerState.DeathReason.Shrouded);
             shrouded.RpcMurderPlayer(shrouded);
-            shrouded.SetRealKiller(_Player);
+            shrouded.SetRealKiller(owner);
 
-            SendRPC(byte.MaxValue, shrouded.PlayerId, 2);
-            ShroudList.Remove(shrouded.PlayerId);
         }
     }
 

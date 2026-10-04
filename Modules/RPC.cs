@@ -2,7 +2,6 @@ using AmongUs.GameOptions;
 using Hazel;
 using InnerNet;
 using System;
-using System.Threading.Tasks;
 using TOHE.Modules;
 using TOHE.Patches;
 using TOHE.Roles.AddOns.Impostor;
@@ -14,7 +13,7 @@ using static TOHE.Translator;
 
 namespace TOHE;
 
-enum CustomRPC : byte // 185/255 USED
+enum CustomRPC : byte // 187/255 USED
 {
     // RpcCalls can increase with each AU version
     // On version 2024.6.18 the last id in RpcCalls: 65
@@ -113,6 +112,8 @@ enum CustomRPC : byte // 185/255 USED
     //FFA
     SyncFFAPlayer,
     SyncFFANameNotify,
+    ClearPelicanOwner,
+    ClearShroudOwner,
 }
 public enum Sounds
 {
@@ -157,11 +158,24 @@ internal class RPCHandlerPatch
         or CustomRPC.DumpLog
         or CustomRPC.SetFriendCode
         or CustomRPC.BetterCheck;
-    public static bool Prefix(PlayerControl __instance, [HarmonyArgument(0)] byte callId, [HarmonyArgument(1)] MessageReader reader)
+    public static bool Prefix(PlayerControl __instance, [HarmonyArgument(0)] byte callId, [HarmonyArgument(1)] MessageReader reader, out bool __state)
+    {
+        __state = false;
+        if (EAC.PlayerControlReceiveRpc(__instance, callId, reader)) return false;
+        MessageReader subReader = MessageReader.Get(reader);
+        try
+        {
+            __state = ValidateRpc(__instance, callId, subReader);
+            return __state;
+        }
+        finally
+        {
+            subReader.Recycle();
+        }
+    }
+    private static bool ValidateRpc(PlayerControl __instance, byte callId, MessageReader subReader)
     {
         var rpcType = (RpcCalls)callId;
-        MessageReader subReader = MessageReader.Get(reader);
-        if (EAC.PlayerControlReceiveRpc(__instance, callId, reader)) return false;
         Logger.Info($"{__instance?.Data?.PlayerId}({(__instance.IsHost() ? "Host" : __instance?.Data?.PlayerName)}):{callId}({RPC.GetRpcName(callId)})", "ReceiveRPC");
         switch (rpcType)
         {
@@ -207,8 +221,9 @@ internal class RPCHandlerPatch
         }
         return true;
     }
-    public static void Postfix(PlayerControl __instance, [HarmonyArgument(0)] byte callId, [HarmonyArgument(1)] MessageReader reader)
+    public static void Postfix(PlayerControl __instance, [HarmonyArgument(0)] byte callId, [HarmonyArgument(1)] MessageReader reader, bool __state)
     {
+        if (!__state) return;
         // Process nothing but CustomRPC
         if (callId < (byte)CustomRPC.VersionCheck) return;
 
@@ -327,8 +342,11 @@ internal class RPCHandlerPatch
                     {
                         if (!IsVersionMatch(__instance.GetClientId()) && !Main.VersionCheat.Value)
                         {
+                            var generation = OnGameJoinedPatch.Generation;
+                            var targetClient = __instance.GetClient();
                             _ = new LateTask(() =>
                             {
+                                if (!OnGameJoinedPatch.IsCurrentClient(targetClient, generation) || !AmongUsClient.Instance.AmHost) return;
                                 if (__instance?.Data?.Disconnected is not null and not true)
                                 {
                                     var msg = string.Format(GetString("KickBecauseDiffrentVersionOrMod"), __instance?.Data?.PlayerName);
@@ -344,10 +362,14 @@ internal class RPCHandlerPatch
                 catch
                 {
                     Logger.Warn($"{__instance?.Data?.PlayerName}({__instance.PlayerId}): バージョン情報が無効です", "RpcVersionCheck");
-
+                    var retryClientId = __instance.GetClientId();
+                    var targetClient = __instance.GetClient();
+                    var generation = OnGameJoinedPatch.Generation;
+                    if (retryClientId < 0) break;
                     _ = new LateTask(() =>
                     {
-                        MessageWriter writer = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.RequestRetryVersionCheck, SendOption.Reliable, __instance.GetClientId());
+                        if (!OnGameJoinedPatch.IsCurrentClient(targetClient, generation) || PlayerControl.LocalPlayer == null) return;
+                        MessageWriter writer = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.RequestRetryVersionCheck, SendOption.Reliable, retryClientId);
                         AmongUsClient.Instance.FinishRpcImmediately(writer);
                     }, 1f, "Retry Version Check Task");
                 }
@@ -432,6 +454,12 @@ internal class RPCHandlerPatch
                 break;
             case CustomRPC.SyncRoleSkill:
                 RPC.SyncRoleSkillReader(reader);
+                break;
+            case CustomRPC.ClearPelicanOwner:
+                Pelican.ReceiveOwnerClear(reader, __instance);
+                break;
+            case CustomRPC.ClearShroudOwner:
+                Shroud.ReceiveOwnerClear(reader, __instance);
                 break;
             case CustomRPC.Arrow:
                 {
@@ -901,36 +929,63 @@ internal static class RPC
         target.GetClient().FriendCode = fc;
         target.Data.MarkDirty();
     }
-    public static async void RpcVersionCheck()
+    private static readonly HashSet<(uint Generation, int HostId, bool Retry)> PendingVersionRequests = [];
+    public static void RpcVersionCheck() => Main.Instance.StartCoroutine(WaitAndSendVersion(false));
+    public static void RpcRequestRetryVersionCheck() => Main.Instance.StartCoroutine(WaitAndSendVersion(true));
+
+    private static System.Collections.IEnumerator WaitAndSendVersion(bool retry)
     {
+        var client = AmongUsClient.Instance;
+        var generation = OnGameJoinedPatch.Generation;
+        if (client == null || !OnGameJoinedPatch.IsCurrentSession(generation)) yield break;
+        var hostId = client.HostId;
+        var key = (generation, hostId, retry);
+        if (!PendingVersionRequests.Add(key)) yield break;
+        var deadline = UnityEngine.Time.realtimeSinceStartup + 8f;
         try
         {
-            while (PlayerControl.LocalPlayer == null || AmongUsClient.Instance.HostId < 0 || PlayerControl.LocalPlayer.GetClientId() < 0) await Task.Delay(500);
-            var hostId = AmongUsClient.Instance.HostId;
-            if (Main.playerVersion.ContainsKey(hostId) || !Main.VersionCheat.Value)
+            while (OnGameJoinedPatch.IsCurrentSession(generation) && client.HostId == hostId)
             {
-                bool cheating = Main.VersionCheat.Value;
-                MessageWriter writer = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.VersionCheck, SendOption.Reliable);
-                writer.Write(cheating ? Main.playerVersion[hostId].version.ToString() : Main.PluginVersion);
-                writer.Write(cheating ? Main.playerVersion[hostId].tag : $"{ThisAssembly.Git.Commit}({ThisAssembly.Git.Branch})");
-                writer.Write(cheating ? Main.playerVersion[hostId].forkId : Main.ForkId);
-                writer.Write(cheating);
-                AmongUsClient.Instance.FinishRpcImmediately(writer);
+                if (UnityEngine.Time.realtimeSinceStartup >= deadline)
+                {
+                    Logger.Warn("Version exchange timed out waiting for player data", "RpcVersionCheck");
+                    yield break;
+                }
+                var player = PlayerControl.LocalPlayer;
+                if (player != null && hostId >= 0 && player.GetClientId() >= 0 && client.GetHost() != null)
+                {
+                    try
+                    {
+                        if (retry)
+                        {
+                            var writer = client.StartRpcImmediately(player.NetId, (byte)CustomRPC.RequestRetryVersionCheck, SendOption.Reliable, hostId);
+                            client.FinishRpcImmediately(writer);
+                        }
+                        else
+                        {
+                            if (Main.playerVersion.ContainsKey(hostId) || !Main.VersionCheat.Value)
+                            {
+                                bool cheating = Main.VersionCheat.Value;
+                                var writer = client.StartRpcImmediately(player.NetId, (byte)CustomRPC.VersionCheck, SendOption.Reliable);
+                                writer.Write(cheating ? Main.playerVersion[hostId].version.ToString() : Main.PluginVersion);
+                                writer.Write(cheating ? Main.playerVersion[hostId].tag : $"{ThisAssembly.Git.Commit}({ThisAssembly.Git.Branch})");
+                                writer.Write(cheating ? Main.playerVersion[hostId].forkId : Main.ForkId);
+                                writer.Write(cheating);
+                                client.FinishRpcImmediately(writer);
+                            }
+                            Main.playerVersion[player.GetClientId()] = new PlayerVersion(Main.PluginVersion, $"{ThisAssembly.Git.Commit}({ThisAssembly.Git.Branch})", Main.ForkId);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Warn($"Version exchange failed: {ex.GetType().Name}", "RpcVersionCheck");
+                    }
+                    yield break;
+                }
+                yield return null;
             }
-            Main.playerVersion[PlayerControl.LocalPlayer.GetClientId()] = new PlayerVersion(Main.PluginVersion, $"{ThisAssembly.Git.Commit}({ThisAssembly.Git.Branch})", Main.ForkId);
         }
-        catch
-        {
-            Logger.Error("Error while trying to send RPCVersionCheck, retry later", "RpcVersionCheck");
-            _ = new LateTask(() => RpcVersionCheck(), 1f, "Retry RPCVersionCheck");
-        }
-    }
-    public static async void RpcRequestRetryVersionCheck()
-    {
-        while (PlayerControl.LocalPlayer == null || AmongUsClient.Instance.GetHost() == null) await Task.Delay(500);
-        var hostId = AmongUsClient.Instance.HostId;
-        MessageWriter writer = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.RequestRetryVersionCheck, SendOption.Reliable, hostId);
-        AmongUsClient.Instance.FinishRpcImmediately(writer);
+        finally { PendingVersionRequests.Remove(key); }
     }
     public static void SendDeathReason(byte playerId, PlayerState.DeathReason deathReason)
     {

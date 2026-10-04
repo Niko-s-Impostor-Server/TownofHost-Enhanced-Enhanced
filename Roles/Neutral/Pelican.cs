@@ -28,6 +28,7 @@ internal class Pelican : RoleBase
     private static readonly Dictionary<byte, HashSet<byte>> eatenList = [];
     private static readonly Dictionary<byte, float> originalSpeed = [];
     public static Dictionary<byte, Vector2> PelicanLastPosition = [];
+    private static readonly Dictionary<byte, Vector2> lastKnownPosition = [];
 
     private static int Count = 0;
 
@@ -44,12 +45,13 @@ internal class Pelican : RoleBase
         eatenList.Clear();
         originalSpeed.Clear();
         PelicanLastPosition.Clear();
+        lastKnownPosition.Clear();
 
         Count = 0;
     }
     public override void Remove(byte playerId)
     {
-        ReturnEatenPlayerBack(Utils.GetPlayerById(playerId));
+        ReleaseEatenPlayers(playerId, Utils.GetPlayerById(playerId));
     }
     private void SyncEatenList()
     {
@@ -59,6 +61,7 @@ internal class Pelican : RoleBase
     }
     private void SendRPC(byte playerId)
     {
+        if (!AmongUsClient.Instance.AmHost || _Player == null) return;
         MessageWriter writer = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.SyncRoleSkill, SendOption.Reliable, -1);
         writer.WriteNetObject(_Player); // SetPelicanEatenNum
         writer.Write(playerId);
@@ -69,6 +72,18 @@ internal class Pelican : RoleBase
                 writer.Write(el);
         }
         AmongUsClient.Instance.FinishRpcImmediately(writer);
+    }
+    private static void SendOwnerClear(byte ownerId)
+    {
+        if (!AmongUsClient.Instance.AmHost || PlayerControl.LocalPlayer == null) return;
+        var writer = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.ClearPelicanOwner, SendOption.Reliable, -1);
+        writer.Write(ownerId);
+        AmongUsClient.Instance.FinishRpcImmediately(writer);
+    }
+    public static void ReceiveOwnerClear(MessageReader reader, PlayerControl sender)
+    {
+        if (sender == null || !sender.IsHost()) return;
+        eatenList.Remove(reader.ReadByte());
     }
     public override void ReceiveRPC(MessageReader reader, PlayerControl NaN)
     {
@@ -150,6 +165,7 @@ internal class Pelican : RoleBase
 
         if (!eatenList.ContainsKey(pc.PlayerId)) eatenList.Add(pc.PlayerId, []);
         eatenList[pc.PlayerId].Add(target.PlayerId);
+        lastKnownPosition[pc.PlayerId] = pc.GetCustomPosition();
 
         SyncEatenList();
 
@@ -216,16 +232,21 @@ internal class Pelican : RoleBase
     }
     public override void OnMurderPlayerAsTarget(PlayerControl SLAT, PlayerControl pelican, bool inMeeting, bool isSuicide)
     {
-        if (inMeeting) return;
+        if (inMeeting && !pelican.IsDisconnected()) return;
 
         ReturnEatenPlayerBack(pelican);
     }
     private void ReturnEatenPlayerBack(PlayerControl pelican)
     {
         if (pelican == null) return;
-        var pelicanId = pelican.PlayerId;
-        if (!eatenList.ContainsKey(pelicanId)) return;
+        ReleaseEatenPlayers(pelican.PlayerId, pelican);
+    }
+    private void ReleaseEatenPlayers(byte pelicanId, PlayerControl pelican)
+    {
+        if (!AmongUsClient.Instance.AmHost || !eatenList.Remove(pelicanId, out var targets)) return;
+        SendOwnerClear(pelicanId);
 
+        var previousCheckState = GameEndCheckerForNormal.ShouldNotCheck;
         GameEndCheckerForNormal.ShouldNotCheck = true;
 
         try
@@ -233,27 +254,26 @@ internal class Pelican : RoleBase
             Vector2 teleportPosition;
             if (Scavenger.KilledPlayersId.Contains(pelicanId) && PelicanLastPosition.TryGetValue(pelicanId, out var lastPosition))
                 teleportPosition = lastPosition;
-            else 
+            else if (pelican != null)
                 teleportPosition = pelican.GetCustomPosition();
+            else if (!lastKnownPosition.TryGetValue(pelicanId, out teleportPosition))
+                teleportPosition = PlayerControl.LocalPlayer.GetCustomPosition();
 
-            foreach (var tar in eatenList[pelicanId])
+            foreach (var tar in targets)
             {
                 var target = Utils.GetPlayerById(tar);
-                var player = Utils.GetPlayerById(pelicanId);
-                if (player == null || target == null) continue;
+                if (originalSpeed.Remove(tar, out var savedSpeed) && Main.AllPlayerSpeed.TryGetValue(tar, out var currentSpeed))
+                    Main.AllPlayerSpeed[tar] = currentSpeed - 0.5f + savedSpeed;
+                ReportDeadBodyPatch.CanReport[tar] = true;
+                if (target == null) continue;
 
                 target.RpcTeleport(teleportPosition);
-
-                Main.AllPlayerSpeed[tar] = Main.AllPlayerSpeed[tar] - 0.5f + originalSpeed[tar];
-                ReportDeadBodyPatch.CanReport[tar] = true;
-
                 target.SyncSettings();
 
                 RPC.PlaySoundRPC(tar, Sounds.TaskComplete);
 
                 Logger.Info($"{pelican?.Data?.PlayerName} dead, player return back: {target?.Data?.PlayerName} in {teleportPosition}", "Pelican");
             }
-            eatenList.Remove(pelicanId);
             SyncEatenList();
             Utils.NotifyRoles();
         }
@@ -262,11 +282,18 @@ internal class Pelican : RoleBase
             Utils.ThrowException(error);
         }
 
-        GameEndCheckerForNormal.ShouldNotCheck = false;
+        finally
+        {
+            PelicanLastPosition.Remove(pelicanId);
+            lastKnownPosition.Remove(pelicanId);
+            GameEndCheckerForNormal.ShouldNotCheck = previousCheckState;
+        }
     }
 
     public override void OnFixedUpdate(PlayerControl player, bool lowLoad, long nowTime)
     {
+        if (player != null && eatenList.ContainsKey(player.PlayerId))
+            lastKnownPosition[player.PlayerId] = player.GetCustomPosition();
         if (lowLoad) return;
 
         Count--;
