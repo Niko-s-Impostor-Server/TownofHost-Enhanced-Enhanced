@@ -84,6 +84,7 @@ public class GameSettingMenuPatch
             setTab.gameObject.SetActive(false);
 
             ModSettingsTabs.Add(tab, setTab);
+            GameOptionsMenuPatch.RegisterTab(setTab, tab);
         }
 
         foreach (var tab in EnumHelper.GetAllValues<TabGroup>())
@@ -128,6 +129,7 @@ public class GameSettingMenuPatch
         __instance.ControllerSelectable.Add(gameSettingButton);
     }
     public static StringOption PresetBehaviour;
+    private static TextMeshPro PresetLabel;
     public static FreeChatInputField InputField;
     public static List<OptionItem> HiddenBySearch = [];
     public static Action _SearchForOptions;
@@ -148,6 +150,7 @@ public class GameSettingMenuPatch
 
         Color clr = new(-1, -1, -1);
         var PLabel = preset.GetComponentInChildren<TextMeshPro>();
+        PresetLabel = PLabel;
         PLabel.DestroyTranslator();
         PLabel.text = GetString($"Preset_{OptionItem.CurrentPreset + 1}");
         //PLabel.font = PLuLabel.font; 
@@ -178,9 +181,9 @@ public class GameSettingMenuPatch
         Minus.OnClick.RemoveAllListeners();
         Minus.OnClick.AddListener(
                 (UnityEngine.Events.UnityAction)(() => {
-                    if (PresetBehaviour == null) __instance.ChangeTab(3, false);
-                    PresetBehaviour.Decrease();
+                    ChangePreset(__instance, -1);
                 }));
+        Minus.gameObject.SetActive(GameOptionsMenuPatch.CanEdit);
         Minus.activeTextColor = new Color(255f, 255f, 255f);
         Minus.inactiveTextColor = new Color(255f, 255f, 255f);
         Minus.disabledTextColor = new Color(255f, 255f, 255f);
@@ -210,9 +213,9 @@ public class GameSettingMenuPatch
         plus.OnClick.RemoveAllListeners();
         plus.OnClick.AddListener(
                 (UnityEngine.Events.UnityAction)(() => {
-                    if (PresetBehaviour == null) __instance.ChangeTab(3, false);
-                    PresetBehaviour.Increase();
+                    ChangePreset(__instance, 1);
                 }));
+        plus.gameObject.SetActive(GameOptionsMenuPatch.CanEdit);
         plus.activeTextColor = new Color(255f, 255f, 255f);
         plus.inactiveTextColor = new Color(255f, 255f, 255f);
         plus.disabledTextColor = new Color(255f, 255f, 255f);
@@ -291,6 +294,22 @@ public class GameSettingMenuPatch
             GameOptionsMenuPatch.ReCreateSettings(settingsTab);
             textField.Clear();
         }
+    }
+
+    private static void ChangePreset(GameSettingMenu menu, int delta)
+    {
+        if (menu == null || !GameOptionsMenuPatch.CanEdit ||
+            !OptionItem.FastOptions.TryGetValue(OptionItem.PresetId, out var preset)) return;
+        preset.SetValue(preset.CurrentValue + delta);
+        foreach (var tab in ModSettingsTabs.Values)
+        {
+            if (tab == null || tab.Children == null) continue;
+            foreach (var child in tab.Children.ToArray())
+                if (child != null) child.Initialize();
+            GameOptionsMenuPatch.ReCreateSettings(tab);
+        }
+        if (PresetLabel != null) PresetLabel.text = preset.GetString();
+        if (InputField != null) InputField.Clear();
     }
 
     [HarmonyPatch(nameof(GameSettingMenu.ChangeTab)), HarmonyPrefix]
@@ -377,6 +396,8 @@ public class GameSettingMenuPatch
         {
             button.SelectButton(true);
         }
+        if (ModSettingsTabs.TryGetValue(tabGroupId, out settingsTab) && settingsTab != null)
+            GameOptionsMenuPatch.OpenModMenu(settingsTab);
 
         return false;
     }
@@ -414,13 +435,28 @@ public class GameSettingMenuPatch
     [HarmonyPatch(nameof(GameSettingMenu.Close)), HarmonyPostfix]
     private static void ClosePostfix(GameSettingMenu __instance)
     {
+        if (Instance != null && Instance != __instance) return;
         foreach (var button in ModSettingsButtons.Values)
             Object.Destroy(button);
         foreach (var tab in ModSettingsTabs.Values)
             Object.Destroy(tab);
         ModSettingsButtons = [];
         ModSettingsTabs = [];
+        TemplateGameOptionsMenu = null;
+        TemplateGameSettingsButton = null;
+        PresetBehaviour = null;
+        PresetLabel = null;
+        InputField = null;
+        _SearchForOptions = null;
+        Instance = null;
+        HiddenBySearch.Do(option => option.SetHidden(false));
+        HiddenBySearch.Clear();
+        ModGameOptionsMenu.TabIndex = 0;
+        GameOptionsMenuPatch.ReleaseMenus();
     }
+
+    [HarmonyPatch(nameof(GameSettingMenu.OnDisable)), HarmonyPostfix]
+    private static void OnDisablePostfix(GameSettingMenu __instance) => ClosePostfix(__instance);
 }
 [HarmonyPatch(typeof(FreeChatInputField), nameof(FreeChatInputField.UpdateCharCount))]
 public static class FixInputChatField

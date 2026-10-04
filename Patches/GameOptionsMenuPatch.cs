@@ -20,11 +20,112 @@ public static class ModGameOptionsMenu
 public static class GameOptionsMenuPatch
 {
     public static GameOptionsMenu Instance;
+    private static readonly Dictionary<int, TabGroup> MenuTabs = [];
+    private static readonly Dictionary<int, Coroutine> Builds = [];
+    private static readonly Dictionary<int, int> BuildVersions = [];
+    private static int nextBuildVersion;
+    private static int reopenVersion;
+    public static bool CanEdit => AmongUsClient.Instance != null && AmongUsClient.Instance.AmHost;
+
+    public static void RegisterTab(GameOptionsMenu menu, TabGroup tab)
+        => MenuTabs[menu.GetInstanceID()] = tab;
+
+    private static bool TryGetTab(GameOptionsMenu menu, out TabGroup tab)
+    {
+        tab = default;
+        return menu != null && MenuTabs.TryGetValue(menu.GetInstanceID(), out tab);
+    }
+
+    public static void CancelReopen() => reopenVersion++;
+
+    public static void ReleaseMenus()
+    {
+        CancelReopen();
+        MenuTabs.Clear();
+        Builds.Clear();
+        BuildVersions.Clear();
+        Instance = null;
+        ModGameOptionsMenu.OptionList = new();
+        ModGameOptionsMenu.BehaviourList = new();
+        ModGameOptionsMenu.CategoryHeaderList = new();
+    }
+
+    [HarmonyPatch(nameof(GameOptionsMenu.OnDisable)), HarmonyPostfix]
+    private static void OnDisablePostfix(GameOptionsMenu __instance)
+    {
+        if (!TryGetTab(__instance, out _)) return;
+        var id = __instance.GetInstanceID();
+        if (!Builds.TryGetValue(id, out var coroutine)) return;
+        __instance.StopCoroutine(coroutine);
+        Builds.Remove(id);
+        BuildVersions.Remove(id);
+        ClearPartialBuild(__instance);
+    }
+
+    private static void ClearPartialBuild(GameOptionsMenu menu)
+    {
+        if (menu.Children != null)
+        {
+            foreach (var child in menu.Children.ToArray())
+            {
+                if (child == null) continue;
+                if (ModGameOptionsMenu.OptionList.TryGetValue(child, out var index))
+                {
+                    ModGameOptionsMenu.OptionList.Remove(child);
+                    ModGameOptionsMenu.BehaviourList.Remove(index);
+                }
+                Object.Destroy(child.gameObject);
+            }
+            menu.Children.Clear();
+        }
+        var headerKeys = new List<int>();
+        var headers = ModGameOptionsMenu.CategoryHeaderList.GetEnumerator();
+        while (headers.MoveNext()) headerKeys.Add(headers.Current.Key);
+        foreach (var key in headerKeys)
+        {
+            var header = ModGameOptionsMenu.CategoryHeaderList[key];
+            if (header == null)
+            {
+                ModGameOptionsMenu.CategoryHeaderList.Remove(key);
+                continue;
+            }
+            if (!header.transform.IsChildOf(menu.settingsContainer)) continue;
+            Object.Destroy(header.gameObject);
+            ModGameOptionsMenu.CategoryHeaderList.Remove(key);
+        }
+        menu.ControllerSelectable.Clear();
+    }
+
+    private static void RebuildNavigation(GameOptionsMenu menu)
+    {
+        menu.ControllerSelectable.Clear();
+        foreach (var element in menu.scrollBar.GetComponentsInChildren<UiElement>())
+            menu.ControllerSelectable.Add(element);
+        var groups = menu.Children.ToArray().Where(child => child != null && child.gameObject.activeInHierarchy)
+            .Select(child => child.GetComponentsInChildren<UiElement>().ToArray()).Where(group => group.Length > 0).ToArray();
+        for (var row = 0; row < groups.Length; row++)
+        {
+            for (var column = 0; column < groups[row].Length; column++)
+            {
+                var navigation = groups[row][column].ControllerNav;
+                navigation.mode = ControllerNavigation.Mode.Explicit;
+                navigation.selectOnUp = row > 0 ? groups[row - 1][Math.Min(column, groups[row - 1].Length - 1)] : null;
+                navigation.selectOnDown = row + 1 < groups.Length ? groups[row + 1][Math.Min(column, groups[row + 1].Length - 1)] : null;
+                groups[row][column].ControllerNav = navigation;
+            }
+        }
+    }
+
+    public static void OpenModMenu(GameOptionsMenu menu)
+    {
+        if (!TryGetTab(menu, out _) || Builds.ContainsKey(menu.GetInstanceID()) || menu.ControllerSelectable.Count == 0) return;
+        ControllerManager.Instance.OpenOverlayMenu(menu.name, menu.BackButton, menu.ControllerSelectable[0], menu.ControllerSelectable);
+    }
     [HarmonyPatch(nameof(GameOptionsMenu.Initialize)), HarmonyPrefix]
     private static bool InitializePrefix(GameOptionsMenu __instance)
     {
-        Instance ??= __instance;
-        if (ModGameOptionsMenu.TabIndex < 3) return true;
+        Instance = __instance;
+        if (!TryGetTab(__instance, out _)) return true;
 
         if (__instance.Children == null || __instance.Children.Count == 0)
         {
@@ -32,65 +133,70 @@ public static class GameOptionsMenuPatch
             __instance.Children = new Il2CppSystem.Collections.Generic.List<OptionBehaviour>();
             __instance.CreateSettings();
             __instance.cachedData = GameOptionsManager.Instance.CurrentGameOptions;
-            for (int i = 0; i < __instance.Children.Count; i++)
-            {
-                OptionBehaviour optionBehaviour = __instance.Children[i];
-                optionBehaviour.OnValueChanged = new Action<OptionBehaviour>(__instance.ValueChanged);
-            }
-            __instance.InitializeControllerNavigation();
         }
 
         return false;
     }
     // Thanks: https://github.com/Gurge44/EndlessHostRoles
     [HarmonyPatch(nameof(GameOptionsMenu.Initialize)), HarmonyPostfix]
-    private static void InitializePostfix()
+    private static void InitializePostfix(GameOptionsMenu __instance)
     {
         var optionMenu = GameObject.Find("PlayerOptionsMenu(Clone)");
         optionMenu?.transform.FindChild("Background")?.gameObject.SetActive(false);
 
         _ = new LateTask(() =>
         {
-            var menuDescription = optionMenu?.transform.FindChild("What Is This?");
+            if (__instance == null || optionMenu == null || GameSettingMenu.Instance == null) return;
+            var menuDescription = optionMenu.transform.FindChild("What Is This?");
+            if (menuDescription == null) return;
 
             var infoImage = menuDescription.transform.FindChild("InfoImage");
+            if (infoImage == null) return;
             infoImage.transform.localPosition = new(-4.65f, 0.16f, -1f);
             infoImage.transform.localScale = new(0.2202f, 0.2202f, 0.3202f);
 
             var infoText = menuDescription.transform.FindChild("InfoText");
+            if (infoText == null) return;
             infoText.transform.localPosition = new(-3.5f, 0.83f, -2f);
             infoText.transform.localScale = new(1f, 1f, 1f);
 
             var cubeObject = menuDescription.transform.FindChild("Cube");
+            if (cubeObject == null) return;
             cubeObject.transform.localPosition = new(-3.2f, 0.55f, -0.1f);
             cubeObject.transform.localScale = new(0.61f, 0.64f, 1f);
 
             var menuDescriptionText = GameSettingMenu.Instance.MenuDescriptionText;
-            menuDescriptionText.m_marginWidth = 2.5f;
+            if (menuDescriptionText != null) menuDescriptionText.m_marginWidth = 2.5f;
         }, 0.2f, "Set Menu", shoudLog: false);
     }
 
     [HarmonyPatch(nameof(GameOptionsMenu.CreateSettings)), HarmonyPrefix]
     private static bool CreateSettingsPrefix(GameOptionsMenu __instance)
     {
-        Instance ??= __instance;
+        Instance = __instance;
         // When is vanilla tab, run vanilla code
-        if (ModGameOptionsMenu.TabIndex < 3) return true;
+        if (!TryGetTab(__instance, out var modTab)) return true;
+
+        var menuId = __instance.GetInstanceID();
+        if (Builds.ContainsKey(menuId)) return false;
+        var buildVersion = ++nextBuildVersion;
+        BuildVersions[menuId] = buildVersion;
+        __instance.ControllerSelectable.Clear();
         
         __instance.scrollBar.SetYBoundsMax(CalculateScrollBarYBoundsMax());
-        __instance.StartCoroutine(CoRoutine().WrapToIl2Cpp());
+        Builds[menuId] = __instance.StartCoroutine(CoRoutine().WrapToIl2Cpp());
         return false;
 
         System.Collections.IEnumerator CoRoutine()
         {
-            var modTab = (TabGroup)(ModGameOptionsMenu.TabIndex - 3);
-
-
             float num = 2.0f;
             const float posX = 0.952f;
             const float posZ = -2.0f;
             for (int index = 0; index < OptionItem.AllOptions.Count; index++)
             {
+                if (__instance == null || !__instance.gameObject.activeInHierarchy ||
+                    !BuildVersions.TryGetValue(menuId, out var currentVersion) || currentVersion != buildVersion)
+                    yield break;
                 var option = OptionItem.AllOptions[index];
                 if (option.Tab != modTab) continue;
 
@@ -177,6 +283,8 @@ public static class GameOptionsMenuPatch
                 optionBehaviour.gameObject.SetActive(enabled);
                 optionBehaviour.OnValueChanged = new Action<OptionBehaviour>(__instance.ValueChanged);
                 __instance.Children.Add(optionBehaviour);
+                optionBehaviour.Initialize();
+                if (!CanEdit) optionBehaviour.SetAsPlayer();
 
                 if (enabled) num -= 0.45f;
 
@@ -185,11 +293,13 @@ public static class GameOptionsMenuPatch
 
             yield return null;
 
-            __instance.ControllerSelectable.Clear();
-            foreach (var x in __instance.scrollBar.GetComponentsInChildren<UiElement>())
-            {
-                __instance.ControllerSelectable.Add(x);
-            }
+            if (__instance == null || !__instance.gameObject.activeInHierarchy ||
+                !BuildVersions.TryGetValue(menuId, out var finalVersion) || finalVersion != buildVersion)
+                yield break;
+            RebuildNavigation(__instance);
+            Builds.Remove(menuId);
+            BuildVersions.Remove(menuId);
+            OpenModMenu(__instance);
         }
 
         float CalculateScrollBarYBoundsMax()
@@ -197,11 +307,11 @@ public static class GameOptionsMenuPatch
             float num = 2.0f;
             foreach (var option in OptionItem.AllOptions)
             {
-                if (option.Tab != (TabGroup)(ModGameOptionsMenu.TabIndex - 3)) continue;
+                if (option.Tab != modTab) continue;
 
                 var enabled = !option.IsHiddenOn(Options.CurrentGameMode) && option.Parent?.GetBool() is null or true;
 
-                if (option is TextOptionItem) num -= 0.63f;
+                if (option is TextOptionItem && enabled) num -= 0.63f;
                 else if (enabled)
                 {
                     if (option.IsHeader) num -= 0.3f;
@@ -286,16 +396,25 @@ public static class GameOptionsMenuPatch
     }
     public static void ReOpenSettings(int index = 4)
     {
+        if (!CanEdit || GameSettingMenu.Instance == null) return;
         //Close setting menu
         GameSettingMenu.Instance.Close();
+        var request = ++reopenVersion;
+        GameSettingMenu reopenedMenu = null;
 
         // Auto Click "Edit" Button
         _ = new LateTask(() =>
         {
-            if (!GameStates.IsLobby) return;
+            if (request != reopenVersion || !GameStates.IsLobby) return;
+            if (GameSettingMenu.Instance != null) { CancelReopen(); return; }
             var hostButtons = GameObject.Find("Host Buttons");
             if (hostButtons == null) return;
-            hostButtons.transform.FindChild("Edit").GetComponent<PassiveButton>().ReceiveClickDown();
+            var editButton = hostButtons.transform.FindChild("Edit")?.GetComponent<PassiveButton>();
+            if (editButton != null)
+            {
+                editButton.ReceiveClickDown();
+                reopenedMenu = GameSettingMenu.Instance;
+            }
         }, 0.1f, "Click Edit Button");
 
        
@@ -305,7 +424,7 @@ public static class GameOptionsMenuPatch
         // Change tab to Original Tab
         _ = new LateTask(() =>
         {
-            if (!GameStates.IsLobby || GameSettingMenu.Instance == null) return;
+            if (request != reopenVersion || !GameStates.IsLobby || reopenedMenu == null || GameSettingMenu.Instance != reopenedMenu) return;
             GameSettingMenu.Instance.ChangeTab(index, Controller.currentTouchType == Controller.TouchType.Joystick);
         }, 0.28f, "Change Tab");
 
@@ -313,7 +432,7 @@ public static class GameOptionsMenuPatch
     [HarmonyPatch(nameof(GameOptionsMenu.ValueChanged)), HarmonyPrefix]
     private static bool ValueChangedPrefix(GameOptionsMenu __instance, OptionBehaviour option)
     {
-        if (__instance == null || ModGameOptionsMenu.TabIndex < 3) return true;
+        if (!TryGetTab(__instance, out _)) return true;
 
         if (ModGameOptionsMenu.OptionList.TryGetValue(option, out var index))
         {
@@ -324,8 +443,7 @@ public static class GameOptionsMenuPatch
     }
     public static void ReCreateSettings(GameOptionsMenu __instance)
     {
-        if (ModGameOptionsMenu.TabIndex < 3) return;
-        var modTab = (TabGroup)(ModGameOptionsMenu.TabIndex - 3);
+        if (!TryGetTab(__instance, out var modTab)) return;
 
         float num = 2.0f;
         for (int index = 0; index < OptionItem.AllOptions.Count; index++)
@@ -351,9 +469,7 @@ public static class GameOptionsMenuPatch
             }
         }
 
-        __instance.ControllerSelectable.Clear();
-        foreach (var x in __instance.scrollBar.GetComponentsInChildren<UiElement>())
-            __instance.ControllerSelectable.Add(x);
+        RebuildNavigation(__instance);
         __instance.scrollBar.SetYBoundsMax(-num - 1.65f);
     }
     private static BaseGameSetting GetSetting(OptionItem item)
@@ -449,6 +565,11 @@ public static class ToggleOptionPatch
         {
             var item = OptionItem.AllOptions[index];
             //Logger.Info($"{item.Name}, {index}", "ToggleOption.UpdateValue.TryGetValue");
+            if (!GameOptionsMenuPatch.CanEdit)
+            {
+                __instance.CheckMark.enabled = item.GetBool();
+                return false;
+            }
             item.SetValue(__instance.GetBool() ? 1 : 0);
             NotificationPopperPatch.AddSettingsChangeMessage(index, item, false);
             return false;
@@ -503,6 +624,8 @@ public static class NumberOptionPatch
         {
             var item = OptionItem.AllOptions[index];
             __instance.TitleText.text = item.GetName();
+            __instance.Value = item.GetFloat();
+            __instance.ValueText.text = item.GetString();
             return false;
         }
 
@@ -514,6 +637,11 @@ public static class NumberOptionPatch
         if (ModGameOptionsMenu.OptionList.TryGetValue(__instance, out var index))
         {
             var item = OptionItem.AllOptions[index];
+            if (!GameOptionsMenuPatch.CanEdit)
+            {
+                __instance.Value = item.GetFloat();
+                return false;
+            }
             //Logger.Info($"{item.Name}, {index}", "NumberOption.UpdateValue.TryGetValue");
 
             if (item is IntegerOptionItem integerOptionItem)
@@ -534,8 +662,8 @@ public static class NumberOptionPatch
     {
         if (ModGameOptionsMenu.OptionList.TryGetValue(__instance, out var index))
         {
-            __instance.MinusBtn.SetInteractable(true);
-            __instance.PlusBtn.SetInteractable(true);
+            __instance.MinusBtn.SetInteractable(GameOptionsMenuPatch.CanEdit);
+            __instance.PlusBtn.SetInteractable(GameOptionsMenuPatch.CanEdit);
 
             if (__instance.oldValue != __instance.Value)
             {
@@ -554,6 +682,7 @@ public static class NumberOptionPatch
     [HarmonyPatch(nameof(NumberOption.Increase)), HarmonyPrefix]
     public static bool IncreasePrefix(NumberOption __instance)
     {
+        if (ModGameOptionsMenu.OptionList.ContainsKey(__instance) && !GameOptionsMenuPatch.CanEdit) return false;
         if (__instance.Value == __instance.ValidRange.max)
         {
             __instance.Value = __instance.ValidRange.min;
@@ -576,6 +705,7 @@ public static class NumberOptionPatch
     [HarmonyPatch(nameof(NumberOption.Decrease)), HarmonyPrefix]
     public static bool DecreasePrefix(NumberOption __instance)
     {
+        if (ModGameOptionsMenu.OptionList.ContainsKey(__instance) && !GameOptionsMenuPatch.CanEdit) return false;
         if (__instance.Value == __instance.ValidRange.min)
         {
             __instance.Value = __instance.ValidRange.max;
@@ -623,6 +753,8 @@ public static class StringOptionPatch
                SetupHelpIcon(role, __instance);
             }
             __instance.TitleText.text = name;
+            __instance.Value = item.CurrentValue;
+            __instance.ValueText.text = item.GetString();
             return false;
         }
         return true;
@@ -631,7 +763,9 @@ public static class StringOptionPatch
     //Credit For SetupHelpIcon to EHR https://github.com/Gurge44/EndlessHostRoles/blob/main/Patches/GameOptionsMenuPatch.cs
     private static void SetupHelpIcon(CustomRoles role, StringOption __instance)
     {
+        if (__instance.transform.Find($"{role}HelpIcon") != null) return;
         var template = __instance.transform.FindChild("MinusButton");
+        if (template == null) return;
         var icon = Object.Instantiate(template, template.parent, true);
         icon.gameObject.SetActive(true);
         icon.name = $"{role}HelpIcon";
@@ -644,7 +778,7 @@ public static class StringOptionPatch
         var GameOptionsButton = icon.GetComponent<GameOptionButton>();
         GameOptionsButton.OnClick = new();
         GameOptionsButton.OnClick.AddListener((UnityEngine.Events.UnityAction)(() => {
-
+            if (__instance == null || GameSettingMenu.Instance == null) return;
             if (ModGameOptionsMenu.OptionList.TryGetValue(__instance, out var index))
             {
                 var item = OptionItem.AllOptions[index];
@@ -674,6 +808,11 @@ public static class StringOptionPatch
         if (ModGameOptionsMenu.OptionList.TryGetValue(__instance, out var index))
         {
             var item = OptionItem.AllOptions[index];
+            if (!GameOptionsMenuPatch.CanEdit)
+            {
+                __instance.Value = item.CurrentValue;
+                return false;
+            }
             //Logger.Info($"{item.Name}, {index}", "StringOption.UpdateValue.TryAdd");
 
             item.SetValue(__instance.GetInt());
@@ -701,8 +840,8 @@ public static class StringOptionPatch
         if (ModGameOptionsMenu.OptionList.TryGetValue(__instance, out var index))
         {
             var item = OptionItem.AllOptions[index];
-            __instance.MinusBtn.SetInteractable(true);
-            __instance.PlusBtn.SetInteractable(true);
+            __instance.MinusBtn.SetInteractable(GameOptionsMenuPatch.CanEdit);
+            __instance.PlusBtn.SetInteractable(GameOptionsMenuPatch.CanEdit);
 
             if (item is StringOptionItem stringOptionItem)
             {
@@ -727,6 +866,7 @@ public static class StringOptionPatch
     [HarmonyPatch(nameof(StringOption.Increase)), HarmonyPrefix]
     public static bool IncreasePrefix(StringOption __instance)
     {
+        if (ModGameOptionsMenu.OptionList.ContainsKey(__instance) && !GameOptionsMenuPatch.CanEdit) return false;
         if (__instance.Value == __instance.Values.Length - 1)
         {
             __instance.Value = 0;
@@ -739,6 +879,7 @@ public static class StringOptionPatch
     [HarmonyPatch(nameof(StringOption.Decrease)), HarmonyPrefix]
     public static bool DecreasePrefix(StringOption __instance)
     {
+        if (ModGameOptionsMenu.OptionList.ContainsKey(__instance) && !GameOptionsMenuPatch.CanEdit) return false;
         if (__instance.Value == 0)
         {
             __instance.Value = __instance.Values.Length - 1;
