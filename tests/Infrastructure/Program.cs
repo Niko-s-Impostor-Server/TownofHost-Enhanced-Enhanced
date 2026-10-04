@@ -106,7 +106,8 @@ try
     _ = new LateTask(() => throw new Exception("Expected callback failure"), 0, shoudLog: false);
     LateTask.Update(0);
     Check(LateTask.Tasks.Count == 0, "failed callback is removed");
-    Console.WriteLine($"INFRASTRUCTURE_PASS ({assertions} assertions; linked production sources, isolated game/UI stubs)");
+    OptionBackupRegression.Run(Check);
+    Console.WriteLine($"INFRASTRUCTURE_PASS ({assertions} assertions; linked production sources, isolated game/UI stubs and extracted native bool contracts)");
 }
 finally
 {

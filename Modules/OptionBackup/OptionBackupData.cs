@@ -18,7 +18,9 @@ public class OptionBackupData
         }
         foreach (BoolOptionNames name in EnumHelper.GetAllValues<BoolOptionNames>())
         {
-            if (name == BoolOptionNames.GhostsDoTasks) continue;
+            // TryGetBool also exposes read-only values. Roles summarizes the role
+            // rates for lobby filters; neither it nor GhostsDoTasks has a setter.
+            if (name is BoolOptionNames.GhostsDoTasks or BoolOptionNames.Roles) continue;
 
             if (option.TryGetBool(name, out var value))
                 AllValues.Add(new BoolOptionBackupValue(name, value));
@@ -41,7 +43,7 @@ public class OptionBackupData
         // TryGetUInt is not implemented, so get it separately
         AllValues.Add(new UIntOptionBackupValue(UInt32OptionNames.Keywords, (uint)option.Keywords));
 
-        foreach (RoleTypes role in new RoleTypes[] { RoleTypes.Scientist, RoleTypes.Engineer, RoleTypes.GuardianAngel, RoleTypes.Shapeshifter, RoleTypes.Noisemaker, RoleTypes.Phantom, RoleTypes.Tracker })
+        foreach (RoleTypes role in new RoleTypes[] { RoleTypes.Scientist, RoleTypes.Engineer, RoleTypes.GuardianAngel, RoleTypes.Shapeshifter, RoleTypes.Noisemaker, RoleTypes.Phantom, RoleTypes.Tracker, RoleTypes.Detective, RoleTypes.Viper, RoleTypes.Judge })
         {
             AllValues.Add(new RoleRateBackupValue(role, option.RoleOptions.GetNumPerGame(role), option.RoleOptions.GetChancePerGame(role)));
         }

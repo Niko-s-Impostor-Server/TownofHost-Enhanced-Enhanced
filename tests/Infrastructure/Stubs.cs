@@ -16,6 +16,7 @@ namespace TOHE
     public static class EnumHelper
     {
         public static string[] GetAllNames<T>() where T : Enum => Enum.GetNames(typeof(T));
+        public static T[] GetAllValues<T>() where T : Enum => (T[])Enum.GetValues(typeof(T));
     }
     public static class Translator
     {
