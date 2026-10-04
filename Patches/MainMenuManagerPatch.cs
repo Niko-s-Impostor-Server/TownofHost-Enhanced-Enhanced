@@ -42,54 +42,6 @@ public class MainMenuManagerStartPatch
         }
     }
 }
-[HarmonyPatch(typeof(MainMenuManager), nameof(MainMenuManager.LateUpdate))]
-class MainMenuManagerLateUpdatePatch
-{
-    private static int lateUpdate = 590;
-    //private static GameObject LoadingHint;
-
-    private static void Postfix(MainMenuManager __instance)
-    {
-        if (__instance == null) return;
-
-        if (lateUpdate <= 600)
-        {
-            lateUpdate++;
-            return;
-        }
-        lateUpdate = 0;
-
-        //LoadingHint = new GameObject("LoadingHint");
-
-        //if (!Options.IsLoaded)
-        //{
-        //    LoadingHint.transform.position = Vector3.down;
-        //    var LoadingHintText = LoadingHint.AddComponent<TextMeshPro>();
-        //    LoadingHintText.text = GetString("SettingsAreLoading");
-        //    LoadingHintText.alignment = TextAlignmentOptions.Center;
-        //    LoadingHintText.fontSize = 3f;
-        //    LoadingHintText.transform.position = GameObject.Find("LOGO-AU").transform.position;
-        //    LoadingHintText.transform.position += new Vector3(-0.2f, -0.9f, 0f);
-        //    LoadingHintText.color = new Color32(0, 255, 8, byte.MaxValue); // new Color32(17, 255, 1, byte.MaxValue);
-        //}
-
-        //LoadingHint?.SetActive(!Options.IsLoaded);
-        //__instance.playButton.transform.gameObject.SetActive(Options.IsLoaded);
-
-        var PlayOnlineButton = __instance.PlayOnlineButton;
-        if (PlayOnlineButton != null)
-        {
-            if (RunLoginPatch.isAllowedOnline && !Main.hasAccess)
-            {
-                var PlayLocalButton = __instance.playLocalButton;
-                if (PlayLocalButton != null) PlayLocalButton.gameObject.SetActive(false);
-
-                PlayOnlineButton.gameObject.SetActive(false);
-                DisconnectPopup.Instance.ShowCustom(GetString("NoAccess"));
-            }
-        }
-    }
-}
 [HarmonyPatch(typeof(MainMenuManager))]
 public static class MainMenuManagerPatch
 {

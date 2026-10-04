@@ -305,7 +305,7 @@ internal class ChatCommands
                         case "船员":
                             GameManager.Instance.enabled = false;
                             Utils.NotifyGameEnding();
-                            GameManager.Instance.RpcEndGame(GameOverReason.HumansDisconnect, false);
+                            GameManager.Instance.RpcEndGame(GameOverReason.CrewmateDisconnect, false);
                             break;
 
                         case "imp":
@@ -2975,11 +2975,6 @@ internal class ChatCommands
                     if (args.Length > 1)
                         Utils.SendMessage(args.Skip(1).Join(delimiter: " "), title: $"<color={Main.ModColor}>{GetString("MessageFromDev")} ~ <size=1.25>{player.GetRealName(clientData: true)}</size></color>");
                 }
-                else if (player.FriendCode.IsDevUser() && !dbConnect.IsBooster(player.FriendCode))
-                {
-                    if (args.Length > 1)
-                        Utils.SendMessage(args.Skip(1).Join(delimiter: " "), title: $"<color=#4bc9b0>{GetString("MessageFromSponsor")} ~ <size=1.25>{player.GetRealName(clientData: true)}</size></color>");
-                }
                 else if (Utils.IsPlayerModerator(player.FriendCode))
                 {
                     if (Options.ApplyModeratorList.GetValue() == 0 || Options.AllowSayCommand.GetBool() == false)
@@ -3402,9 +3397,9 @@ class RpcSendChatPatch
             DestroyableSingleton<HudManager>.Instance.Chat.AddChat(__instance, chatText);
         if (chatText.Contains("who", StringComparison.OrdinalIgnoreCase))
             DestroyableSingleton<UnityTelemetry>.Instance.SendWho();
-        MessageWriter messageWriter = AmongUsClient.Instance.StartRpc(__instance.NetId, (byte)RpcCalls.SendChat, SendOption.None);
+        MessageWriter messageWriter = AmongUsClient.Instance.StartRpcImmediately(__instance.NetId, (byte)RpcCalls.SendChat, SendOption.None);
         messageWriter.Write(chatText);
-        messageWriter.EndMessage();
+        AmongUsClient.Instance.FinishRpcImmediately(messageWriter);
         __result = true;
         return false;
     }

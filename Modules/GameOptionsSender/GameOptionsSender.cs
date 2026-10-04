@@ -30,32 +30,9 @@ public abstract class GameOptionsSender
     public virtual void SendGameOptions()
     {
         var opt = BuildGameOptions();
-        var currentGameMode = AprilFoolsMode.IsAprilFoolsModeToggledOn //April fools mode toggled on by host
-            ? opt.AprilFoolsOnMode : opt.GameMode; //Change game mode, same as well as in "RpcSyncSettings()"
-
-        // option => byte[]
-        MessageWriter writer = MessageWriter.Get(SendOption.None);
-        writer.Write(opt.Version);
-        writer.StartMessage(0);
-        writer.Write((byte)currentGameMode);
-        if (opt.TryCast<NormalGameOptionsV08>(out var normalOpt))
-            NormalGameOptionsV08.Serialize(writer, normalOpt);
-        else if (opt.TryCast<HideNSeekGameOptionsV08>(out var hnsOpt))
-            HideNSeekGameOptionsV08.Serialize(writer, hnsOpt);
-        else
-        {
-            writer.Recycle();
-            Logger.Error("Option Cast Failed", this.ToString());
-        }
-        writer.EndMessage();
-
-        // Create into array
-        var byteArray = new Il2CppStructArray<byte>(writer.Length - 1);
-        // MessageWriter.ToByteArray
-        Buffer.BlockCopy(writer.Buffer.Cast<Array>(), 1, byteArray.Cast<Array>(), 0, writer.Length - 1);
-
-        SendOptionsArray(byteArray);
-        writer.Recycle();
+        // Keep version framing identical to LogicOptions.Serialize in the game.
+        var factory = new GameOptionsFactory(new UnityLogger().Cast<ILogger>());
+        SendOptionsArray(factory.ToBytes(opt, AprilFoolsMode.IsAprilFoolsModeToggledOn));
     }
     public virtual void SendOptionsArray(Il2CppStructArray<byte> optionArray)
     {

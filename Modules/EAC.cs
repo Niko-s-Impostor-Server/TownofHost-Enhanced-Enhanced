@@ -1,4 +1,4 @@
-﻿using Hazel;
+using Hazel;
 using System;
 using InnerNet;
 using static TOHE.Translator;
@@ -422,7 +422,7 @@ internal class EAC
             //Normal clients will never directly send MushroomMixupSabotage
         }
 
-        if (GameStates.IsMeeting && MeetingHud.Instance.state != MeetingHud.VoteStates.Animating || GameStates.IsExilling)
+        if (GameStates.IsMeeting && MeetingHud.Instance.state != MeetingHud.MeetingStates.Animating || GameStates.IsExilling)
         {
             WarnHost();
             Report(player, "Bad Sabotage D : In Meeting");
@@ -624,8 +624,7 @@ internal class EAC
         }
 
         string msg = $"{pc.GetClientId()}|{pc.FriendCode}|{pc.Data.PlayerName}|{pc.GetClient().GetHashedPuid()}|{reason}";
-        //Cloud.SendData(msg);
-        Logger.Fatal($"EAC报告：{msg}", "EAC Cloud");
+        Logger.Fatal($"EAC报告：{msg}", "EAC Report");
         if (Options.CheatResponses.GetInt() != 5)
             Logger.SendInGame(string.Format(GetString("Message.NoticeByEAC"), $"{pc?.Data?.PlayerName} | {pc.GetClient().GetHashedPuid()}", reason));
     }

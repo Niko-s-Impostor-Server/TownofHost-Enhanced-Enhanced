@@ -33,6 +33,8 @@ public class ModUpdater
     [HarmonyPatch(typeof(MainMenuManager), nameof(MainMenuManager.Start)), HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
     public static void Start_Postfix(/*MainMenuManager __instance*/)
     {
+        // Upstream releases are incompatible with this private-server fork.
+        if (!Main.ShowUpdateButton) return;
         ResetUpdateButton();
         if (isChecked) return;
         //If we are not using it for now, just freaking disable it.

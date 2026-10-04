@@ -148,7 +148,7 @@ public static class AntiBlackout
     {
         if (AmongUsClient.Instance.AmClient)
         {
-            __instance.VotingComplete(states, exiled, tie);
+            __instance.VotingComplete(states, exiled, tie, false, 0);
         }
 
         var sender = CustomRpcSender.Create("AntiBlack RpcVotingComplete", SendOption.None);
@@ -168,6 +168,8 @@ public static class AntiBlackout
                     }
                     sender.Write(exiled != null ? exiled.PlayerId : byte.MaxValue);
                     sender.Write(tie);
+                    sender.Write(false); // wasOverruled
+                    sender.Write((ushort)0); // overruleNonce
                     sender.EndRpc();
                 }
             }
@@ -184,6 +186,8 @@ public static class AntiBlackout
                     }
                     sender.Write(byte.MaxValue);
                     sender.Write(true);
+                    sender.Write(false);
+                    sender.Write((ushort)0);
                     sender.EndRpc();
                 }
             }

@@ -176,11 +176,18 @@ public class CustomRpcSender
                 throw new InvalidOperationException(errorMsg);
         }
 
-        AmongUsClient.Instance.SendOrDisconnect(stream);
-        onSendDelegate();
+        // The writer belongs to this sender, even when a transport or callback fails.
         currentState = State.Finished;
-        Logger.Info($"\"{name}\" is finished", "CustomRpcSender");
-        stream.Recycle();
+        try
+        {
+            AmongUsClient.Instance.SendOrDisconnect(stream);
+            onSendDelegate?.Invoke();
+            Logger.Info($"\"{name}\" is finished", "CustomRpcSender");
+        }
+        finally
+        {
+            stream.Recycle();
+        }
     }
 
     // Write

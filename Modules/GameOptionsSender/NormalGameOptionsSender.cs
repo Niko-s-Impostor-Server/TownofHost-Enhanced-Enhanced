@@ -13,11 +13,14 @@ public class NormalGameOptionsSender : GameOptionsSender
     {
         get
         {
+            var manager = GameManager.Instance;
+            if (manager == null) return false;
             try
             {
-                if (_logicOptions == null || !GameManager.Instance.LogicComponents.Contains(_logicOptions))
+                if (_logicOptions == null || !manager.LogicComponents.Contains(_logicOptions))
                 {
-                    foreach (var glc in GameManager.Instance?.LogicComponents.GetFastEnumerator())
+                    _logicOptions = null;
+                    foreach (var glc in manager.LogicComponents.GetFastEnumerator())
                         if (glc.TryCast<LogicOptions>(out var lo))
                             _logicOptions = lo;
                 }
@@ -25,8 +28,8 @@ public class NormalGameOptionsSender : GameOptionsSender
             }
             catch (Exception error)
             {
-                Logger.Warn($"_logicOptions == null {_logicOptions == null} --- GameManager.Instance.LogicComponents == null {GameManager.Instance.LogicComponents == null} - Error: {error}", "NormalGameOptionsSender.IsDirty.Get");
-                return _logicOptions != null && _logicOptions.IsDirty;
+                Logger.Warn(error.ToString(), "NormalGameOptionsSender.IsDirty.Get");
+                return false;
             }
         }
         protected set

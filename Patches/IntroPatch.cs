@@ -104,7 +104,7 @@ class SetUpRoleTextPatch
             RandomSpawn.SpawnMap spawnMap = mapName switch
             {
                 MapNames.Skeld => new RandomSpawn.SkeldSpawnMap(),
-                MapNames.Mira => new RandomSpawn.MiraHQSpawnMap(),
+                MapNames.MiraHQ => new RandomSpawn.MiraHQSpawnMap(),
                 MapNames.Polus => new RandomSpawn.PolusSpawnMap(),
                 MapNames.Dleks => new RandomSpawn.DleksSpawnMap(),
                 MapNames.Fungle => new RandomSpawn.FungleSpawnMap(),
@@ -499,7 +499,7 @@ class BeginCrewmatePatch
     }
     public static AudioClip GetIntroSound(RoleTypes roleType)
     {
-        return RoleManager.Instance.AllRoles.FirstOrDefault((role) => role.Role == roleType)?.IntroSound;
+        return RoleManager.Instance.GetRole(roleType)?.IntroSound;
     }
     private static async void StartFadeIntro(IntroCutscene __instance, Color start, Color end)
     {

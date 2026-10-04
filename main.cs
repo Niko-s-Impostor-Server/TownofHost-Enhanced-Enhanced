@@ -30,8 +30,8 @@ public class Main : BasePlugin
     // == Program Config ==
     public const string OriginalForkId = "OriginalTOH";
 
-    public static readonly string ModName = "TOHE";
-    public static readonly string ForkId = "TOHE";
+    public static readonly string ModName = "TOHEE";
+    public static readonly string ForkId = "TOHEE";
     public static readonly string ModColor = "#ffc0cb";
     public static readonly bool AllowPublicRoom = true;
 
@@ -42,21 +42,19 @@ public class Main : BasePlugin
     public static ConfigEntry<string> DebugKeyInput { get; private set; }
 
     public const string PluginGuid = "com.0xdrmoe.townofhostenhanced";
-    public const string PluginVersion = "2024.1103.211.9999"; // YEAR.MMDD.VERSION.CANARYDEV
-    public const string PluginDisplayVersion = "2.1.1";
-    public const string SupportedVersionAU = "2024.8.13"; // Also 2024.9.4 and 2024.10.29
+    public const string PluginVersion = "2026.1005.211.1";
+    public const string PluginDisplayVersion = "2.1.1-au20260818";
+    public const string SupportedVersionAU = "2026.8.18";
 
     /******************* Change one of the three variables to true before making a release. *******************/
     public static readonly bool devRelease = false; // Latest: V2.1.0 Alpha 16 Hotfix 1
     public static readonly bool canaryRelease = false; // Latest: V2.1.0 Beta 3
     public static readonly bool fullRelease = true; // Latest: V2.1.1
 
-    public static bool hasAccess = true;
-
-    public static readonly bool ShowUpdateButton = true;
+    public static readonly bool ShowUpdateButton = false;
 
     public static readonly bool ShowGitHubButton = true;
-    public static readonly string GitHubInviteUrl = "https://github.com/0xDrMoe/TownofHost-Enhanced";
+    public static readonly string GitHubInviteUrl = "https://github.com/Niko-s-Impostor-Server/TownofHost-Enhanced-Enhanced";
 
     public static readonly bool ShowDiscordButton = true;
     public static readonly string DiscordInviteUrl = "https://discord.gg/tohe";
@@ -76,8 +74,8 @@ public class Main : BasePlugin
     public static bool AlreadyShowMsgBox = false;
     public static string credentialsText;
     public Coroutines coroutines;
-    public static NormalGameOptionsV08 NormalOptions => GameOptionsManager.Instance.currentNormalGameOptions;
-    public static HideNSeekGameOptionsV08 HideNSeekOptions => GameOptionsManager.Instance.currentHideNSeekGameOptions;
+    public static NormalGameOptionsV11 NormalOptions => GameOptionsManager.Instance.currentNormalGameOptions;
+    public static HideNSeekGameOptionsV11 HideNSeekOptions => GameOptionsManager.Instance.currentHideNSeekGameOptions;
     //Client Options
     public static ConfigEntry<string> HideName { get; private set; }
     public static ConfigEntry<string> HideColor { get; private set; }
@@ -573,7 +571,6 @@ public class Main : BasePlugin
         TemplateManager.Init();
         //SpamManager.Init();
         DevManager.Init();
-        Cloud.Init();
 
         IRandom.SetInstance(new NetRandomWrapper());
 

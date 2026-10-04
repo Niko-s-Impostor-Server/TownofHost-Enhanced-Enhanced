@@ -1,14 +1,13 @@
-﻿using System;
-using System.Collections;
+using System;
+using System.IO;
+using System.Reflection;
+using System.Globalization;
 using AmongUs.Data;
 using AmongUs.Data.Player;
 using Assets.InnerNet;
 using Il2CppInterop.Runtime.InteropTypes.Arrays;
-using BepInEx.Unity.IL2CPP.Utils.Collections;
 using System.Text.Json;
 using UnityEngine;
-using UnityEngine.Networking;
-using LibCpp2IL;
 
 namespace TOHE;
 
@@ -41,8 +40,7 @@ public class ModNews
         return result;
     }
     public static List<ModNews> AllModNews = [];
-    public static string ModNewsURL = "https://github.com/EnhancedNetwork/TownofHost-Enhanced/blob/main/Resources/Announcements/modNews-";
-    static bool downloaded = false;
+    private static SupportedLangs? loadedLanguage;
     public ModNews(int Number, string Title, string SubTitle, string ShortTitle, string Text, string Date)
     {
         this.Number = Number;
@@ -51,78 +49,85 @@ public class ModNews
         this.ShortTitle = ShortTitle;
         this.Text = Text;
         this.Date = Date;
-        AllModNews.Add(this);
     }
 
-    [HarmonyPatch(typeof(AnnouncementPopUp), nameof(AnnouncementPopUp.Init)), HarmonyPostfix]
-    public static void Initialize_Postfix(ref Il2CppSystem.Collections.IEnumerator __result)
+    private static void LoadLocalNews()
     {
-        static IEnumerator FetchBlacklist()
+        var language = DataManager.Settings.Language.CurrentLanguage;
+        if (loadedLanguage == language) return;
+        AllModNews.Clear();
+        loadedLanguage = language;
+
+        var locale = language switch
         {
-            if (downloaded)
-            {
-                yield break;
-            }
-            downloaded = true;
-            ModNewsURL += TranslationController.Instance.currentLanguage.languageID switch
-            {
-                SupportedLangs.German => "de_DE.json",
-                SupportedLangs.Latam => "es_419.json",
-                SupportedLangs.Spanish => "es_ES.json",
-                SupportedLangs.Filipino => "fil_PH.json",
-                SupportedLangs.French => "fr_FR.json",
-                SupportedLangs.Italian => "it_IT.json",
-                SupportedLangs.Japanese => "ja_JP.json",
-                SupportedLangs.Korean => "ko_KR.json",
-                SupportedLangs.Dutch => "nl_NL.json",
-                SupportedLangs.Brazilian => "pt_BR.json",
-                SupportedLangs.Russian => "ru_RU.json",
-                SupportedLangs.SChinese => "zh_CN.json",
-                SupportedLangs.TChinese => "zh_TW.json",
-                _ => "en_US.json", //English and any other unsupported language
-            };
-            var request = UnityWebRequest.Get(ModNewsURL);
-            yield return request.SendWebRequest();
-            if (request.isNetworkError || request.isHttpError)
-            {
-                downloaded = false;
-                Logger.Info("ModNews Error Fetch:" + request.responseCode.ToString(), "ModNews");
-                yield break;
-            }
+            SupportedLangs.German => "de_DE",
+            SupportedLangs.Latam => "es_419",
+            SupportedLangs.Spanish => "es_ES",
+            SupportedLangs.Filipino => "fil_PH",
+            SupportedLangs.French => "fr_FR",
+            SupportedLangs.Italian => "it_IT",
+            SupportedLangs.Japanese => "ja_JP",
+            SupportedLangs.Korean => "ko_KR",
+            SupportedLangs.Dutch => "nl_NL",
+            SupportedLangs.Brazilian => "pt_BR",
+            SupportedLangs.Portuguese => "pt_PT",
+            SupportedLangs.Russian => "ru_RU",
+            SupportedLangs.SChinese => "zh_CN",
+            SupportedLangs.TChinese => "zh_TW",
+            SupportedLangs.Irish => "ga_IE",
+            _ => "en_US"
+        };
 
-            var jsonDocument = JsonDocument.Parse(request.downloadHandler.text);
-            var newsArray = jsonDocument.RootElement.GetProperty("News");
-
-            foreach (var newsElement in newsArray.EnumerateArray())
+        try
+        {
+            var assembly = Assembly.GetExecutingAssembly();
+            using var stream = assembly.GetManifestResourceStream($"TOHE.Resources.Announcements.modNews-{locale}.json")
+                ?? assembly.GetManifestResourceStream("TOHE.Resources.Announcements.modNews-en_US.json");
+            if (stream == null) return;
+            using var reader = new StreamReader(stream);
+            using var document = JsonDocument.Parse(reader.ReadToEnd());
+            foreach (var news in document.RootElement.GetProperty("News").EnumerateArray())
             {
-                var number = int.Parse(newsElement.GetProperty("Number").GetString());
-                var title = newsElement.GetProperty("Title").GetString();
-                var subTitle = newsElement.GetProperty("Subtitle").GetString();
-                var shortTitle = newsElement.GetProperty("Short").GetString();
-                var body = newsElement.GetProperty("Body").EnumerateArray().ToStringEnumerable().ToString();
-                var dateString = newsElement.GetProperty("Date").GetString();
-                // Create ModNews object
-                ModNews _ = new(number, title, subTitle, shortTitle, body, dateString);
+                var date = news.GetProperty("Date").GetString()?.Replace(" Uhr", string.Empty);
+                if (!DateTimeOffset.TryParse(date, CultureInfo.GetCultureInfo(locale.Replace('_', '-')),
+                    DateTimeStyles.None, out var parsedDate)) continue;
+                AllModNews.Add(new ModNews(
+                    int.Parse(news.GetProperty("Number").GetString(), CultureInfo.InvariantCulture),
+                    news.GetProperty("Title").GetString(),
+                    news.GetProperty("Subtitle").GetString(),
+                    news.GetProperty("Short").GetString(),
+                    string.Join("", news.GetProperty("Body").EnumerateArray().Select(line => line.GetString())),
+                    parsedDate.ToString("O", CultureInfo.InvariantCulture)));
             }
         }
-        __result = Effects.Sequence(FetchBlacklist().WrapToIl2Cpp(), __result);
+        catch (Exception ex)
+        {
+            AllModNews.Clear();
+            Logger.Warn($"Could not load embedded announcements: {ex.GetType().Name}", "ModNews");
+        }
     }
 
+    private static DateTimeOffset AnnouncementDate(string date)
+        => DateTimeOffset.TryParse(date, CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed)
+            ? parsed : DateTimeOffset.MinValue;
 
     [HarmonyPatch(typeof(PlayerAnnouncementData), nameof(PlayerAnnouncementData.SetAnnouncements)), HarmonyPrefix]
     public static bool SetModAnnouncements_Prefix(PlayerAnnouncementData __instance, [HarmonyArgument(0)] ref Il2CppReferenceArray<Announcement> aRange)
     {
-        Logger.Info("AllModNews:" + AllModNews.Count, "ModNews");
-        AllModNews.Sort((a1, a2) => { return DateTime.Compare(DateTime.Parse(a2.Date), DateTime.Parse(a1.Date)); });
+        LoadLocalNews();
+        if (AllModNews.Count == 0) return true;
 
         List<Announcement> FinalAllNews = [];
         AllModNews.Do(n => FinalAllNews.Add(n.ToAnnouncement()));
-        foreach (var news in aRange)
+        if (aRange != null)
         {
-            if (!AllModNews.Any(x => x.Number == news.Number))
-                FinalAllNews.Add(news);
+            foreach (var news in aRange)
+            {
+                if (!AllModNews.Any(x => x.Number == news.Number))
+                    FinalAllNews.Add(news);
+            }
         }
-        FinalAllNews.Sort((a1, a2) => { return DateTime.Compare(DateTime.Parse(a2.Date), DateTime.Parse(a1.Date)); });
+        FinalAllNews.Sort((a1, a2) => { return AnnouncementDate(a2.Date).CompareTo(AnnouncementDate(a1.Date)); });
 
         aRange = new(FinalAllNews.Count);
         for (int i = 0; i < FinalAllNews.Count; i++)
@@ -146,30 +151,3 @@ public class ModNews
         renderer.maskInteraction = SpriteMaskInteraction.VisibleInsideMask;
     }
 }
-
-
-//    [HarmonyPatch(typeof(PlayerAnnouncementData), nameof(PlayerAnnouncementData.SetAnnouncements)), HarmonyPrefix]
-//    public static bool SetModAnnouncements_Prefix(PlayerAnnouncementData __instance, [HarmonyArgument(0)] ref Il2CppReferenceArray<Announcement> aRange)
-//    {
-//        if (AllModNews.Count == 0)
-//        {
-//            Init();
-//            AllModNews.Sort((a1, a2) => { return DateTime.Compare(DateTime.Parse(a2.Date), DateTime.Parse(a1.Date)); });
-//        }
-
-//        List<Announcement> FinalAllNews = [];
-//        AllModNews.Do(n => FinalAllNews.Add(n.ToAnnouncement()));
-//        foreach (var news in aRange.ToArray())
-//        {
-//            if (!AllModNews.Any(x => x.Number == news.Number))
-//                FinalAllNews.Add(news);
-//        }
-//        FinalAllNews.Sort((a1, a2) => { return DateTime.Compare(DateTime.Parse(a2.Date), DateTime.Parse(a1.Date)); });
-
-//        aRange = new(FinalAllNews.Count);
-//        for (int i = 0; i < FinalAllNews.Count; i++)
-//            aRange[i] = FinalAllNews[i];
-
-//        return true;
-//    }
-//}

@@ -341,19 +341,6 @@ class OnPlayerLeftPatch
                     i--;
                 }
             }
-
-            // This latetask is to make sure that the player control is completely despawned for everyone so nobody gonna disconnect itself
-            var netid = data.Character.NetId;
-            _ = new LateTask(() =>
-            {
-                if (GameStates.IsOnlineGame && AmongUsClient.Instance.AmHost)
-                {
-                    MessageWriter messageWriter = AmongUsClient.Instance.Streams[1];
-                    messageWriter.StartMessage(5);
-                    messageWriter.WritePacked(netid);
-                    messageWriter.EndMessage();
-                }
-            }, 2.5f, "Repeat Despawn", false);
         }
     }
     public static void Postfix(AmongUsClient __instance, [HarmonyArgument(0)] ClientData data, [HarmonyArgument(1)] DisconnectReasons reason)
@@ -520,7 +507,7 @@ class OnPlayerLeftPatch
                     Swapper.CheckSwapperTarget(data.Character.PlayerId);
 
                     // Prevent double check end voting
-                    if (MeetingHud.Instance.state is MeetingHud.VoteStates.Discussion or MeetingHud.VoteStates.NotVoted or MeetingHud.VoteStates.Voted)
+                    if (MeetingHud.Instance.state is MeetingHud.MeetingStates.Discussion or MeetingHud.MeetingStates.NotVoted or MeetingHud.MeetingStates.Voted)
                     {
                         MeetingHud.Instance.CheckForEndVoting();
                     }

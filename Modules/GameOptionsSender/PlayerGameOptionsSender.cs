@@ -28,7 +28,7 @@ public class PlayerGameOptionsSender(PlayerControl player) : GameOptionsSender
     }
 
     public override IGameOptions BasedGameOptions => GameStates.IsNormalGame ?
-            Main.RealOptionsData.Restore(new NormalGameOptionsV08(new UnityLogger().Cast<ILogger>()).Cast<IGameOptions>()) : Main.RealOptionsData.Restore(new HideNSeekGameOptionsV08(new UnityLogger().Cast<ILogger>()).Cast<IGameOptions>());
+            Main.RealOptionsData.Restore(new NormalGameOptionsV11(new UnityLogger().Cast<ILogger>()).Cast<IGameOptions>()) : Main.RealOptionsData.Restore(new HideNSeekGameOptionsV11(new UnityLogger().Cast<ILogger>()).Cast<IGameOptions>());
     public override bool IsDirty { get; protected set; }
 
     public PlayerControl player = player;
@@ -158,6 +158,6 @@ public class PlayerGameOptionsSender(PlayerControl player) : GameOptionsSender
 
     public override bool AmValid()
     {
-        return base.AmValid() && player != null && !player.Data.Disconnected && Main.RealOptionsData != null;
+        return base.AmValid() && player != null && player.Data != null && !player.Data.Disconnected && Main.RealOptionsData != null;
     }
 }

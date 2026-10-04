@@ -1423,7 +1423,7 @@ class FixedUpdateInNormalGamePatch
                                     partnerPlayer.Data.IsDead = true;
                                     partnerPlayer.RpcExileV2();
                                     Main.PlayerStates[partnerPlayer.PlayerId].SetDead();
-                                    if (MeetingHud.Instance?.state is MeetingHud.VoteStates.Discussion or MeetingHud.VoteStates.NotVoted or MeetingHud.VoteStates.Voted)
+                                    if (MeetingHud.Instance?.state is MeetingHud.MeetingStates.Discussion or MeetingHud.MeetingStates.NotVoted or MeetingHud.MeetingStates.Voted)
                                     {
                                         MeetingHud.Instance?.CheckForEndVoting();
                                     }
@@ -1688,12 +1688,12 @@ class PlayerControlCheckNamePatch
 [HarmonyPatch(typeof(PlayerControl), nameof(PlayerControl.SetColor))]
 class RpcSetColorPatch
 {
-    public static void Postfix(PlayerControl __instance, byte bodyColor)
+    public static void Postfix(PlayerControl __instance, int bodyColor)
     {
         if (Main.IntroDestroyed || __instance == null) return;
 
         Logger.Info($"PlayerId: {__instance.PlayerId} - playerColor: {bodyColor}", "RpcSetColor");
-        if (bodyColor == 255) return;
+        if (bodyColor < 0 || bodyColor >= Palette.PlayerColors.Length) return;
 
         Main.PlayerColors.Remove(__instance.PlayerId);
         Main.PlayerColors[__instance.PlayerId] = Palette.PlayerColors[bodyColor];

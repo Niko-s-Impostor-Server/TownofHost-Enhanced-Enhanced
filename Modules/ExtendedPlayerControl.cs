@@ -309,36 +309,30 @@ static class ExtendedPlayerControl
         if (player == null) return;
         var playerId = player.PlayerId;
 
-        if (AmongUsClient.Instance.AmHost)
-        {
-            MeetingHud.Instance.CmdCastVote(playerId, suspectIdx);
-        }
-        else
-        {
-            var writer = CustomRpcSender.Create("Cast Vote", SendOption.Reliable);
-            writer.AutoStartRpc(MeetingHud.Instance.NetId, (byte)RpcCalls.CastVote)
-                .Write(playerId)
-                .Write(suspectIdx)
-            .EndRpc();
-            writer.SendMessage();
-        }
+        if (!AmongUsClient.Instance.AmHost && !player.AmOwner) return;
+        // The game directs a client's own vote to the host and handles host votes locally.
+        MeetingHud.Instance.CmdCastVote(playerId, suspectIdx);
     }
     public static void RpcClearVoteDelay(this MeetingHud meeting, int clientId)
     {
+        if (!AmongUsClient.Instance.AmHost) return;
+        var gameId = AmongUsClient.Instance.GameId;
         _ = new LateTask(() =>
         {
-            if (meeting == null)
+            if (meeting == null || !AmongUsClient.Instance.AmHost || AmongUsClient.Instance.GameId != gameId)
             {
                 Logger.Info($"Cannot be cleared because meetinghud is null", "RpcClearVoteDelay");
                 return;
             }
             if (AmongUsClient.Instance.ClientId == clientId)
             {
-                meeting.ClearVote();
+                meeting.ClearVote(PlayerControl.LocalPlayer.PlayerId, true);
                 return;
             }
+            var voter = AmongUsClient.Instance.GetClient(clientId)?.Character;
+            if (voter == null) return;
             var writer = CustomRpcSender.Create("Clear Vote", SendOption.Reliable);
-            writer.AutoStartRpc(meeting.NetId, (byte)RpcCalls.ClearVote, clientId).EndRpc();
+            writer.AutoStartRpc(meeting.NetId, (byte)RpcCalls.ClearVote, clientId).Write(voter.PlayerId).EndRpc();
             writer.SendMessage();
         }, 0.5f, "Clear Vote");
     }
@@ -361,7 +355,7 @@ static class ExtendedPlayerControl
         if (player == null || name == null || !AmongUsClient.Instance.AmHost) return;
         if (seer == null) seer = player;
 
-        if (!force && Main.LastNotifyNames[(player.PlayerId, seer.PlayerId)] == name)
+        if (!force && Main.LastNotifyNames.TryGetValue((player.PlayerId, seer.PlayerId), out var previousName) && previousName == name)
         {
             //Logger.info($"Cancel:{player.name}:{name} for {seer.name}", "RpcSetNamePrivate");
             return;
@@ -379,7 +373,7 @@ static class ExtendedPlayerControl
         if (clientId == -1) return;
 
         MessageWriter writer = AmongUsClient.Instance.StartRpcImmediately(player.NetId, (byte)RpcCalls.SetName, SendOption.Reliable, clientId);
-        writer.Write(seer.Data.NetId);
+        writer.Write(player.Data.NetId);
         writer.Write(name);
         AmongUsClient.Instance.FinishRpcImmediately(writer);
     }

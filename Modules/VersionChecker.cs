@@ -13,13 +13,16 @@ public static class VersionChecker
     {
         if (Ischecked) return;
         
-        var amongUsVersion = Version.Parse(Application.version);
+        Version.TryParse(Application.version, out var amongUsVersion);
         Logger.Info($" {amongUsVersion}", "Among Us Version Check");
 
         var SupportedVersion = Version.Parse(Main.SupportedVersionAU);
         Logger.Info($" {SupportedVersion}", "Supported Version Check");
 
-        IsSupported = amongUsVersion >= SupportedVersion;
+        IsSupported = amongUsVersion != null
+            && amongUsVersion.Major == SupportedVersion.Major
+            && amongUsVersion.Minor == SupportedVersion.Minor
+            && amongUsVersion.Build == SupportedVersion.Build;
         Logger.Info($" {IsSupported}", "Version Is Supported?");
 
         if (!IsSupported)

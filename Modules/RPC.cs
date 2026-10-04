@@ -886,9 +886,9 @@ internal static class RPC
     }
     public static void RpcSetFriendCode(string fc)
     {
-        MessageWriter writer = AmongUsClient.Instance.StartRpc(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.SetFriendCode, SendOption.None);
+        MessageWriter writer = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.SetFriendCode, SendOption.Reliable);
         writer.Write(fc);
-        writer.EndMessage();
+        AmongUsClient.Instance.FinishRpcImmediately(writer);
         SetFriendCode(PlayerControl.LocalPlayer, fc);
     }
     public static void SetFriendCode(PlayerControl target, string fc)
@@ -910,12 +910,12 @@ internal static class RPC
             if (Main.playerVersion.ContainsKey(hostId) || !Main.VersionCheat.Value)
             {
                 bool cheating = Main.VersionCheat.Value;
-                MessageWriter writer = AmongUsClient.Instance.StartRpc(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.VersionCheck, SendOption.Reliable);
+                MessageWriter writer = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.VersionCheck, SendOption.Reliable);
                 writer.Write(cheating ? Main.playerVersion[hostId].version.ToString() : Main.PluginVersion);
                 writer.Write(cheating ? Main.playerVersion[hostId].tag : $"{ThisAssembly.Git.Commit}({ThisAssembly.Git.Branch})");
                 writer.Write(cheating ? Main.playerVersion[hostId].forkId : Main.ForkId);
                 writer.Write(cheating);
-                writer.EndMessage();
+                AmongUsClient.Instance.FinishRpcImmediately(writer);
             }
             Main.playerVersion[PlayerControl.LocalPlayer.GetClientId()] = new PlayerVersion(Main.PluginVersion, $"{ThisAssembly.Git.Commit}({ThisAssembly.Git.Branch})", Main.ForkId);
         }
@@ -1085,14 +1085,6 @@ internal static class RPC
         writer.Write(targetId);
         writer.Write(killerId);
         AmongUsClient.Instance.FinishRpcImmediately(writer);
-    }
-}
-[HarmonyPatch(typeof(InnerNetClient), nameof(InnerNetClient.StartRpc))]
-internal class StartRpcPatch
-{
-    public static void Prefix(/*InnerNet.InnerNetClient __instance,*/ [HarmonyArgument(0)] uint targetNetId, [HarmonyArgument(1)] byte callId)
-    {
-        RPC.SendRpcLogger(targetNetId, callId);
     }
 }
 [HarmonyPatch(typeof(InnerNetClient), nameof(InnerNetClient.StartRpcImmediately))]

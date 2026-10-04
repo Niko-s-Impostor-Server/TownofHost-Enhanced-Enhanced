@@ -2,48 +2,20 @@
 
 namespace TOHE.Patches;
 
-// Thanks Galster (https://github.com/Galster-dev)
-
-/*
- * Info for those who port this code to their mod or view the code
- * We patch CoStartGameHost so it's not work now in normal game
- * But work for AU code
- * So not used, execpt vanilla Hide&Seek
-*/
-
-[HarmonyPatch(typeof(AmongUsClient._CoStartGameHost_d__32), nameof(AmongUsClient._CoStartGameHost_d__32.MoveNext))]
+// Keep the selected Hide & Seek map without depending on a generated coroutine type.
+[HarmonyPatch(typeof(AprilFoolsMode), nameof(AprilFoolsMode.ShouldFlipSkeld))]
 public static class DleksPatch
 {
-    private static bool Prefix(AmongUsClient._CoStartGameHost_d__32 __instance, ref bool __result)
+    private static void Postfix(ref bool __result)
     {
-        if (GameStates.IsNormalGame) return true;
+        // The game calls this while constructing GameOptionsManager as well.
+        // Use the cached field so the lazy CurrentGameOptions getter cannot recurse.
+        var manager = GameOptionsManager.Instance;
+        var options = manager?.currentGameOptions;
+        if (options == null) return;
 
-        if (__instance.__1__state != 0)
-        {
-            return true;
-        }
-
-        __instance.__1__state = -1;
-        if (LobbyBehaviour.Instance)
-        {
-            LobbyBehaviour.Instance.Despawn();
-        }
-
-        if (ShipStatus.Instance)
-        {
-            __instance.__2__current = null;
-            __instance.__1__state = 2;
-            __result = true;
-            return false;
-        }
-
-        // removed dleks check as it's always false
-        var num2 = Mathf.Clamp(GameOptionsManager.Instance.CurrentGameOptions.MapId, 0, Constants.MapNames.Length - 1);
-        __instance.__2__current = __instance.__4__this.ShipLoadingAsyncHandle = __instance.__4__this.ShipPrefabs[num2].InstantiateAsync();
-        __instance.__1__state = 1;
-
-        __result = true;
-        return false;
+        if (options.GameMode is AmongUs.GameOptions.GameModes.HideNSeek or AmongUs.GameOptions.GameModes.SeekFools)
+            __result = options.MapId == 3;
     }
 }
 [HarmonyPatch(typeof(GameStartManager))]

@@ -11,11 +11,17 @@ class GameManagerSerializeFix
         for (int index = 0; index < __instance.LogicComponents.Count; ++index)
         {
             GameLogicComponent logicComponent = __instance.LogicComponents[index];
+            // Per-player options are sent through CustomSyncSettings after initial spawn.
+            if (logicComponent is LogicOptions && !initialState)
+            {
+                logicComponent.ClearDirtyFlag();
+                continue;
+            }
             if (initialState || logicComponent.IsDirty)
             {
                 flag = true;
                 writer.StartMessage((byte)index);
-                var hasBody = logicComponent.Serialize(writer, initialState);
+                var hasBody = logicComponent.Serialize(writer);
                 if (hasBody) writer.EndMessage();
                 else writer.CancelMessage();
                 logicComponent.ClearDirtyFlag();
@@ -24,19 +30,5 @@ class GameManagerSerializeFix
         __instance.ClearDirtyBits();
         __result = flag;
         return false;
-    }
-}
-[HarmonyPatch(typeof(LogicOptions), nameof(LogicOptions.Serialize))]
-class LogicOptionsSerializePatch
-{
-    public static bool Prefix(ref bool __result, [HarmonyArgument(1)] bool initialState)
-    {
-        // Block all but the first time and synchronize only with CustomSyncSettings
-        if (!initialState)
-        {
-            __result = false;
-            return false;
-        }
-        else return true;
     }
 }
