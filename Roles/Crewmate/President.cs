@@ -132,11 +132,11 @@ internal class President : RoleBase
             {
                 if (pva == null) continue;
 
-                if (pva.VotedFor < 253)
-                    MeetingHud.Instance.RpcClearVote(pva.TargetPlayerId);
+                if (((byte)pva.VotedForId) < 253)
+                    MeetingHud.Instance.RpcClearVote(((byte)pva.PlayerId));
             }
             List<MeetingHud.VoterState> statesList = [];
-            MeetingHud.Instance.RpcVotingComplete(statesList.ToArray(), null, true);
+            MeetingHud.Instance.RpcVotingComplete(statesList.ToArray(), null, true, false, 0);
             MeetingHud.Instance.RpcClose();
         }
         else if (operate == 2)

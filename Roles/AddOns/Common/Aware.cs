@@ -86,7 +86,7 @@ public class Aware : IAddon
         {
             case CustomRoles.FortuneTeller:
             case CustomRoles.Oracle:
-                AwareInteracted[pva.VotedFor].Add(Utils.GetRoleName(pc.GetCustomRole()));
+                AwareInteracted[((byte)pva.VotedForId)].Add(Utils.GetRoleName(pc.GetCustomRole()));
                 break;
         }
     }

@@ -103,15 +103,15 @@ internal class Vampire : RoleBase
 
         foreach (var targetId in targetList)
         {
-            var bitten = BittenPlayers[targetId];
+            if (!BittenPlayers.TryGetValue(targetId, out var bitten)) continue;
 
             if (bitten.KillTimer >= KillDelay)
             {
                 Logger.Info("KillTimer >= KillDelay", "Vampire");
 
                 var target = targetId.GetPlayer();
-                KillBitten(vampire, target);
                 BittenPlayers.Remove(targetId);
+                KillBitten(vampire, target);
             }
             else
             {
@@ -122,7 +122,7 @@ internal class Vampire : RoleBase
     }
     private static void KillBitten(PlayerControl vampire, PlayerControl target)
     {
-        if (target.Data.Disconnected) return;
+        if (vampire == null || target == null || target.Data == null || target.Data.Disconnected) return;
 
         if (target.IsAlive())
         {
@@ -150,13 +150,14 @@ internal class Vampire : RoleBase
 
     public override void OnReportDeadBody(PlayerControl reporter, NetworkedPlayerInfo deadBody)
     {
-        foreach (var targetId in BittenPlayers.Keys)
+        var bittenPlayers = BittenPlayers.ToArray();
+        BittenPlayers.Clear();
+        foreach (var bitten in bittenPlayers)
         {
-            var target = Utils.GetPlayerById(targetId);
-            var vampire = Utils.GetPlayerById(BittenPlayers[targetId].VampireId);
+            var target = Utils.GetPlayerById(bitten.Key);
+            var vampire = Utils.GetPlayerById(bitten.Value.VampireId);
             KillBitten(vampire, target);
         }
-        BittenPlayers.Clear();
     }
     public override void SetAbilityButtonText(HudManager hud, byte playerId)
     {

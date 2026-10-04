@@ -26,20 +26,20 @@ public class Stealer : IAddon
     { }
     public static int AddRealVotesNum(PlayerVoteArea ps)
     {
-        return (int)(Main.AllPlayerControls.Count(x => x.GetRealKiller()?.PlayerId == ps.TargetPlayerId) * TicketsPerKill.GetFloat());
+        return (int)(Main.AllPlayerControls.Count(x => x.GetRealKiller()?.PlayerId == ((byte)ps.PlayerId)) * TicketsPerKill.GetFloat());
     }
     public static void AddVisualVotes(PlayerVoteArea votedPlayer, ref List<MeetingHud.VoterState> statesList)
     {
         if (HideAdditionalVotes.GetBool()) return;
 
-        var additionalVotes = (int)(Main.AllPlayerControls.Count(x => x.GetRealKiller()?.PlayerId == votedPlayer.TargetPlayerId) * TicketsPerKill.GetFloat());
+        var additionalVotes = (int)(Main.AllPlayerControls.Count(x => x.GetRealKiller()?.PlayerId == ((byte)votedPlayer.PlayerId)) * TicketsPerKill.GetFloat());
 
         for (var i = 0; i < additionalVotes; i++)
         {
             statesList.Add(new MeetingHud.VoterState()
             {
-                VoterId = votedPlayer.TargetPlayerId,
-                VotedForId = votedPlayer.VotedFor
+                VoterId = ((byte)votedPlayer.PlayerId),
+                VotedForId = ((byte)votedPlayer.VotedForId)
             });
         }
     }

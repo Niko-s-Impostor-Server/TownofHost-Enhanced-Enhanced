@@ -70,6 +70,7 @@ internal class Fireworker : RoleBase
 
     private static void SendRPC(byte playerId)
     {
+        if (!AmongUsClient.Instance.AmHost) return;
         Logger.Info($"Player{playerId}:SendRPC", "Fireworker");
         MessageWriter writer = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.SendFireworkerState, SendOption.Reliable, -1);
         writer.Write(playerId);
@@ -173,11 +174,11 @@ internal class Fireworker : RoleBase
     public override string GetLowerText(PlayerControl seer, PlayerControl seen = null, bool isForMeeting = false, bool isForHud = false)
     {
         string retText = string.Empty;
-        var seerId = seer.PlayerId;
         if (seer == null || !seer.IsAlive()) return retText;
+        var seerId = seer.PlayerId;
         if (!state.ContainsKey(seerId)) return retText;
 
-        if (state[seer.PlayerId] == FireworkerState.WaitTime && Main.AliveImpostorCount <= 1)
+        if (AmongUsClient.Instance.AmHost && state[seer.PlayerId] == FireworkerState.WaitTime && Main.AliveImpostorCount <= 1)
         {
             Logger.Info("Ready to blow up", "Fireworker");
             state[seerId] = FireworkerState.ReadyFire;

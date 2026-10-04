@@ -78,13 +78,13 @@ internal class Poisoner : RoleBase
 
         foreach (var targetId in targetList)
         {
-            var poisonedPoisoner = PoisonedPlayers[targetId];
+            if (!PoisonedPlayers.TryGetValue(targetId, out var poisonedPoisoner)) continue;
 
             if (poisonedPoisoner.KillTimer >= KillDelay)
             {
                 var target = targetId.GetPlayer();
-                KillPoisoned(poisoner, target);
                 PoisonedPlayers.Remove(targetId);
+                KillPoisoned(poisoner, target);
             }
             else
             {
@@ -95,7 +95,7 @@ internal class Poisoner : RoleBase
     }
     private static void KillPoisoned(PlayerControl poisoner, PlayerControl target, bool isButton = false)
     {
-        if (poisoner == null || target == null || target.Data.Disconnected) return;
+        if (poisoner == null || target == null || target.Data == null || target.Data.Disconnected) return;
         if (target.IsAlive())
         {
             target.SetDeathReason(PlayerState.DeathReason.Poison);
@@ -118,13 +118,14 @@ internal class Poisoner : RoleBase
     }
     public override void OnReportDeadBody(PlayerControl sans, NetworkedPlayerInfo bateman)
     {
-        foreach (var targetId in PoisonedPlayers.Keys)
+        var poisonedPlayers = PoisonedPlayers.ToArray();
+        PoisonedPlayers.Clear();
+        foreach (var poisoned in poisonedPlayers)
         {
-            var target = Utils.GetPlayerById(targetId);
-            var poisoner = Utils.GetPlayerById(PoisonedPlayers[targetId].PoisonerId);
+            var target = Utils.GetPlayerById(poisoned.Key);
+            var poisoner = Utils.GetPlayerById(poisoned.Value.PoisonerId);
             KillPoisoned(poisoner, target);
         }
-        PoisonedPlayers.Clear();
     }
     public override void SetAbilityButtonText(HudManager hud, byte playerId)
     {

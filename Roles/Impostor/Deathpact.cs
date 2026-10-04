@@ -74,6 +74,7 @@ internal class Deathpact : RoleBase
     }
     public override void Remove(byte playerId)
     {
+        ClearDeathpact(playerId);
         PlayersInDeathpact.Remove(playerId);
         DeathpactTime.Remove(playerId);
         Playerids.Remove(playerId);
@@ -102,16 +103,17 @@ internal class Deathpact : RoleBase
     }
     private static void DoDeathpact(PlayerControl shapeshifter, PlayerControl target)
     {
+        if (ActiveDeathpacts.Contains(shapeshifter.PlayerId)) return;
+        if (!PlayersInDeathpact.TryGetValue(shapeshifter.PlayerId, out var players)) return;
+
         if (!target.IsAlive() || Pelican.IsEaten(target.PlayerId))
         {
             shapeshifter.Notify(GetString("DeathpactCouldNotAddTarget"));
             return;
         }
 
-        if (!PlayersInDeathpact[shapeshifter.PlayerId].Any(b => b.PlayerId == target.PlayerId))
-        {
-            PlayersInDeathpact[shapeshifter.PlayerId].Add(target);
-        }
+        players.RemoveWhere(player => player == null || !player.IsAlive());
+        players.Add(target);
 
         if (PlayersInDeathpact[shapeshifter.PlayerId].Count < NumberOfPlayersInPact.GetInt())
         {
@@ -147,7 +149,7 @@ internal class Deathpact : RoleBase
             return;
         }
 
-        if (PlayersInDeathpact.Any(a => a.Value.Any(b => b.PlayerId == player.PlayerId) && a.Value.Count == NumberOfPlayersInPact.GetInt() ))
+        if (PlayersInDeathpact.Any(a => ActiveDeathpacts.Contains(a.Key) && a.Value.Any(b => b != null && b.PlayerId == player.PlayerId)))
         {
             opt.SetVision(false);
             opt.SetFloat(FloatOptionNames.CrewLightMod, VisionWhileInPact.GetFloat());
@@ -162,12 +164,13 @@ internal class Deathpact : RoleBase
 
         if (DeathpactTime.TryGetValue(player.PlayerId, out var time) && time < nowTime && time != 0)
         {
-            foreach (var playerInDeathpact in PlayersInDeathpact[player.PlayerId])
+            var targets = PlayersInDeathpact[player.PlayerId].ToArray();
+            ClearDeathpact(player.PlayerId);
+            foreach (var playerInDeathpact in targets)
             {
                 KillPlayerInDeathpact(player, playerInDeathpact);
             }
 
-            ClearDeathpact(player.PlayerId);
             player.Notify(GetString("DeathpactExecuted"));
         }
     }
@@ -187,7 +190,7 @@ internal class Deathpact : RoleBase
     {
         if (!PlayersInDeathpact.TryGetValue(deathpact.PlayerId, out var playerList)) return false;
 
-        if (playerList.Any(a => a.Data.Disconnected || a.Data.IsDead))
+        if (playerList.Any(a => a == null || a.Data == null || a.Data.Disconnected || a.Data.IsDead))
         {
             ClearDeathpact(deathpact.PlayerId);
             deathpact.Notify(GetString("DeathpactAverted"));
@@ -198,7 +201,7 @@ internal class Deathpact : RoleBase
 
         foreach (var player in playerList)
         {
-            float range = NormalGameOptionsV08.KillDistances[Mathf.Clamp(player.Is(Reach.IsReach) ? 2 : Main.NormalOptions.KillDistance, 0, 2)] + 0.5f;
+            float range = NormalGameOptionsV11.KillDistances[Mathf.Clamp(player.Is(Reach.IsReach) ? 2 : Main.NormalOptions.KillDistance, 0, 2)] + 0.5f;
             foreach (var otherPlayerInPact in playerList.Where(a => a.PlayerId != player.PlayerId).ToArray())
             {
                 float dis = GetDistance(player.transform.position, otherPlayerInPact.transform.position);
@@ -217,7 +220,7 @@ internal class Deathpact : RoleBase
 
     private static void KillPlayerInDeathpact(PlayerControl deathpact, PlayerControl target)
     {
-        if (deathpact == null || target == null || target.Data.Disconnected) return;
+        if (deathpact == null || target == null || target.Data == null || target.Data.Disconnected) return;
         if (!target.IsAlive()) return;
         
         target.SetDeathReason(PlayerState.DeathReason.Suicide);
@@ -235,11 +238,11 @@ internal class Deathpact : RoleBase
         if (!IsInActiveDeathpact(seer)) return string.Empty;
 
         var arrows = new StringBuilder();
-        var activeDeathpactsForPlayer = PlayersInDeathpact.Where(a => ActiveDeathpacts.Contains(a.Key) && a.Value.Any(b => b.PlayerId == seer.PlayerId)).ToArray();
+        var activeDeathpactsForPlayer = PlayersInDeathpact.Where(a => ActiveDeathpacts.Contains(a.Key) && a.Value.Any(b => b != null && b.PlayerId == seer.PlayerId)).ToArray();
 
         foreach (var deathpact in activeDeathpactsForPlayer)
         {
-            foreach (var otherPlayerInPact in deathpact.Value.Where(a => a.PlayerId != seer.PlayerId).ToArray())
+            foreach (var otherPlayerInPact in deathpact.Value.Where(a => a != null && a.PlayerId != seer.PlayerId).ToArray())
             {
                 arrows.Append(ColorString(GetRoleColor(CustomRoles.CrewmateTOHE), TargetArrow.GetArrows(seer, otherPlayerInPact.PlayerId)));
             }
@@ -251,27 +254,21 @@ internal class Deathpact : RoleBase
     public static bool IsInActiveDeathpact(PlayerControl player)
     {
         if (!ActiveDeathpacts.Any() || !PlayersInDeathpact.Any()) return false;
-        if (PlayersInDeathpact.Any(a => ActiveDeathpacts.Contains(a.Key) && a.Value.Any(b => b.PlayerId == player.PlayerId))) return true;
+        if (PlayersInDeathpact.Any(a => ActiveDeathpacts.Contains(a.Key) && a.Value.Any(b => b != null && b.PlayerId == player.PlayerId))) return true;
         return false;
     }
 
     private static bool IsInDeathpact(byte deathpactId, PlayerControl target)
-        => deathpactId != target.PlayerId && PlayersInDeathpact.TryGetValue(deathpactId, out var targets) && targets.Any(a => a.PlayerId == target.PlayerId);
+        => deathpactId != target.PlayerId && PlayersInDeathpact.TryGetValue(deathpactId, out var targets) && targets.Any(a => a != null && a.PlayerId == target.PlayerId);
 
     public static string GetDeathpactString(PlayerControl player)
     {
         string result = string.Empty;
 
-        var activeDeathpactsForPlayer = PlayersInDeathpact.Where(a => ActiveDeathpacts.Contains(a.Key) && a.Value.Any(b => b.PlayerId == player.PlayerId)).ToArray();
+        var activeDeathpactsForPlayer = PlayersInDeathpact.Where(a => ActiveDeathpacts.Contains(a.Key) && a.Value.Any(b => b != null && b.PlayerId == player.PlayerId)).ToArray();
         foreach (var deathpact in activeDeathpactsForPlayer)
         {
-            string otherPlayerNames = string.Empty;
-            foreach (var otherPlayerInPact in deathpact.Value.Where(a => a.PlayerId != player.PlayerId).ToArray())
-            {
-                otherPlayerNames += otherPlayerInPact.name.ToUpper() + ",";
-            }
-
-            otherPlayerNames = otherPlayerNames.Remove(otherPlayerNames.Length - 1);
+            var otherPlayerNames = string.Join(",", deathpact.Value.Where(a => a != null && a.PlayerId != player.PlayerId).Select(a => a.name.ToUpper()));
 
             int countdown = (int)(DeathpactTime[deathpact.Key] - GetTimeStamp());
 
@@ -286,9 +283,9 @@ internal class Deathpact : RoleBase
     {
         if (ShowArrowsToOtherPlayersInPact.GetBool() && PlayersInDeathpact.TryGetValue(deathpact, out var playerList))
         {
-            foreach (var player in playerList)
+            foreach (var player in playerList.Where(a => a != null).ToArray())
             {
-                foreach (var otherPlayerInPact in playerList.Where(a => a.PlayerId != player.PlayerId).ToArray())
+                foreach (var otherPlayerInPact in playerList.Where(a => a != null && a.PlayerId != player.PlayerId).ToArray())
                 {
                     TargetArrow.Remove(player.PlayerId, otherPlayerInPact.PlayerId);
                 }
@@ -309,6 +306,8 @@ internal class Deathpact : RoleBase
     {
         foreach (var deathpact in ActiveDeathpacts.ToArray())
         {
+            var players = PlayersInDeathpact.TryGetValue(deathpact, out var targets) ? targets.ToArray() : [];
+            ClearDeathpact(deathpact);
             if (KillDeathpactPlayersOnMeeting.GetBool())
             {
                 var deathpactPlayer = deathpact.GetPlayer();
@@ -317,13 +316,11 @@ internal class Deathpact : RoleBase
                     continue;
                 }
 
-                foreach (var player in PlayersInDeathpact[deathpact])
+                foreach (var player in players)
                 {
                     KillPlayerInDeathpact(deathpactPlayer, player);
                 }
             }
-
-            ClearDeathpact(deathpact);
         }
     }
 

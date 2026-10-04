@@ -101,9 +101,10 @@ internal class Pelican : RoleBase
     }
     public static bool CanEat(PlayerControl pc, byte id)
     {
-        if (!pc.Is(CustomRoles.Pelican) || GameStates.IsMeeting) return false;
+        if (pc == null || !pc.Is(CustomRoles.Pelican) || GameStates.IsMeeting) return false;
 
         var target = Utils.GetPlayerById(id);
+        if (target == null) return false;
 
         var penguins = Utils.GetRoleBasesByType<Penguin>()?.ToList();
         if (penguins != null)
@@ -221,6 +222,7 @@ internal class Pelican : RoleBase
     }
     private void ReturnEatenPlayerBack(PlayerControl pelican)
     {
+        if (pelican == null) return;
         var pelicanId = pelican.PlayerId;
         if (!eatenList.ContainsKey(pelicanId)) return;
 

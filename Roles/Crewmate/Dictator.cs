@@ -28,5 +28,5 @@ internal class Dictator : RoleBase
     }
 
     public static bool CheckVotingForTarget(PlayerControl pc, PlayerVoteArea pva)
-        => pc.Is(CustomRoles.Dictator) && pva.DidVote && pc.PlayerId != pva.VotedFor && pva.VotedFor < 253 && !pc.Data.IsDead;
+        => pc.Is(CustomRoles.Dictator) && pva.DidVote && pc.PlayerId != ((byte)pva.VotedForId) && ((byte)pva.VotedForId) < 253 && !pc.Data.IsDead;
 }

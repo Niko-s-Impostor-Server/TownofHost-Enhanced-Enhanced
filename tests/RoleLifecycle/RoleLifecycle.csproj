@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <LangVersion>preview</LangVersion>
+    <Nullable>disable</Nullable>
+    <NoWarn>CS0649</NoWarn>
+  </PropertyGroup>
+  <Target Name="ExtractRoleMethods" BeforeTargets="CoreCompile">
+    <Exec Command="python &quot;$(MSBuildProjectDirectory)/generate.py&quot; &quot;$(IntermediateOutputPath)GeneratedRoles.cs&quot;" WorkingDirectory="$(MSBuildProjectDirectory)" />
+    <ItemGroup>
+      <Compile Include="$(IntermediateOutputPath)GeneratedRoles.cs" />
+    </ItemGroup>
+  </Target>
+</Project>

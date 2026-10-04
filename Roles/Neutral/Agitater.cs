@@ -29,6 +29,7 @@ internal class Agitater : RoleBase
     public static bool AgitaterHasBombed = false;
     public static long? CurrentBombedPlayerTime = new();
     public static long? AgitaterBombedTime = new();
+    private static uint BombGeneration;
 
 
     public override void SetupCustomOption()
@@ -51,6 +52,8 @@ internal class Agitater : RoleBase
         LastBombedPlayer = byte.MaxValue;
         AgitaterHasBombed = false;
         CurrentBombedPlayerTime = new();
+        AgitaterBombedTime = new();
+        BombGeneration++;
     }
 
     public override void Add(byte playerId)
@@ -61,6 +64,7 @@ internal class Agitater : RoleBase
 
     public static void ResetBomb()
     {
+        BombGeneration++;
         CurrentBombedPlayer = 254;
         CurrentBombedPlayerTime = new();
         LastBombedPlayer = byte.MaxValue;
@@ -96,12 +100,15 @@ internal class Agitater : RoleBase
         killer.Notify(GetString("AgitaterPassNotify"));
         target.Notify(GetString("AgitaterTargetNotify"));
         AgitaterHasBombed = true;
+        var bombGeneration = ++BombGeneration;
         killer.ResetKillCooldown();
         killer.SetKillCooldown();
         
         _ = new LateTask(() =>
         {
-            if (CurrentBombedPlayer != byte.MaxValue && GameStates.IsInTask)
+            if (bombGeneration != BombGeneration || !AgitaterHasBombed) return;
+
+            if (GameStates.IsInTask)
             {
                 var pc = Utils.GetPlayerById(CurrentBombedPlayer);
                 if (pc != null && pc.IsAlive() && killer != null)
@@ -110,10 +117,9 @@ internal class Agitater : RoleBase
                     pc.RpcMurderPlayer(pc);
                     pc.SetRealKiller(killer);
                     Logger.Info($"{killer.GetNameWithRole()} bombed {pc.GetNameWithRole()} - bomb cd complete", "Agitater");
-                    ResetBomb();
                 }
-
             }
+            ResetBomb();
         }, BombExplodeCooldown.GetFloat(), "Agitater Bomb Kill");
         return false;
     }
@@ -123,7 +129,11 @@ internal class Agitater : RoleBase
         if (CurrentBombedPlayer == byte.MaxValue) return;
         var target = Utils.GetPlayerById(CurrentBombedPlayer);
         var killer = Utils.GetPlayerById(playerIdList.First());
-        if (target == null || killer == null) return;
+        if (target == null || killer == null || !target.IsAlive())
+        {
+            ResetBomb();
+            return;
+        }
 
         CurrentBombedPlayer.SetDeathReason(PlayerState.DeathReason.Bombed);
         Main.PlayerStates[CurrentBombedPlayer].SetDead();
@@ -160,7 +170,7 @@ internal class Agitater : RoleBase
             {
                 var min = targetDistance.OrderBy(c => c.Value).FirstOrDefault();
                 var target = min.Key.GetPlayer();
-                var KillRange = GameOptionsData.KillDistances[Mathf.Clamp(GameOptionsManager.Instance.currentNormalGameOptions.KillDistance, 0, 2)];
+                var KillRange = NormalGameOptionsV11.KillDistances[Mathf.Clamp(GameOptionsManager.Instance.currentNormalGameOptions.KillDistance, 0, 2)];
                 if (min.Value <= KillRange && !player.inVent && !player.inMovingPlat && !target.inVent && !target.inMovingPlat && player.RpcCheckAndMurder(target, true))
                 {
                     PassBomb(player, target);

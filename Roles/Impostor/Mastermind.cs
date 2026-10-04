@@ -1,4 +1,5 @@
 using TOHE.Roles.Crewmate;
+using TOHE.Roles.Core;
 using static TOHE.Options;
 using static TOHE.Translator;
 using static TOHE.Utils;
@@ -59,7 +60,7 @@ internal class Mastermind : RoleBase
 
     public override void SetKillCooldown(byte id) => Main.AllPlayerKillCooldown[id] = KillCooldown.GetFloat();
 
-    public static bool PlayerIsManipulated(PlayerControl pc) => ManipulatedPlayers.ContainsKey(pc.PlayerId);
+    public static bool PlayerIsManipulated(PlayerControl pc) => pc != null && ManipulatedPlayers.ContainsKey(pc.PlayerId);
 
     public override bool OnCheckMurderAsKiller(PlayerControl killer, PlayerControl target)
     {
@@ -122,6 +123,7 @@ internal class Mastermind : RoleBase
                 player.RpcMurderPlayer(player);
                 player.SetRealKiller(mastermind);
                 RPC.PlaySoundRPC(mastermind.PlayerId, Sounds.KillSound);
+                continue;
             }
 
             var time = TimeLimit.GetInt() - (GetTimeStamp() - x.Value);
@@ -165,12 +167,17 @@ internal class Mastermind : RoleBase
             return true;
         }
 
+        // Meetings and deaths can clear this state before the deferred cooldown runs.
+        var restoreCooldown = TempKCDs.TryGetValue(killer.PlayerId, out var previousCooldown);
+        TempKCDs.Remove(killer.PlayerId);
+        var killerRole = killer.GetRoleClass();
         killer.RpcMurderPlayer(target);
 
         _ = new LateTask(() =>
         {
-            killer.SetKillCooldown(time: TempKCDs[killer.PlayerId] + Main.AllPlayerKillCooldown[killer.PlayerId]);
-            TempKCDs.Remove(killer.PlayerId);
+            if (!restoreCooldown || killer == null || !killer.IsAlive() || !GameStates.IsInTask || killer.GetRoleClass() != killerRole) return;
+            if (Main.AllPlayerKillCooldown.TryGetValue(killer.PlayerId, out var killCooldown))
+                killer.SetKillCooldown(time: previousCooldown + killCooldown);
         }, 0.1f, "Set KCD for Manipulated Kill");
 
         return true;
