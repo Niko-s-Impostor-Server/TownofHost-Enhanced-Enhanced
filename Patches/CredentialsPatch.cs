@@ -171,15 +171,14 @@ class VersionShowerStartPatch
         var credentials = Object.Instantiate(__instance.text);
         credentials.name = "TOHEECredentials";
         credentials.text = Main.credentialsText;
-        credentials.alignment = TextAlignmentOptions.Top;
-        credentials.rectTransform.pivot = new Vector2(0.5f, 1f);
+        credentials.alignment = TextAlignmentOptions.Bottom;
+        credentials.rectTransform.pivot = new Vector2(0.5f, 0f);
         credentials.rectTransform.sizeDelta = new Vector2(4.8f, 0.9f);
         credentials.fontSize = credentials.fontSizeMax = credentials.fontSizeMin = 2f;
-        // The current menu reserves its top bar for account and friends controls.
-        // Anchor below it so resolution changes cannot move credits onto those buttons.
+        // Keep the title artwork and account bar clear; the center footer is unused.
         var position = credentials.GetComponent<AspectPosition>() ?? credentials.gameObject.AddComponent<AspectPosition>();
-        position.Alignment = AspectPosition.EdgeAlignments.Top;
-        position.DistanceFromEdge = new Vector3(0f, 0.78f, __instance.text.transform.position.z);
+        position.Alignment = AspectPosition.EdgeAlignments.Bottom;
+        position.DistanceFromEdge = new Vector3(0f, 0.1f, __instance.text.transform.position.z);
         position.AdjustPosition();
 
         ErrorText.Create(__instance.text);

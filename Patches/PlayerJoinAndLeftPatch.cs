@@ -320,7 +320,6 @@ public static class OnPlayerJoinedPatch
         {
             if (Main.SayStartTimes.ContainsKey(client.Id)) Main.SayStartTimes.Remove(client.Id);
             if (Main.SayBanwordsTimes.ContainsKey(client.Id)) Main.SayBanwordsTimes.Remove(client.Id);
-            //if (Main.newLobby && Options.ShareLobby.GetBool()) Cloud.ShareLobby();
 
             if (client.GetHashedPuid() != "" && Options.TempBanPlayersWhoKeepQuitting.GetBool()
                 && !BanManager.CheckAllowList(client.FriendCode) && !GameStates.IsLocalGame)

@@ -17,6 +17,7 @@ public class MainMenuManagerStartPatch
     private static void Postfix(MainMenuManager __instance)
     {
         amongUsLogo = GameObject.Find("LOGO-AU");
+        if (amongUsLogo != null) amongUsLogo.SetActive(false);
 
         var rightpanel = __instance.gameModeButtons.transform.parent;
         var logoObject = new GameObject("titleLogo_TOHE");
