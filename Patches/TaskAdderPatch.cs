@@ -38,6 +38,13 @@ public static class ShowFolderPatch
     {
         if (!GameStates.IsFreePlay || !FreeplayInitialization.IsReady) return;
 
+        // New native abilities need their own mod state/HUD integration. Do not
+        // expose a button that changes the native role while retaining a different
+        // custom role (the existing Detective/Judge are unrelated mod roles).
+        for (int index = taskFolder.RoleChildren.Count - 1; index >= 0; index--)
+            if (!AddTaskButtonPatch.TryMapNativeRole(taskFolder.RoleChildren[index].Role, out _))
+                taskFolder.RoleChildren.RemoveAt(index);
+
         // Native ShowFolder destroys old items at end of frame. Retire their controller entries now.
         foreach (var item in __instance.ActiveItems)
         {
@@ -167,6 +174,24 @@ class TaskAddButtonStartPatch
 [HarmonyPatch(typeof(TaskAddButton), nameof(TaskAddButton.AddTask))]
 class AddTaskButtonPatch
 {
+    internal static bool TryMapNativeRole(RoleTypes nativeRole, out CustomRoles role)
+    {
+        role = nativeRole switch
+        {
+            RoleTypes.Crewmate or RoleTypes.CrewmateGhost => CustomRoles.Crewmate,
+            RoleTypes.Impostor or RoleTypes.ImpostorGhost => CustomRoles.Impostor,
+            RoleTypes.Engineer => CustomRoles.Engineer,
+            RoleTypes.Scientist => CustomRoles.Scientist,
+            RoleTypes.GuardianAngel => CustomRoles.GuardianAngel,
+            RoleTypes.Shapeshifter => CustomRoles.Shapeshifter,
+            RoleTypes.Noisemaker => CustomRoles.Noisemaker,
+            RoleTypes.Phantom => CustomRoles.Phantom,
+            RoleTypes.Tracker => CustomRoles.Tracker,
+            _ => CustomRoles.NotAssigned
+        };
+        return role != CustomRoles.NotAssigned;
+    }
+
     public static bool Prefix(TaskAddButton __instance, out bool __state)
     {
         __state = false;
@@ -191,25 +216,18 @@ class AddTaskButtonPatch
             player.transform.position = __instance.SafePositionWorld;
             return false;
         }
-        __state = FreeplayInitialization.IsReady && __instance.Role != null;
+        if (__instance.Role != null)
+        {
+            if (!FreeplayInitialization.IsReady || !TryMapNativeRole(__instance.Role.Role, out _)) return false;
+            __state = true;
+        }
         return true;
     }
 
     public static void Postfix(TaskAddButton __instance, bool __state)
     {
         if (!__state || !GameStates.IsFreePlay || __instance.Role == null) return;
-        var role = __instance.Role.Role switch
-        {
-            RoleTypes.Engineer => CustomRoles.Engineer,
-            RoleTypes.Scientist => CustomRoles.Scientist,
-            RoleTypes.GuardianAngel => CustomRoles.GuardianAngel,
-            RoleTypes.Shapeshifter => CustomRoles.Shapeshifter,
-            RoleTypes.Noisemaker => CustomRoles.Noisemaker,
-            RoleTypes.Phantom => CustomRoles.Phantom,
-            RoleTypes.Tracker => CustomRoles.Tracker,
-            RoleTypes.Impostor or RoleTypes.ImpostorGhost => CustomRoles.Impostor,
-            _ => CustomRoles.Crewmate
-        };
+        if (!TryMapNativeRole(__instance.Role.Role, out var role)) return;
         FreeplayInitialization.ChangeRole(PlayerControl.LocalPlayer, role, setNativeRole: false);
     }
 }
