@@ -309,12 +309,14 @@ class OnPlayerLeftPatch
         StartingProcessing = true;
         LeftPlayerId = data?.Character?.PlayerId ?? byte.MaxValue;
 
+        if (data?.Character == null) return;
+
         if (data != null && data.Character != null)
             StartGameHostPatch.DataDisconnected[data.Character.PlayerId] = true;
 
-        if (GameStates.IsInGame)
+        if (GameStates.IsInGame && Main.PlayerStates.TryGetValue(data.Character.PlayerId, out var leavingState))
         {
-            Main.PlayerStates[data.Character.PlayerId].Disconnected = true;
+            leavingState.Disconnected = true;
         }
 
         if (!AmongUsClient.Instance.AmHost) return;
@@ -345,9 +347,15 @@ class OnPlayerLeftPatch
     }
     public static void Postfix(AmongUsClient __instance, [HarmonyArgument(0)] ClientData data, [HarmonyArgument(1)] DisconnectReasons reason)
     {
+        if (data == null)
+        {
+            StartingProcessing = false;
+            return;
+        }
         try
         {
-            if (GameStates.IsNormalGame && GameStates.IsInGame)
+            if (GameStates.IsNormalGame && GameStates.IsInGame && data.Character != null
+                && Main.PlayerStates.TryGetValue(data.Character.PlayerId, out var state))
             {
                 if (data.Character.Is(CustomRoles.Lovers) && !data.Character.Data.IsDead)
                 {
@@ -361,7 +369,6 @@ class OnPlayerLeftPatch
 
                 if (Spiritualist.HasEnabled) Spiritualist.RemoveTarget(data.Character.PlayerId);
 
-                var state = Main.PlayerStates[data.Character.PlayerId];
                 state.Disconnected = true;
                 state.SetDead();
 
@@ -455,10 +462,13 @@ class OnPlayerLeftPatch
                 case DisconnectReasons.Hacking:
                     Logger.SendInGame(string.Format(GetString("PlayerLeftByAU-Anticheat"), data?.PlayerName));
                     break;
-                case DisconnectReasons.Error when !GameStates.IsLobby:
+                case DisconnectReasons.Error when __instance.AmHost && GameStates.IsInGame:
                     Logger.SendInGame(string.Format(GetString("PlayerLeftByError"), data?.PlayerName));
+                    var gameId = __instance.GameId;
                     _ = new LateTask(() =>
                     {
+                        if (__instance == null || !__instance.AmHost || __instance.GameId != gameId
+                            || !GameStates.IsInGame || GameManager.Instance == null) return;
                         CustomWinnerHolder.ResetAndSetWinner(CustomWinner.Error);
                         GameManager.Instance.enabled = false;
                         Utils.NotifyGameEnding();
@@ -502,7 +512,7 @@ class OnPlayerLeftPatch
                     }
                 }
 
-                if (GameStates.IsMeeting)
+                if (GameStates.IsMeeting && data.Character != null)
                 {
                     Swapper.CheckSwapperTarget(data.Character.PlayerId);
 
@@ -532,8 +542,6 @@ class InnerNetClientSpawnPatch
 
         ClientData client = Utils.GetClientById(ownerId);
 
-        Logger.Msg($"Spawn player data: ID {ownerId}: {client.PlayerName}", "InnerNetClientSpawn");
-
         if (client == null || client.Character == null // client is null
             || client.ColorId < 0 || Palette.PlayerColors.Length <= client.ColorId) // invalid client color
         {
@@ -541,6 +549,7 @@ class InnerNetClientSpawnPatch
         }
         else
         {
+            Logger.Msg($"Spawn player data: ID {ownerId}: {client.PlayerName}", "InnerNetClientSpawn");
             _ = new LateTask(() =>
             {
                 OptionItem.SyncAllOptions(client.Id);

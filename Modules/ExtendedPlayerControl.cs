@@ -1451,33 +1451,23 @@ static class ExtendedPlayerControl
 
     public static bool IsAlive(this PlayerControl target)
     {
+        if (target == null) return false;
         //In lobby all is alive
         if (GameStates.IsLobby && !GameStates.IsInGame)
         {
             return true;
         }
-        //if target is null, it is not alive
-        if (target == null)
-        {
-            return false;
-        }
-
         //if the target status is alive
         return !Main.PlayerStates.TryGetValue(target.PlayerId, out var playerState) || !playerState.IsDead;
     }
     public static bool IsDisconnected(this PlayerControl target)
     {
+        if (target == null) return true;
         //In lobby all not disconnected
         if (GameStates.IsLobby && !GameStates.IsInGame)
         {
             return false;
         }
-        //if target is null, is disconnected
-        if (target == null)
-        {
-            return true;
-        }
-
         //if the target status is disconnected
         return !Main.PlayerStates.TryGetValue(target.PlayerId, out var playerState) || playerState.Disconnected;
     }
