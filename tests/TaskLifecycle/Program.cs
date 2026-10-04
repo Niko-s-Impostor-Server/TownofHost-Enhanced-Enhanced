@@ -47,6 +47,17 @@ static class Program
         InitialInstalledTaskCountsPatch.Postfix();
         Check(TaskState.InitialTotalTasks == 2, "ShipStatus.Begin postfix records complete batch total");
     }
+    static void PendingCompletionValidation()
+    {
+        var game = Reset();
+        var (data, _) = Player(game, 0, 1);
+        data.Tasks[0].Id = 7;
+        Check(InstalledTaskStatePatch.HasPendingTask(data.Object, 7), "an installed pending task can complete");
+        Check(!InstalledTaskStatePatch.HasPendingTask(data.Object, 8), "an unknown task cannot grant role progress");
+        data.Tasks[0].Complete = true;
+        Check(!InstalledTaskStatePatch.HasPendingTask(data.Object, 7), "duplicate completed task cannot grant role progress");
+        Check(!InstalledTaskStatePatch.HasPendingTask(null, 7), "missing player has no pending task");
+    }
     static void PreserveRoleProgress()
     {
         var game = Reset();
@@ -139,6 +150,7 @@ static class Program
     static void Main()
     {
         EarlyEmptyObservation();
+        PendingCompletionValidation();
         PreserveRoleProgress();
         CountOnlyTaskWinRoles();
         NativePassThrough();

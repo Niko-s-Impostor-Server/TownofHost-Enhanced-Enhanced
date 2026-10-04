@@ -26,7 +26,7 @@ namespace TOHE
     sealed class NativeRole { }
     sealed class NetworkedPlayerInfo
     {
-        public sealed class TaskInfo { public bool Complete; }
+        public sealed class TaskInfo { public uint Id; public bool Complete; }
         public byte PlayerId;
         public IntPtr Pointer;
         public bool Disconnected;

@@ -1555,12 +1555,17 @@ class PlayerControlCompleteTaskPatch
 {
     public static bool Prefix(PlayerControl __instance, uint idx)
     {
-        if (GameStates.IsHideNSeek) return true;
+        if (!GameStates.IsModHost || GameStates.IsHideNSeek || __instance == null ||
+            !Main.PlayerStates.TryGetValue(__instance.PlayerId, out var state)) return true;
+        // Repeated or stale completion notifications cannot grant role progress.
+        // NextStep already completed the local minigame, so use the installed
+        // TaskInfo flag rather than the local minigame's IsComplete property.
+        if (!InstalledTaskStatePatch.HasPendingTask(__instance, idx)) return false;
 
         var player = __instance;
 
         Logger.Info($"Task Complete: {player.GetNameWithRole()}", "CompleteTask.Prefix");
-        var taskState = player.GetPlayerTaskState();
+        var taskState = state.TaskState;
         taskState.Update(player);
 
         var ret = true;
@@ -1626,7 +1631,7 @@ class PlayerControlCompleteTaskPatch
     }
     public static void Postfix()
     {
-        if (GameStates.IsHideNSeek) return;
+        if (!GameStates.IsModHost || GameStates.IsHideNSeek || GameData.Instance == null) return;
 
         // Temporarily placed until the treatment of attribute classes is determined
         GameData.Instance.RecomputeTaskCounts();

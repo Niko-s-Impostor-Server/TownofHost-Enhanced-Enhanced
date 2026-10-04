@@ -35,6 +35,14 @@ class CustomTaskCountsPatch
 [HarmonyPatch(typeof(NetworkedPlayerInfo), "SetTasks")]
 class InstalledTaskStatePatch
 {
+    internal static bool HasPendingTask(PlayerControl player, uint taskId)
+    {
+        if (player == null || player.Data == null || player.Data.Tasks == null) return false;
+        foreach (var task in player.Data.Tasks)
+            if (task.Id == taskId) return !task.Complete;
+        return false;
+    }
+
     public static void Postfix(NetworkedPlayerInfo __instance)
     {
         if (!CustomTaskCountsPatch.UsesCustomCounts || __instance == null || __instance.Disconnected ||
