@@ -20,10 +20,15 @@ class CoShowIntroPatch
     public static void Prefix()
     {
         if (!AmongUsClient.Instance.AmHost || !GameStates.IsModHost || GameStates.IsHideNSeek) return;
+        var generation = OnGameJoinedPatch.Generation;
+        var currentGame = GameManager.Instance;
+        bool IsCurrentIntro() => OnGameJoinedPatch.IsCurrentSession(generation)
+            && AmongUsClient.Instance.AmHost && currentGame != null && GameManager.Instance == currentGame
+            && !GameStates.IsEnded && !GameStates.IsLobby;
 
         _ = new LateTask(() =>
         {
-            if (GameStates.IsEnded) return;
+            if (!IsCurrentIntro() || !DestroyableSingleton<HudManager>.InstanceExists) return;
 
             StartGameHostPatch.RpcSetDisconnected(disconnected: false);
 
@@ -39,7 +44,7 @@ class CoShowIntroPatch
         {
             try
             {
-                if (GameStates.IsEnded) return;
+                if (!IsCurrentIntro() || ShipStatus.Instance == null) return;
 
                 // Assign tasks after assign all roles, as it should be
                 ShipStatus.Instance.Begin();
@@ -692,4 +697,3 @@ class IntroCutsceneDestroyPatch
         Logger.Info("OnDestroy", "IntroCutscene");
     }
 }
- 

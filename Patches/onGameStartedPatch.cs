@@ -607,7 +607,8 @@ internal class StartGameHostPatch
     }
     private static void SetRoleSelf(PlayerControl target)
     {
-        if (target == null) return;
+        var client = AmongUsClient.Instance;
+        if (target == null || client == null || !client.AmHost) return;
 
         RoleTypes roleType;
         int targetClientId = target.GetClientId();
@@ -622,6 +623,15 @@ internal class StartGameHostPatch
             roleType = RpcSetRoleReplacer.StoragedData[target.PlayerId];
         }
 
+        // Applying our own role locally does not notify the server. It needs an
+        // owner-targeted SetRole for every player before it can finish Starting.
+        if (targetClientId == client.ClientId && client.NetworkMode == NetworkModes.OnlineGame)
+        {
+            var writer = client.StartRpcImmediately(target.NetId, (byte)RpcCalls.SetRole, SendOption.Reliable, targetClientId);
+            writer.Write((ushort)roleType);
+            writer.Write(true);
+            client.FinishRpcImmediately(writer);
+        }
         target.RpcSetRoleDesync(roleType, targetClientId);
     }
 
