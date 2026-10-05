@@ -46,6 +46,7 @@ public static class OptionSaver
             Version = Version,
             SingleOptions = singleOptions,
             PresetOptions = presetOptions,
+            VanillaOptions = VanillaPresetOptions.Data,
         };
     }
     /// <summary>Read deserialized object and set option values</summary>
@@ -59,6 +60,7 @@ public static class OptionSaver
         }
         if (serializableOptionsData.SingleOptions == null || serializableOptionsData.PresetOptions == null)
             throw new JsonException("Option data is missing its option dictionaries");
+        VanillaPresetOptions.Load(serializableOptionsData.VanillaOptions);
         Dictionary<int, int> singleOptions = serializableOptionsData.SingleOptions;
         Dictionary<int, int[]> presetOptions = serializableOptionsData.PresetOptions;
         foreach (var singleOption in singleOptions)
@@ -94,6 +96,7 @@ public static class OptionSaver
         var temporaryPath = OptionSaverFileInfo.FullName + "." + Guid.NewGuid().ToString("N") + ".tmp";
         try
         {
+            VanillaPresetOptions.CaptureCurrent();
             var jsonString = JsonSerializer.Serialize(GenerateOptionsData(), new JsonSerializerOptions { WriteIndented = true, });
             Directory.CreateDirectory(SaveDataDirectoryInfo.FullName);
             File.WriteAllText(temporaryPath, jsonString);
@@ -142,6 +145,8 @@ public static class OptionSaver
         public Dictionary<int, int> SingleOptions { get; init; }
         /// <summary>Options in the preset</summary>
         public Dictionary<int, int[]> PresetOptions { get; init; }
+        /// <summary>Optional for compatibility with saves made before vanilla presets were supported.</summary>
+        public VanillaPresetOptions.SavedData VanillaOptions { get; init; }
     }
 
     /// <summary>Raise the number here when making incompatible changes to the format of an option (e.g., changing the number of presets)</summary>

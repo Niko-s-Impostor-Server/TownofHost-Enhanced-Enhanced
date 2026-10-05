@@ -29,6 +29,7 @@ class OnGameJoinedPatch
     public static void Postfix(AmongUsClient __instance)
     {
         var generation = ++Generation;
+        VanillaPresetOptions.BeginLobby();
         if (Options.IsLoaded) InitializeSession(__instance);
         else Main.Instance.StartCoroutine(WaitForOptions(__instance, generation));
     }

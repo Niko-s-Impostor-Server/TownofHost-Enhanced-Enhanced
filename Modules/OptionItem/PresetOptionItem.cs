@@ -1,3 +1,5 @@
+using TOHE.Modules;
+
 namespace TOHE;
 
 public class PresetOptionItem(int defaultValue, TabGroup tab, bool vanilla) : OptionItem(0, "Preset", defaultValue, tab, true, vanillaStr: vanilla)
@@ -36,7 +38,13 @@ public class PresetOptionItem(int defaultValue, TabGroup tab, bool vanilla) : Op
     public override void SetValue(int afterValue, bool doSave, bool doSync = true)
     {
         var preset = Rule.RepeatIndex(afterValue);
-        base.SetValue(preset, doSave, doSync: false);
+        // Loading a file or receiving host settings must never restore a local
+        // vanilla preset. Only an explicit saved host edit switches both sets.
+        if (doSave && doSync && !VanillaPresetOptions.TrySwitch(CurrentPreset, preset)) return;
+        base.SetValue(preset, doSave: false, doSync: false);
         SwitchPreset(preset, doSync);
+        // Save after CurrentPreset changes so the incoming vanilla settings
+        // cannot overwrite the outgoing slot.
+        if (doSave) OptionSaver.Save();
     }
 }
