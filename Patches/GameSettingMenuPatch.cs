@@ -260,22 +260,24 @@ public class GameSettingMenuPatch
         backgroundObject.layer = root.layer;
         backgroundObject.transform.SetParent(root.transform, false);
         var background = backgroundObject.AddComponent<SpriteRenderer>();
-        background.sprite = Utils.LoadSprite("TOHE.Resources.Images.PresetBox.png", 55f);
-        background.transform.localScale = new Vector3(width / background.sprite.bounds.size.x,
-            height / background.sprite.bounds.size.y, 1f);
+        background.sprite = PresetSelectorVisuals.Panel;
+        background.drawMode = SpriteDrawMode.Sliced;
+        background.size = new Vector2(width, height);
 
         PresetLabel = Object.Instantiate(textTemplate, root.transform);
         ConfigurePresetText(PresetLabel, GetString($"Preset_{OptionItem.CurrentPreset + 1}"),
-            new Vector2(width - 2f * arrowWidth - 0.16f, height), 3.2f);
+            new Vector2(width - 2f * arrowWidth - 0.16f, height), 2.8f);
+        PresetLabel.color = new Color32(211, 234, 234, 255);
+        PresetLabel.outlineWidth = 0.05f;
         PresetLabel.enableAutoSizing = true;
         PresetLabel.fontSizeMin = 2.2f;
         CenterPresetText(PresetLabel);
 
-        CreateArrow(-1, "−");
-        CreateArrow(1, "+");
+        CreateArrow(-1);
+        CreateArrow(1);
         return background;
 
-        void CreateArrow(int direction, string caption)
+        void CreateArrow(int direction)
         {
             var button = Object.Instantiate(menu.GamePresetsButton, root.transform);
             button.name = direction < 0 ? "PreviousPreset" : "NextPreset";
@@ -286,28 +288,13 @@ public class GameSettingMenuPatch
             }
             button.transform.localScale = Vector3.one;
             button.transform.localPosition = new Vector3(direction * (width - arrowWidth) / 2f, 0f, -1f);
-            foreach (var sprite in button.GetComponentsInChildren<SpriteRenderer>(true))
-            {
-                // Keep the native hover/selection states, sized to this row.
-                sprite.drawMode = SpriteDrawMode.Sliced;
-                sprite.transform.localScale = Vector3.one;
-                sprite.transform.localPosition = new Vector3(0f, 0f, sprite.transform.localPosition.z);
-                sprite.size = new Vector2(arrowWidth - 0.06f, height - 0.1f);
-            }
+            PresetSelectorVisuals.StyleArrow(button, direction > 0, 0.36f);
             var collider = button.GetComponent<BoxCollider2D>();
             collider.offset = Vector2.zero;
             collider.size = new Vector2(arrowWidth, height);
-            var label = button.GetComponentInChildren<TextMeshPro>(true);
-            label.transform.SetParent(button.transform, false);
-            ConfigurePresetText(label, caption, new Vector2(arrowWidth, height), 3.6f);
-            label.color = Color.white;
-            label.SetFaceColor(Color.white);
-            button.activeTextColor = button.inactiveTextColor = button.disabledTextColor =
-                button.selectedTextColor = Color.white;
             button.OnClick = new();
             button.OnClick.AddListener((UnityEngine.Events.UnityAction)(() => ChangePreset(menu, direction)));
             button.gameObject.SetActive(GameOptionsMenuPatch.CanEdit);
-            CenterPresetText(label);
             if (GameOptionsMenuPatch.CanEdit) menu.ControllerSelectable.Add(button);
         }
     }
