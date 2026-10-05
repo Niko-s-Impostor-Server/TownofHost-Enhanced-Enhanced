@@ -278,6 +278,7 @@ class PingTrackerUpdatePatch
 class VersionShowerStartPatch
 {
     static TextMeshPro SpecialEventText;
+    private static TextMeshPro credentials;
     private static void Postfix(VersionShower __instance)
     {
         Main.credentialsText = $"<size=70%><size=85%><color={Main.ModColor}>{Main.ModName}</color> v{Main.PluginDisplayVersion}</size>";
@@ -305,7 +306,14 @@ class VersionShowerStartPatch
         if (Main.IsAprilFools)
             Main.credentialsText = $"<color=#00bfff>Town Of Host</color> v11.45.14";
 
-        var credentials = Object.Instantiate(__instance.text);
+        if (credentials)
+        {
+            credentials.gameObject.SetActive(false);
+            Object.Destroy(credentials.gameObject);
+        }
+        // Preserve the existing footer anchor. Its child panel follows the
+        // label and is destroyed with it when the menu scene is unloaded.
+        credentials = Object.Instantiate(__instance.text);
         credentials.name = "TOHEECredentials";
         credentials.text = Main.credentialsText;
         credentials.alignment = TextAlignmentOptions.Bottom;
@@ -317,6 +325,7 @@ class VersionShowerStartPatch
         position.Alignment = AspectPosition.EdgeAlignments.Bottom;
         position.DistanceFromEdge = new Vector3(0f, 0.1f, __instance.text.transform.position.z);
         position.AdjustPosition();
+        if (__instance.gameObject.scene.name == "MainMenu") AddCredentialsBackground(credentials);
 
         ErrorText.Create(__instance.text);
         if (Main.hasArgumentException && ErrorText.Instance != null)
@@ -348,6 +357,34 @@ class VersionShowerStartPatch
                 SpecialEventText.color = col;
             }
         }
+    }
+
+    private static void AddCredentialsBackground(TextMeshPro text)
+    {
+        var sprite = Utils.LoadSprite("TOHE.Resources.Images.PresetBox.png", 100f);
+        var textRenderer = text.GetComponent<Renderer>();
+        if (!sprite || !textRenderer) return;
+        text.ForceMeshUpdate();
+        var bounds = text.textBounds;
+        var spriteSize = sprite.bounds.size;
+        if (bounds.size.x <= 0f || bounds.size.y <= 0f || spriteSize.x <= 0f || spriteSize.y <= 0f) return;
+
+        var background = new GameObject("TOHEECredentialsBackground");
+        background.layer = text.gameObject.layer;
+        background.transform.SetParent(text.transform, false);
+        // Fit the actual glyph block, including Debug/Canary and author lines,
+        // rather than the much wider native version label's RectTransform.
+        background.transform.localPosition = new Vector3(bounds.center.x, bounds.center.y, 0.02f);
+        background.transform.localScale = new Vector3(
+            (bounds.size.x + 0.32f) / spriteSize.x,
+            (bounds.size.y + 0.16f) / spriteSize.y, 1f);
+        var renderer = background.AddComponent<SpriteRenderer>();
+        renderer.sprite = sprite;
+        renderer.color = new Color(0f, 0f, 0f, 0.78f);
+        renderer.sortingLayerID = textRenderer.sortingLayerID;
+        // Keep the text's UI order; a lower order can put the panel behind the
+        // full-screen artwork. The small positive Z offset places it behind text.
+        renderer.sortingOrder = textRenderer.sortingOrder;
     }
 }
 [HarmonyPatch(typeof(ModManager), nameof(ModManager.LateUpdate))]

@@ -11,6 +11,20 @@ public static class ShouldShowTogglePatch
         __result = true;
     }
 }
+
+[HarmonyPatch(typeof(CreateGameOptions), nameof(CreateGameOptions.Show))]
+public static class CreateGameAprilFoolsDefaultPatch
+{
+    public static void Postfix(CreateGameOptions __instance)
+    {
+        // Show starts CoShow through its first yield, which selects ON whenever
+        // the toggle is visible. Reset only this opening's initial selection;
+        // subsequent user SetAprilFool calls retain their native behavior.
+        if (__instance.gameObject.activeInHierarchy && __instance.animating)
+            __instance.SetAprilFool(false);
+    }
+}
+
 #region GameManager Patches
 [HarmonyPatch(typeof(NormalGameManager), nameof(NormalGameManager.GetBodyType))]
 public static class GetNormalBodyType_Patch

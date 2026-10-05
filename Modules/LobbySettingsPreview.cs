@@ -50,6 +50,7 @@ public static class LobbySettingsPreview
             Text.outlineWidth = 0.15f;
             Text.alignment = TextAlignmentOptions.TopLeft;
             Text.rectTransform.pivot = new Vector2(0f, 1f);
+            Text.margin = Vector4.zero;
             Text.enableWordWrapping = true;
             Text.enableAutoSizing = false;
             Text.fontSize = Text.fontSizeMax = 1.05f;
@@ -109,7 +110,10 @@ public static class LobbySettingsPreview
         var lower = camera.ScreenToWorldPoint(new Vector3(left, bottom, depth));
         var upper = camera.ScreenToWorldPoint(new Vector3(right, top, depth));
         float width = upper.x - lower.x, height = upper.y - lower.y;
-        Text.transform.position = new Vector3(lower.x + 0.25f, upper.y - 0.38f, hud.transform.position.z - 0.1f);
+        // Keep the preview against the visible screen edge at every resolution;
+        // world-unit padding grows noticeably on narrower windows.
+        var anchor = camera.ScreenToWorldPoint(new Vector3(left + 4f, top - 4f, depth));
+        Text.transform.position = new Vector3(anchor.x, anchor.y, hud.transform.position.z - 0.1f);
         Text.rectTransform.sizeDelta = new Vector2(Mathf.Min(5.8f, width * 0.58f), Mathf.Max(1f, height - 1.4f));
         // TMP measures wrapping at the final fixed font size. Reserve the footer
         // before splitting pages so narrow windows cannot truncate its shortcut.

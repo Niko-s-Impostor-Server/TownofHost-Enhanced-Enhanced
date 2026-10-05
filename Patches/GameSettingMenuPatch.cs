@@ -244,7 +244,8 @@ public class GameSettingMenuPatch
         PLuLabel.DestroyTranslator();
         PLuLabel.text = "+";
         PLuLabel.color = new Color(255f, 255f, 255f);
-        PLuLabel.transform.localPosition = new Vector3(PLuLabel.transform.localPosition.x, PLuLabel.transform.localPosition.y + 0.26f, PLuLabel.transform.localPosition.z);
+        // PlusFab already inherits the minus label's offset; applying it again
+        // raises only the plus glyph above the shared preset row.
         PLuLabel.transform.localScale = new Vector3(12f, 4f, 1f);
 
         var plus = PlusFab.GetComponent<PassiveButton>();
