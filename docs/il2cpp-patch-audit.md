@@ -1,6 +1,6 @@
 # IL2CPP patch inline 风险审计
 
-生成时间：2026-10-05T05:11:13.335923+00:00。本报告根据当前源码自动生成；结构化记录见 [il2cpp-patch-audit.json](il2cpp-patch-audit.json)。
+生成时间：2026-10-05T09:18:05.721029+00:00。本报告根据当前源码自动生成；结构化记录见 [il2cpp-patch-audit.json](il2cpp-patch-audit.json)。
 
 目标是 Among Us **2026.8.18 / Itch Windows x86**。本机只读 GameAssembly.dll PE header：`0x14c` / `x86`，未启动游戏。网站实际提供的同日期数据是 **2026.8.18 / steam-x86 / 游戏版本 18.0.0**；该版本仅列出 `steam-x86`、`android-arm64`，没有 Itch。版本匹配：`true`；平台匹配：`false`。**Steam 标签只能用于筛选风险，不能据此断言 Itch 的方法被内联、被剥离或不可 patch。**
 
@@ -19,7 +19,7 @@
 
 ## 覆盖范围
 
-扫描得到 290 个未注释的 `HarmonyPatch` 属性，折叠 type-only 容器和 overload 选择器后为 268 个目标声明、229 个唯一目标。267 个声明按类型、方法名及参数签名匹配网站；1 个没有网站记录；未解析动态目标 0 个。当前没有 `TargetMethod/TargetMethods` 动态选择器。
+扫描得到 293 个未注释的 `HarmonyPatch` 属性，折叠 type-only 容器和 overload 选择器后为 271 个目标声明、231 个唯一目标。270 个声明按类型、方法名及参数签名匹配网站；1 个没有网站记录；未解析动态目标 0 个。当前没有 `TargetMethod/TargetMethods` 动态选择器。
 
 scanner 处理类/方法级属性、字符串方法名、显式 `Type[]`/单独 `typeof` 参数、继承声明、`MethodType.Getter/Setter`、`ref/out`、C# 与 IDA 基础类型别名，并排除行/块注释。未指定 overload 时采用实际 source signature；发现多个 overload 会标记 ambiguity 而不猜测。条件编译未求值；这份源码清单不能替代 Harmony 在目标运行时的最终 `MethodBase` 解析。所有源文件 SHA-256、完整目标签名、源码位置和网站调用列表保留在 JSON。
 
@@ -78,7 +78,7 @@ GameOptionsMenu 的 HideModMenu 在 owning ChangeTab 路径先 CancelBuild，再
 | Patches/CheckGameEndPatch.cs:15 | `GameManager::CheckEndGameViaTasks(void)` | 2/1 | False |
 | Patches/ExilePatch.cs:35 | `AirshipExileController::WrapUpAndSpawn(void)` | 1/0 | True |
 | Patches/ExilePatch.cs:206 | `PbExileController::PlayerSpin(void)` | 1/0 | True |
-| Patches/GameOptionsMenuPatch.cs:569 | `ToggleOption::UpdateValue(void)` | 1/0 | False |
+| Patches/GameOptionsMenuPatch.cs:576 | `ToggleOption::UpdateValue(void)` | 1/0 | False |
 | Patches/GameOptionsPatch.cs:3 | `RoleOptionSetting::UpdateValuesAndText(AmongUs::GameOptions::IRoleOptionsCollection)` | 3/2 | False |
 | Patches/GameSettingMenuPatch.cs:467 | `GameSettingMenu::Close(void)` | 4/3 | False |
 | Patches/GameStartManagerPatch.cs:280 | `TextBoxTMP::SetText(System::String,System::String)` | 9/8 | False |
@@ -109,6 +109,9 @@ GameOptionsMenu 的 HideModMenu 在 owning ChangeTab 路径先 CancelBuild，再
 | Modules/DisableDevice.cs:143 | RemoveDisableDevicesPatch | `ShipStatus::Start(void)` | matched | exact-signature |
 | Modules/GuessManager.cs:593 | StartMeetingPatch | `MeetingHud::Start(void)` | matched | exact-signature |
 | Modules/GuessManager.cs:1071 | MeetingHudOnDestroyGuesserUIClose | `MeetingHud::OnDestroy(void)` | matched | exact-signature |
+| Modules/LobbySettingsPreview.cs:148 | LobbySettingsPreviewUpdatePatch | `HudManager::Update(void)` | matched | exact-signature |
+| Modules/LobbySettingsPreview.cs:154 | LobbySettingsPreviewHudDestroyPatch | `HudManager::OnDestroy(void)` | matched | exact-signature |
+| Modules/LobbySettingsPreview.cs:160 | LobbySettingsPreviewLobbyDestroyPatch | `LobbyBehaviour::OnDestroy(void)` | matched | exact-signature |
 | Modules/ModUpdater.cs:31 | ModUpdater | `MainMenuManager::Start(void)` | matched | exact-signature |
 | Modules/OptionHolder.cs:24 | Options | `TranslationController::Initialize(void)` | matched | exact-signature |
 | Modules/RPC.cs:128 | ShouldProcessRpcPatch | `PlayerControl::ShouldProcessRpc(RpcCalls,unsignedchar)` | matched | exact-signature |
@@ -150,8 +153,8 @@ GameOptionsMenu 的 HideModMenu 在 owning ChangeTab 路径先 CancelBuild，再
 | Patches/ControlPatch.cs:425 | ConsoleJoystickHandleHUDPatch | `ConsoleJoystick::HandleHUD(void)` | matched | exact-signature |
 | Patches/ControlPatch.cs:433 | KeyboardJoystickHandleHUDPatch | `KeyboardJoystick::HandleHud(void)` | matched | exact-signature |
 | Patches/CredentialsPatch.cs:9 | PingTrackerUpdatePatch | `PingTracker::Update(void)` | matched | exact-signature |
-| Patches/CredentialsPatch.cs:276 | VersionShowerStartPatch | `VersionShower::Start(void)` | matched | exact-signature |
-| Patches/CredentialsPatch.cs:352 | ModManagerLateUpdatePatch | `ModManager::LateUpdate(void)` | matched | exact-signature |
+| Patches/CredentialsPatch.cs:277 | VersionShowerStartPatch | `VersionShower::Start(void)` | matched | exact-signature |
+| Patches/CredentialsPatch.cs:353 | ModManagerLateUpdatePatch | `ModManager::LateUpdate(void)` | matched | exact-signature |
 | Patches/CustomRpcLifecyclePatch.cs:3 | CustomRpcJoinPatch | `AmongUsClient::OnGameJoined(System::String)` | matched | exact-signature |
 | Patches/CustomRpcLifecyclePatch.cs:9 | CustomRpcDisconnectPatch | `AmongUsClient::OnDisconnected(void)` | matched | exact-signature |
 | Patches/DeconSystemPatch.cs:3 | DeconSystemUpdateSystemPatch | `DeconSystem::UpdateSystem(PlayerControl,Hazel::MessageReader)` | matched | exact-signature |
@@ -175,21 +178,21 @@ GameOptionsMenu 的 HideModMenu 在 owning ChangeTab 路径先 CancelBuild，再
 | Patches/FreeplayPatch.cs:178 | FreeplayShipBeginPatch | `ShipStatus::Begin(void)` | matched | exact-signature |
 | Patches/GameManagerPatch.cs:5 | GameManagerSerializeFix | `GameManager::Serialize(Hazel::MessageWriter,bool)` | matched | exact-signature |
 | Patches/GameOptionsMenuPatch.cs:132 | GameOptionsMenuPatch | `GameOptionsMenu::Initialize(void)` | matched | exact-signature |
-| Patches/GameOptionsMenuPatch.cs:149 | GameOptionsMenuPatch | `GameOptionsMenu::Initialize(void)` | matched | exact-signature |
-| Patches/GameOptionsMenuPatch.cs:181 | GameOptionsMenuPatch | `GameOptionsMenu::CreateSettings(void)` | matched | exact-signature |
-| Patches/GameOptionsMenuPatch.cs:440 | GameOptionsMenuPatch | `GameOptionsMenu::ValueChanged(OptionBehaviour)` | matched | exact-signature |
-| Patches/GameOptionsMenuPatch.cs:556 | ToggleOptionPatch | `ToggleOption::Initialize(void)` | matched | exact-signature |
-| Patches/GameOptionsMenuPatch.cs:569 | ToggleOptionPatch | `ToggleOption::UpdateValue(void)` | inlined | exact-signature |
-| Patches/GameOptionsMenuPatch.cs:600 | NumberOptionPatch | `NumberOption::Initialize(void)` | matched | exact-signature |
-| Patches/GameOptionsMenuPatch.cs:642 | NumberOptionPatch | `NumberOption::UpdateValue(void)` | matched | exact-signature |
-| Patches/GameOptionsMenuPatch.cs:668 | NumberOptionPatch | `NumberOption::FixedUpdate(void)` | matched | exact-signature |
-| Patches/GameOptionsMenuPatch.cs:690 | NumberOptionPatch | `NumberOption::Increase(void)` | matched | exact-signature |
-| Patches/GameOptionsMenuPatch.cs:713 | NumberOptionPatch | `NumberOption::Decrease(void)` | matched | exact-signature |
-| Patches/GameOptionsMenuPatch.cs:740 | StringOptionPatch | `StringOption::Initialize(void)` | matched | exact-signature |
-| Patches/GameOptionsMenuPatch.cs:813 | StringOptionPatch | `StringOption::UpdateValue(void)` | matched | exact-signature |
-| Patches/GameOptionsMenuPatch.cs:845 | StringOptionPatch | `StringOption::FixedUpdate(void)` | matched | exact-signature |
-| Patches/GameOptionsMenuPatch.cs:874 | StringOptionPatch | `StringOption::Increase(void)` | matched | exact-signature |
-| Patches/GameOptionsMenuPatch.cs:887 | StringOptionPatch | `StringOption::Decrease(void)` | matched | exact-signature |
+| Patches/GameOptionsMenuPatch.cs:148 | GameOptionsMenuPatch | `GameOptionsMenu::Initialize(void)` | matched | exact-signature |
+| Patches/GameOptionsMenuPatch.cs:180 | GameOptionsMenuPatch | `GameOptionsMenu::CreateSettings(void)` | matched | exact-signature |
+| Patches/GameOptionsMenuPatch.cs:447 | GameOptionsMenuPatch | `GameOptionsMenu::ValueChanged(OptionBehaviour)` | matched | exact-signature |
+| Patches/GameOptionsMenuPatch.cs:563 | ToggleOptionPatch | `ToggleOption::Initialize(void)` | matched | exact-signature |
+| Patches/GameOptionsMenuPatch.cs:576 | ToggleOptionPatch | `ToggleOption::UpdateValue(void)` | inlined | exact-signature |
+| Patches/GameOptionsMenuPatch.cs:607 | NumberOptionPatch | `NumberOption::Initialize(void)` | matched | exact-signature |
+| Patches/GameOptionsMenuPatch.cs:649 | NumberOptionPatch | `NumberOption::UpdateValue(void)` | matched | exact-signature |
+| Patches/GameOptionsMenuPatch.cs:675 | NumberOptionPatch | `NumberOption::FixedUpdate(void)` | matched | exact-signature |
+| Patches/GameOptionsMenuPatch.cs:697 | NumberOptionPatch | `NumberOption::Increase(void)` | matched | exact-signature |
+| Patches/GameOptionsMenuPatch.cs:720 | NumberOptionPatch | `NumberOption::Decrease(void)` | matched | exact-signature |
+| Patches/GameOptionsMenuPatch.cs:747 | StringOptionPatch | `StringOption::Initialize(void)` | matched | exact-signature |
+| Patches/GameOptionsMenuPatch.cs:820 | StringOptionPatch | `StringOption::UpdateValue(void)` | matched | exact-signature |
+| Patches/GameOptionsMenuPatch.cs:852 | StringOptionPatch | `StringOption::FixedUpdate(void)` | matched | exact-signature |
+| Patches/GameOptionsMenuPatch.cs:881 | StringOptionPatch | `StringOption::Increase(void)` | matched | exact-signature |
+| Patches/GameOptionsMenuPatch.cs:894 | StringOptionPatch | `StringOption::Decrease(void)` | matched | exact-signature |
 | Patches/GameOptionsPatch.cs:3 | ChanceChangePatch | `RoleOptionSetting::UpdateValuesAndText(AmongUs::GameOptions::IRoleOptionsCollection)` | inlined | exact-signature |
 | Patches/GameSettingMenuPatch.cs:25 | GameSettingMenuPatch | `GameSettingMenu::Start(void)` | matched | exact-signature |
 | Patches/GameSettingMenuPatch.cs:325 | GameSettingMenuPatch | `GameSettingMenu::ChangeTab(int,bool)` | matched | exact-signature |

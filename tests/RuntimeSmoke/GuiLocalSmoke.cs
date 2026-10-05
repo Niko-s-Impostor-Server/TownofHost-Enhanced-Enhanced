@@ -106,6 +106,8 @@ internal sealed class GuiLocalSmoke
             var ui = controller ? controller.CurrentUiState : null;
             if (ui == null || ui.MenuName != menu.name) { stableFrames = 0; return false; }
             if (++stableFrames < 2) return false;
+            if (!LobbySettingsPreview.Text || LobbySettingsPreview.Text.gameObject.activeInHierarchy)
+                return Fail("lobby_preview_missing_or_visible_over_settings");
             if (!CheckMenu(menu, tab)) return false;
             if (pass == 0 && tab is ModTab.SystemSettings or ModTab.CrewmateRoles && capturedTab != (int)tab)
             {
@@ -140,6 +142,8 @@ internal sealed class GuiLocalSmoke
                     return Fail("stale_option_registry");
             if (ModGameOptionsMenu.OptionList.Count != 0 || ModGameOptionsMenu.BehaviourList.Count != 0 ||
                 ModGameOptionsMenu.CategoryHeaderList.Count != 0) return Fail("registries_not_cleared");
+            // Let the HUD update observe the native menu close before reopening.
+            if (!LobbySettingsPreview.Text || !LobbySettingsPreview.Text.gameObject.activeInHierarchy) return false;
             checks.Add(new { check = "close_cleared_owner_and_registries", pass });
             owner = null;
             retiredOwner = null;
@@ -193,6 +197,8 @@ internal sealed class GuiLocalSmoke
 
     private bool CheckMenu(GameOptionsMenu menu, ModTab tab)
     {
+        if (menu.Children == null || menu.Children._items == null || menu.Children._items.Length < menu.Children.Count)
+            return Fail("invalid_native_children_storage_" + (int)tab);
         var ids = new HashSet<int>();
         var indices = new HashSet<int>();
         foreach (var row in menu.GetComponentsInChildren<OptionBehaviour>(true))

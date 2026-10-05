@@ -1,3 +1,4 @@
+using System;
 using System.Text;
 using UnityEngine;
 using static TOHE.Translator;
@@ -6,118 +7,156 @@ namespace TOHE;
 
 public static class OptionShower
 {
-    public static int currentPage = 0;
+    public static int currentPage;
     public static List<string> pages = [];
-    private static byte DelayInUpdate = 0;
-    static OptionShower()
-    {
+    private static int[] optionValues = [];
+    private static string vanillaSettings, renderedText;
+    private static int renderedPage = -1, cachedPreset = -1, cachedLanguage = -1;
+    private static bool cachedHidden, cachedHost, cachedOwnLanguage, cachedRoleLanguage;
+    private static float nextProbe;
+    private static Func<string, bool> pageFits;
 
+    public static void Reset()
+    {
+        currentPage = 0;
+        pages.Clear();
+        optionValues = [];
+        renderedText = vanillaSettings = null;
+        renderedPage = cachedPreset = cachedLanguage = -1;
+        nextProbe = 0;
+        pageFits = null;
     }
+
+    internal static void ConfigurePagination(Func<string, bool> fits)
+    {
+        pageFits = fits;
+        pages.Clear();
+        renderedPage = -1;
+        nextProbe = 0;
+    }
+
     public static string GetTextNoFresh()
     {
-        try
+        bool host = AmongUsClient.Instance.AmHost;
+        bool hidden = Options.HideGameSettings.GetBool() && !host;
+        // Privacy changes bypass the sampling timer and discard every cached page.
+        bool changed = pages.Count == 0 || hidden != cachedHidden || host != cachedHost;
+        if (changed || Time.unscaledTime >= nextProbe)
         {
-            if (currentPage == 0 && DelayInUpdate >= 100)
-            {
-                DelayInUpdate = 0;
-                GetText();
-            }
-            DelayInUpdate++;
-            return $"{pages[currentPage]}{GetString("PressTabToNextPage")}({currentPage + 1}/{pages.Count})";
+            nextProbe = Time.unscaledTime + 0.5f;
+            string vanilla = hidden ? string.Empty : GetVanillaSettings();
+            int language = TranslationController.InstanceExists
+                ? (int)TranslationController.Instance.currentLanguage.languageID : -1;
+            changed |= vanilla != vanillaSettings || cachedPreset != OptionItem.CurrentPreset ||
+                cachedLanguage != language || cachedOwnLanguage != Main.ForceOwnLanguage.Value ||
+                cachedRoleLanguage != Main.ForceOwnLanguageRoleName.Value ||
+                optionValues.Length != OptionItem.AllOptions.Count;
+            if (!changed)
+                for (int i = 0; i < optionValues.Length; i++)
+                    if (optionValues[i] != OptionItem.AllOptions[i].CurrentValue) { changed = true; break; }
+            if (changed) Rebuild(vanilla, language, hidden, host);
         }
-        catch
-        {
-            //Logger.Warn(error.ToString(), "GetTextNoFresh()");
-            return GetText();
-        }
+        return CurrentText();
     }
+
     public static string GetText()
     {
-        //初期化
-        StringBuilder sb = new();
-        pages =
-            [
-                // Vanilla Settings
-                GameOptionsManager.Instance.CurrentGameOptions.ToHudString(GameData.Instance ? GameData.Instance.PlayerCount : 10) + "\n\n"
-            ];
+        bool host = AmongUsClient.Instance.AmHost;
+        bool hidden = Options.HideGameSettings.GetBool() && !host;
+        int language = TranslationController.InstanceExists
+            ? (int)TranslationController.Instance.currentLanguage.languageID : -1;
+        Rebuild(hidden ? string.Empty : GetVanillaSettings(), language, hidden, host);
+        return CurrentText();
+    }
 
-        // Mod Settings
-        sb.Append($"{Options.GameMode.GetName()}: {Options.GameMode.GetString()}\n\n");
-        if (Options.HideGameSettings.GetBool() && !AmongUsClient.Instance.AmHost)
-        {
-            sb.Append($"<color=#ff0000>{GetString("Message.HideGameSettings")}</color>");
-        }
+    private static string GetVanillaSettings() => GameOptionsManager.Instance.CurrentGameOptions
+        .ToHudString(GameData.Instance ? GameData.Instance.PlayerCount : 10);
+
+    private static void Rebuild(string vanilla, int language, bool hidden, bool host)
+    {
+        cachedHidden = hidden;
+        cachedHost = host;
+        cachedPreset = OptionItem.CurrentPreset;
+        cachedLanguage = language;
+        cachedOwnLanguage = Main.ForceOwnLanguage.Value;
+        cachedRoleLanguage = Main.ForceOwnLanguageRoleName.Value;
+        vanillaSettings = vanilla;
+        optionValues = new int[OptionItem.AllOptions.Count];
+        for (int i = 0; i < optionValues.Length; i++) optionValues[i] = OptionItem.AllOptions[i].CurrentValue;
+
+        List<string> sections = [];
+        if (hidden)
+            sections.Add($"<color=#ff0000>{GetString("Message.HideGameSettings")}</color>");
         else
         {
-            //Standardの時のみ実行
+            sections.Add(vanilla);
+            StringBuilder sb = new();
+            sb.Append($"{Options.GameMode.GetName()}: {Options.GameMode.GetString()}\n\n");
             if (Options.CurrentGameMode == CustomGameMode.Standard)
             {
-                //有効な役職一覧
-                //sb.Append($"<color={Utils.GetRoleColorCode(CustomRoles.GM)}>{Utils.GetRoleName(CustomRoles.GM)}:</color> {Options.EnableGM.GetString()}\n\n");
                 sb.Append(GetString("ActiveRolesList")).Append('\n');
-                foreach (var kvp in Options.CustomRoleSpawnChances.ToArray())
-                    if (kvp.Value.GameMode is CustomGameMode.Standard or CustomGameMode.All && kvp.Value.GetBool()) //スタンダードか全てのゲームモードで表示する役職
-                    {
-                        string mode = kvp.Value.GetString();
-                        if (kvp.Key is CustomRoles.Lovers) mode = Utils.GetChance(Options.LoverSpawnChances.GetInt());
-                        else if (kvp.Key.IsAdditionRole() && Options.CustomAdtRoleSpawnRate.ContainsKey(kvp.Key))
-                        {
-                            mode = Utils.GetChance(Options.CustomAdtRoleSpawnRate[kvp.Key].GetFloat());
-
-                        }
-                        sb.Append($"{Utils.ColorString(Utils.GetRoleColor(kvp.Key), Utils.GetRoleName(kvp.Key))}: {mode}×{kvp.Key.GetCount()}\n"); 
-                    }
-                pages.Add(sb.ToString() + "\n\n");
-                sb.Clear();
+                foreach (var kvp in Options.CustomRoleSpawnChances)
+                {
+                    if (kvp.Value.GameMode is not (CustomGameMode.Standard or CustomGameMode.All) || !kvp.Value.GetBool()) continue;
+                    string mode = kvp.Value.GetString();
+                    if (kvp.Key is CustomRoles.Lovers) mode = Utils.GetChance(Options.LoverSpawnChances.GetInt());
+                    else if (kvp.Key.IsAdditionRole() && Options.CustomAdtRoleSpawnRate.TryGetValue(kvp.Key, out var rate))
+                        mode = Utils.GetChance(rate.GetFloat());
+                    sb.Append($"{Utils.ColorString(Utils.GetRoleColor(kvp.Key), Utils.GetRoleName(kvp.Key))}: {mode}×{kvp.Key.GetCount()}\n");
+                }
             }
-            //有効な役職と詳細設定一覧
-            pages.Add("");
-            //nameAndValue(Options.EnableGM);
-            foreach (var kvp in Options.CustomRoleSpawnChances.ToArray())
+            sections.Add(sb.ToString());
+            sb.Clear();
+            foreach (var kvp in Options.CustomRoleSpawnChances)
             {
                 if (!kvp.Key.IsEnable() || kvp.Value.IsHiddenOn(Options.CurrentGameMode)) continue;
-                sb.Append('\n');
                 sb.Append($"{Utils.ColorString(Utils.GetRoleColor(kvp.Key), Utils.GetRoleName(kvp.Key))}: {kvp.Value.GetString()}×{kvp.Key.GetCount()}\n");
-                ShowChildren(kvp.Value, ref sb, Utils.GetRoleColor(kvp.Key).ShadeColor(-0.5f), 1);
-                string rule = Utils.ColorString(Palette.ImpostorRed.ShadeColor(-0.5f), "┣ ");
-                string ruleFooter = Utils.ColorString(Palette.ImpostorRed.ShadeColor(-0.5f), "┗ ");
+                ShowChildren(kvp.Value, sb, Utils.GetRoleColor(kvp.Key).ShadeColor(-0.5f), 1);
+                sections.Add(sb.ToString());
+                sb.Clear();
             }
-
-            foreach (var opt in OptionItem.AllOptions.Where(x => x.Id > 59999 && !x.IsHiddenOn(Options.CurrentGameMode) && x.Parent == null && !x.IsText).ToArray())
+            foreach (var opt in OptionItem.AllOptions)
             {
-                if (opt.IsHeader) sb.Append('\n');
+                if (opt.Id <= 59999 || opt.IsHiddenOn(Options.CurrentGameMode) || opt.Parent != null || opt.IsText) continue;
                 sb.Append($"{opt.GetName()}: {opt.GetString()}\n");
-                if (opt.GetBool())
-                    ShowChildren(opt, ref sb, Color.white, 1);
+                if (opt.GetBool()) ShowChildren(opt, sb, Color.white, 1);
+                sections.Add(sb.ToString());
+                sb.Clear();
             }
-            //Onの時に子要素まで表示するメソッド
-            //void nameAndValue(OptionItem o) => sb.Append($"{o.GetName()}: {o.GetString()}\n");
         }
-        //1ページにつき35行までにする処理
-        List<string> tmpList = new(sb.ToString().Split("\n\n"));
-        foreach (var tmp in tmpList.ToArray())
+        pages = SettingsPreviewPagination.Build(sections, 32, pageFits);
+        currentPage = Math.Clamp(currentPage, 0, pages.Count - 1);
+        renderedPage = -1;
+    }
+
+    private static string CurrentText()
+    {
+        currentPage = Math.Clamp(currentPage, 0, pages.Count - 1);
+        if (renderedPage != currentPage)
         {
-            if (pages[^1].Count(c => c == '\n') + 1 + tmp.Count(c => c == '\n') + 1 > 35)
-                pages.Add(tmp + "\n\n");
-            else pages[^1] += tmp + "\n\n";
+            renderedPage = currentPage;
+            renderedText = $"{pages[currentPage]}\n\n{GetString("PressTabToNextPage")} ({currentPage + 1}/{pages.Count})";
         }
-        if (currentPage >= pages.Count) currentPage = pages.Count - 1; //現在のページが最大ページ数を超えていれば最後のページに修正
-        return $"{pages[currentPage]}{GetString("PressTabToNextPage")}({currentPage + 1}/{pages.Count})";
+        return renderedText;
     }
-    public static void Next()
+
+    public static void Next() => SelectPage((currentPage + 1) % Math.Max(1, pages.Count));
+
+    public static void SelectPage(int page)
     {
-        currentPage++;
-        if (currentPage >= pages.Count) currentPage = 0; //現在のページが最大ページを超えていれば最初のページに
+        if (page >= 0 && page < pages.Count) currentPage = page;
     }
-    private static void ShowChildren(OptionItem option, ref StringBuilder sb, Color color, int deep = 0)
+
+    private static void ShowChildren(OptionItem option, StringBuilder sb, Color color, int depth)
     {
-        foreach (var opt in option.Children.Select((v, i) => new { Value = v, Index = i + 1 }))
+        for (int i = 0; i < option.Children.Count; i++)
         {
-            if (opt.Value.Name == "Maximum") continue; //Maximumの項目は飛ばす
-            sb.Append(string.Concat(Enumerable.Repeat(Utils.ColorString(color, "┃"), deep - 1)));
-            sb.Append(Utils.ColorString(color, opt.Index == option.Children.Count ? "┗ " : "┣ "));
-            sb.Append($"{opt.Value.GetName()}: {opt.Value.GetString()}\n");
-            if (opt.Value.GetBool()) ShowChildren(opt.Value, ref sb, color, deep + 1);
+            var child = option.Children[i];
+            if (child.Name == "Maximum" || child.IsHiddenOn(Options.CurrentGameMode)) continue;
+            for (int indent = 1; indent < depth; indent++) sb.Append(Utils.ColorString(color, "┃"));
+            sb.Append(Utils.ColorString(color, i == option.Children.Count - 1 ? "┗ " : "┣ "));
+            sb.Append($"{child.GetName()}: {child.GetString()}\n");
+            if (child.GetBool()) ShowChildren(child, sb, color, depth + 1);
         }
     }
 }

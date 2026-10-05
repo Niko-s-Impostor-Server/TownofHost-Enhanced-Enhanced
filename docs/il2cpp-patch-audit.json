@@ -1,5 +1,5 @@
 {
-  "generated_utc": "2026-10-05T05:11:13.335923+00:00",
+  "generated_utc": "2026-10-05T09:18:05.721029+00:00",
   "target": {
     "version": "2026.8.18",
     "platform": "Itch Windows x86",
@@ -28,15 +28,15 @@
     "retrieved_utc": "2026-10-05T03:12:39.389633+00:00",
     "fetch_mode": "offline-cache"
   },
-  "source_attribute_count": 290,
-  "target_count": 268,
-  "unique_target_count": 229,
+  "source_attribute_count": 293,
+  "target_count": 271,
+  "unique_target_count": 231,
   "matching_counts": {
-    "exact-signature": 267,
+    "exact-signature": 270,
     "not-in-dataset": 1
   },
   "risk_counts": {
-    "no-site-warning": 244,
+    "no-site-warning": 247,
     "potential-inline-comparison-only": 23,
     "uncovered-review": 1
   },
@@ -45,6 +45,7 @@
     "Modules/BanManager.cs": "8cb20f3f36d51432419658515a225758fd06fb2235228e7c3548eaf59ec525cc",
     "Modules/DisableDevice.cs": "1cc8c67f84dca9a8c5a4a0ef2a55a448ad7bfe251ffe97389de45c9a91f68a21",
     "Modules/GuessManager.cs": "97330c17e6f759013ae1ea449a1b4326b0e754109be084ae63aa0a4e3c1c3a7d",
+    "Modules/LobbySettingsPreview.cs": "d89243a5ddd806558768de8b939ca430ea0849d29113d91712e6700787cbb6e0",
     "Modules/ModUpdater.cs": "af7b7cc11021f2d378a4dabe8bd9fc0a38bdbde9f1941e468a6e428c9319e3cd",
     "Modules/OptionHolder.cs": "cabf4d9d4eba94ab2731fbb658f20b98d8544bafdfdf3649df9859ebe74e5ee9",
     "Modules/RPC.cs": "b08f64bc1e3205ef8d9ca2ec4c34dd6000e887f2940f4e7c80db2e368770f8da",
@@ -60,7 +61,7 @@
     "Patches/ClientOptionsPatch.cs": "2bd49e5a8d9520f6d55829ee8e5a30837e96ad3459dd0da74b397c807a28d675",
     "Patches/ClientPatch.cs": "bb4d5c479685a50afa13c5aaeb08cdf16a09f68bf7bba5972c11ee51515d17a5",
     "Patches/ControlPatch.cs": "6131625984a039411d5b77397ffa8858ecfa050acc80b0361656a055d21549cc",
-    "Patches/CredentialsPatch.cs": "c933d39f584d3d891ea3b02abcb77c946545cbb7a4e48f776f9c784246400299",
+    "Patches/CredentialsPatch.cs": "1c1a828d4c099abf638a91fd4383723c0d66b973a2bf88d27aa089f2b6a9583f",
     "Patches/CustomRpcLifecyclePatch.cs": "7bf6d618c7cea107660927441107a83fef0cb6b6b8e8b16ed10f69212208a2d1",
     "Patches/DeconSystemPatch.cs": "a389584af42288201a5b5d9c9e2973335b75cb6462bb0e03e407b1f5019108f4",
     "Patches/DialogueBoxPatch.cs": "cebeffe677ac46c714312ee3f4dc21119c40d9a472467044fb0b31d0b5acfe43",
@@ -71,9 +72,9 @@
     "Patches/ExilePatch.cs": "7639da8db689b35d231c65cfb96a0b792b64f3cf4321ba521e2dd1d05cccef33",
     "Patches/FreeplayPatch.cs": "0d5ad14853e3652fb6bf6049ca776e61e2a219e3695d7a2ef2a38db3f5265fb8",
     "Patches/GameManagerPatch.cs": "b06f1fc95f0b4f4b608792714dedc6bb814881068f373fc99912592c52ef8f5c",
-    "Patches/GameOptionsMenuPatch.cs": "3424890607b140f09fce8fb22b48f2b6e080627978f939812b51b1a16a6b7b63",
+    "Patches/GameOptionsMenuPatch.cs": "f0c085ad4f91eea611ee8cf33bdd16062f6da2b61a900f9591dfd6a510057ea2",
     "Patches/GameOptionsPatch.cs": "cf7e23a4f691edf8bcfac19861c251f8f4b24d21de54bd6772a63371068afc80",
-    "Patches/GameSettingMenuPatch.cs": "4a23b06d42729d70cf5983d368b47e3905d852c92e19985b491adc3b10220e18",
+    "Patches/GameSettingMenuPatch.cs": "e55ce000a9eb406abb5ca078d15f47a81fe1f378c3687cf33745448242893d5b",
     "Patches/GameStartManagerPatch.cs": "b3d0b6689fce1c48ca13e30d942f6f0812f6a6709f3fe4243741e9db16094e56",
     "Patches/GuardAngelPatch.cs": "5e65dcbb41eb8cb89fbeff39232b1de614f3a0c906ee008adfaff6539390188c",
     "Patches/HashRandomPatch.cs": "de6816d4d63f74629755d7c27a6f0eba06a0230d31bc0caff536fd3795d3dd9f",
@@ -375,6 +376,135 @@
           "MonoCount": 0,
           "XrefCount": 0,
           "ThisCount": 2,
+          "Type": "Method",
+          "Tags": [
+            "matched"
+          ],
+          "MonoUsages": [],
+          "XrefUsages": []
+        }
+      ],
+      "matching": "exact-signature",
+      "tags": [
+        "matched"
+      ],
+      "empty_body": false,
+      "coroutine_factory": false,
+      "risk": "no-site-warning"
+    },
+    {
+      "file": "Modules/LobbySettingsPreview.cs",
+      "line": 148,
+      "patch_class": "LobbySettingsPreviewUpdatePatch",
+      "target_type": "HudManager",
+      "target_method": "Update",
+      "argument_types": null,
+      "attribute": "[HarmonyPatch(typeof(HudManager), nameof(HudManager.Update))]",
+      "source_candidates": [
+        {
+          "signature": "HudManager::Update(void)",
+          "parameter_types": [],
+          "file": "D:\\SharedUserFiles\\TestDesktop\\opencode-chat\\assembly-compare\\src-2026.8.18\\HudManager.cs",
+          "line": 348,
+          "return_type": "void",
+          "empty_body": false,
+          "coroutine_factory": false
+        }
+      ],
+      "website_candidates": [
+        {
+          "signature": "HudManager::Update(void)",
+          "parameter_types": [],
+          "ReturnType": "System::Void",
+          "MonoCount": 0,
+          "XrefCount": 0,
+          "ThisCount": 23,
+          "Type": "Method",
+          "Tags": [
+            "matched"
+          ],
+          "MonoUsages": [],
+          "XrefUsages": []
+        }
+      ],
+      "matching": "exact-signature",
+      "tags": [
+        "matched"
+      ],
+      "empty_body": false,
+      "coroutine_factory": false,
+      "risk": "no-site-warning"
+    },
+    {
+      "file": "Modules/LobbySettingsPreview.cs",
+      "line": 154,
+      "patch_class": "LobbySettingsPreviewHudDestroyPatch",
+      "target_type": "HudManager",
+      "target_method": "OnDestroy",
+      "argument_types": null,
+      "attribute": "[HarmonyPatch(typeof(HudManager), nameof(HudManager.OnDestroy))]",
+      "source_candidates": [
+        {
+          "signature": "HudManager::OnDestroy(void)",
+          "parameter_types": [],
+          "file": "D:\\SharedUserFiles\\TestDesktop\\opencode-chat\\assembly-compare\\src-2026.8.18\\HudManager.cs",
+          "line": 598,
+          "return_type": "void",
+          "empty_body": false,
+          "coroutine_factory": false
+        }
+      ],
+      "website_candidates": [
+        {
+          "signature": "HudManager::OnDestroy(void)",
+          "parameter_types": [],
+          "ReturnType": "System::Void",
+          "MonoCount": 0,
+          "XrefCount": 0,
+          "ThisCount": 4,
+          "Type": "Method",
+          "Tags": [
+            "matched"
+          ],
+          "MonoUsages": [],
+          "XrefUsages": []
+        }
+      ],
+      "matching": "exact-signature",
+      "tags": [
+        "matched"
+      ],
+      "empty_body": false,
+      "coroutine_factory": false,
+      "risk": "no-site-warning"
+    },
+    {
+      "file": "Modules/LobbySettingsPreview.cs",
+      "line": 160,
+      "patch_class": "LobbySettingsPreviewLobbyDestroyPatch",
+      "target_type": "LobbyBehaviour",
+      "target_method": "OnDestroy",
+      "argument_types": null,
+      "attribute": "[HarmonyPatch(typeof(LobbyBehaviour), nameof(LobbyBehaviour.OnDestroy))]",
+      "source_candidates": [
+        {
+          "signature": "LobbyBehaviour::OnDestroy(void)",
+          "parameter_types": [],
+          "file": "D:\\SharedUserFiles\\TestDesktop\\opencode-chat\\assembly-compare\\src-2026.8.18\\LobbyBehaviour.cs",
+          "line": 84,
+          "return_type": "void",
+          "empty_body": false,
+          "coroutine_factory": false
+        }
+      ],
+      "website_candidates": [
+        {
+          "signature": "LobbyBehaviour::OnDestroy(void)",
+          "parameter_types": [],
+          "ReturnType": "System::Void",
+          "MonoCount": 0,
+          "XrefCount": 0,
+          "ThisCount": 1,
           "Type": "Method",
           "Tags": [
             "matched"
@@ -2457,7 +2587,7 @@
     },
     {
       "file": "Patches/CredentialsPatch.cs",
-      "line": 276,
+      "line": 277,
       "patch_class": "VersionShowerStartPatch",
       "target_type": "VersionShower",
       "target_method": "Start",
@@ -2500,7 +2630,7 @@
     },
     {
       "file": "Patches/CredentialsPatch.cs",
-      "line": 352,
+      "line": 353,
       "patch_class": "ModManagerLateUpdatePatch",
       "target_type": "ModManager",
       "target_method": "LateUpdate",
@@ -3616,7 +3746,7 @@
     },
     {
       "file": "Patches/GameOptionsMenuPatch.cs",
-      "line": 149,
+      "line": 148,
       "patch_class": "GameOptionsMenuPatch",
       "target_type": "GameOptionsMenu",
       "target_method": "Initialize",
@@ -3663,7 +3793,7 @@
     },
     {
       "file": "Patches/GameOptionsMenuPatch.cs",
-      "line": 181,
+      "line": 180,
       "patch_class": "GameOptionsMenuPatch",
       "target_type": "GameOptionsMenu",
       "target_method": "CreateSettings",
@@ -3710,7 +3840,7 @@
     },
     {
       "file": "Patches/GameOptionsMenuPatch.cs",
-      "line": 440,
+      "line": 447,
       "patch_class": "GameOptionsMenuPatch",
       "target_type": "GameOptionsMenu",
       "target_method": "ValueChanged",
@@ -3757,7 +3887,7 @@
     },
     {
       "file": "Patches/GameOptionsMenuPatch.cs",
-      "line": 556,
+      "line": 563,
       "patch_class": "ToggleOptionPatch",
       "target_type": "ToggleOption",
       "target_method": "Initialize",
@@ -3800,7 +3930,7 @@
     },
     {
       "file": "Patches/GameOptionsMenuPatch.cs",
-      "line": 569,
+      "line": 576,
       "patch_class": "ToggleOptionPatch",
       "target_type": "ToggleOption",
       "target_method": "UpdateValue",
@@ -3845,7 +3975,7 @@
     },
     {
       "file": "Patches/GameOptionsMenuPatch.cs",
-      "line": 600,
+      "line": 607,
       "patch_class": "NumberOptionPatch",
       "target_type": "NumberOption",
       "target_method": "Initialize",
@@ -3888,7 +4018,7 @@
     },
     {
       "file": "Patches/GameOptionsMenuPatch.cs",
-      "line": 642,
+      "line": 649,
       "patch_class": "NumberOptionPatch",
       "target_type": "NumberOption",
       "target_method": "UpdateValue",
@@ -3937,7 +4067,7 @@
     },
     {
       "file": "Patches/GameOptionsMenuPatch.cs",
-      "line": 668,
+      "line": 675,
       "patch_class": "NumberOptionPatch",
       "target_type": "NumberOption",
       "target_method": "FixedUpdate",
@@ -3980,7 +4110,7 @@
     },
     {
       "file": "Patches/GameOptionsMenuPatch.cs",
-      "line": 690,
+      "line": 697,
       "patch_class": "NumberOptionPatch",
       "target_type": "NumberOption",
       "target_method": "Increase",
@@ -4023,7 +4153,7 @@
     },
     {
       "file": "Patches/GameOptionsMenuPatch.cs",
-      "line": 713,
+      "line": 720,
       "patch_class": "NumberOptionPatch",
       "target_type": "NumberOption",
       "target_method": "Decrease",
@@ -4066,7 +4196,7 @@
     },
     {
       "file": "Patches/GameOptionsMenuPatch.cs",
-      "line": 740,
+      "line": 747,
       "patch_class": "StringOptionPatch",
       "target_type": "StringOption",
       "target_method": "Initialize",
@@ -4109,7 +4239,7 @@
     },
     {
       "file": "Patches/GameOptionsMenuPatch.cs",
-      "line": 813,
+      "line": 820,
       "patch_class": "StringOptionPatch",
       "target_type": "StringOption",
       "target_method": "UpdateValue",
@@ -4158,7 +4288,7 @@
     },
     {
       "file": "Patches/GameOptionsMenuPatch.cs",
-      "line": 845,
+      "line": 852,
       "patch_class": "StringOptionPatch",
       "target_type": "StringOption",
       "target_method": "FixedUpdate",
@@ -4201,7 +4331,7 @@
     },
     {
       "file": "Patches/GameOptionsMenuPatch.cs",
-      "line": 874,
+      "line": 881,
       "patch_class": "StringOptionPatch",
       "target_type": "StringOption",
       "target_method": "Increase",
@@ -4244,7 +4374,7 @@
     },
     {
       "file": "Patches/GameOptionsMenuPatch.cs",
-      "line": 887,
+      "line": 894,
       "patch_class": "StringOptionPatch",
       "target_type": "StringOption",
       "target_method": "Decrease",

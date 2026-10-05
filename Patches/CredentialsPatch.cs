@@ -168,6 +168,7 @@ class PingTrackerUpdatePatch
         if (hud.Chat && hud.Chat.chatButton) AddStatusObstacles(hud.Chat.chatButton.gameObject, camera);
         AddStatusObstacles(hud.TaskStuff, camera);
         if (hud.TaskPanel) AddStatusObstacles(hud.TaskPanel.gameObject, camera);
+        if (LobbySettingsPreview.Text) AddStatusObstacles(LobbySettingsPreview.Text.gameObject, camera);
         if (meeting)
         {
             if (meeting.TitleText) AddStatusObstacles(meeting.TitleText.gameObject, camera);

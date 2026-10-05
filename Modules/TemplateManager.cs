@@ -177,16 +177,8 @@ public static class TemplateManager
         }
         else foreach (string x in sendList.ToArray())
             {
-                var title = TryGetTitle(x, out var HasTitle);
-                var rmv = x;
-                if (HasTitle)
-                {
-                    rmv = title != "" ? x.Remove(x.IndexOf("<title>"), x.IndexOf("</title>")) : "";
-                    rmv = rmv.Replace("<title>", "");
-                    rmv = rmv.Replace("</title>", "");
-                }
-
-                Utils.SendMessage(ApplyReplaceDictionary(rmv), playerId, title, noReplay: true);
+                var (title, body) = ParseTemplate(x);
+                Utils.SendMessage(ApplyReplaceDictionary(body), playerId, ApplyReplaceDictionary(title), noReplay: true);
             }
     }
 
@@ -216,23 +208,22 @@ public static class TemplateManager
             return text;
         }
     }
-    private static string TryGetTitle(string Text, out bool Contains)
+
+    internal static (string Title, string Body) ParseTemplate(string text)
     {
-        int start = Text.IndexOf("<title>");
-        int end = Text.IndexOf("</title>");
-        var contains = start != -1 && end != -1 && start < end;
-        Contains = contains;
-        string title = "";
+        const string open = "<title>";
+        const string close = "</title>";
+        int start = text.IndexOf(open, StringComparison.Ordinal);
+        if (start < 0) return (string.Empty, text);
+        int contentStart = start + open.Length;
+        int end = text.IndexOf(close, contentStart, StringComparison.Ordinal);
+        if (end < 0) return (string.Empty, text);
 
-        if (contains)
-        {
-            title = Text.Substring(start, end);
-            title = title.Replace("<title>", "");
-            title = title.Replace("</title>", "");
-            
-        }
-
-
-        return title;
+        // Compatibility for the exact typo shipped in the old default template.
+        // Do not overwrite the user's file or rewrite other rich-text tags.
+        string title = text[contentStart..end].Replace(
+            "<color=#ffc0cb【欢迎来到 Town of Host Enhanced】",
+            "<color=#ffc0cb>【欢迎来到 Town of Host Enhanced】", StringComparison.Ordinal);
+        return (title, text.Remove(start, end + close.Length - start));
     }
 }
