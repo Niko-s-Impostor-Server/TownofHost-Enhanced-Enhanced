@@ -243,6 +243,10 @@ class CheckMurderPatch
             return false;
         }
 
+        // Check the optional inactivity shield before first-kill conversion or
+        // target-role callbacks can mutate an otherwise protected player.
+        if (AfkMonitor.IsShielded(target)) return false;
+
         var killerRole = killer.GetCustomRole();
 
         var targetRoleClass = target.GetRoleClass();
@@ -1932,6 +1936,8 @@ class PlayerControlLocalSetRolePatch
                 RoleTypes.Noisemaker => CustomRoles.NoisemakerTOHE,
                 RoleTypes.Phantom => CustomRoles.PhantomTOHE,
                 RoleTypes.Tracker => CustomRoles.TrackerTOHE,
+                RoleTypes.Detective => CustomRoles.DetectiveTOHE,
+                RoleTypes.Viper => CustomRoles.ViperTOHE,
                 _ => CustomRoles.NotAssigned,
             };
             if (modRole != CustomRoles.NotAssigned)

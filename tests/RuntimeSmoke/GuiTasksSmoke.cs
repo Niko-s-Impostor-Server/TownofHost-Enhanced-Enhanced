@@ -20,7 +20,9 @@ internal sealed class GuiTasksSmoke
     private readonly HashSet<CustomRoles> visited = new();
     private readonly List<DirectoryCursor> cursors = new();
     private readonly Dictionary<byte, int> nativeTaskCounts = new();
-    private static readonly RoleTypes[] UnsupportedNativeRoles = [RoleTypes.Detective, RoleTypes.Viper, RoleTypes.Judge];
+    private readonly HashSet<RoleTypes> expectedNativeRoles = new();
+    private RoleTeamTypes expectedNativeTeam;
+    private static readonly RoleTypes[] UnsupportedNativeRoles = [RoleTypes.Judge];
     private readonly Dictionary<byte, string> rejectionTasks = new();
     private GameObject? rejectionOwner;
     private CustomRoles rejectionCustomRole;
@@ -187,14 +189,15 @@ internal sealed class GuiTasksSmoke
             stage = 10; frames = 0;
             return false;
         }
-        if (stage is 10 or 11)
+        if (stage is 10 or 11 or 13)
         {
             if (++frames < 3) return false;
-            var native = stage == 10 ? RoleTypes.Engineer : RoleTypes.Crewmate;
-            var custom = stage == 10 ? CustomRoles.Engineer : CustomRoles.Crewmate;
+            var native = stage == 10 ? RoleTypes.Engineer : stage == 13 ? RoleTypes.Detective : RoleTypes.Crewmate;
+            var custom = stage == 10 ? CustomRoles.Engineer : stage == 13 ? CustomRoles.DetectiveTOHE : CustomRoles.Crewmate;
             if (!CheckNativeRoleSelection(native, custom)) return false;
             checks.Add(new { check = "supported_native_button_role_and_lifecycle", pass, role = native.ToString() });
-            if (stage == 10) { SelectNativeRole(RoleTypes.Crewmate, CustomRoles.Crewmate); stage = 11; }
+            if (stage == 10) { SelectNativeRole(RoleTypes.Detective, CustomRoles.DetectiveTOHE); stage = 13; }
+            else if (stage == 13) { SelectNativeRole(RoleTypes.Crewmate, CustomRoles.Crewmate); stage = 11; }
             else { OpenNativeRoleFolder(RoleTeamTypes.Impostor); stage = 12; }
             frames = 0;
             return false;
@@ -203,6 +206,25 @@ internal sealed class GuiTasksSmoke
         {
             if (++frames < 2) return false;
             if (!InspectNativeRolePage(RoleTeamTypes.Impostor)) return false;
+            SelectNativeRole(RoleTypes.Viper, CustomRoles.ViperTOHE);
+            stage = 14; frames = 0;
+            return false;
+        }
+        if (stage == 14)
+        {
+            if (++frames < 3) return false;
+            if (!CheckNativeRoleSelection(RoleTypes.Viper, CustomRoles.ViperTOHE)) return false;
+            checks.Add(new { check = "supported_native_button_role_and_lifecycle", pass, role = RoleTypes.Viper.ToString() });
+            OpenNativeRoleFolder(RoleTeamTypes.Crewmate);
+            SelectNativeRole(RoleTypes.Crewmate, CustomRoles.Crewmate);
+            stage = 15; frames = 0;
+            return false;
+        }
+        if (stage == 15)
+        {
+            if (++frames < 3) return false;
+            if (!CheckNativeRoleSelection(RoleTypes.Crewmate, CustomRoles.Crewmate)) return false;
+            checks.Add(new { check = "native_viper_to_crew_cleanup", pass });
             RestoreAndClose();
             return false;
         }
@@ -231,22 +253,42 @@ internal sealed class GuiTasksSmoke
         }
         if (selected == null || !selected || !CheckClickable(selected.Button))
             throw new InvalidOperationException("Native role team folder unavailable");
+        if (selected.SubFolders.Count != 0 || selected.TaskChildren.Count != 0)
+            throw new InvalidOperationException("Native role folder contents invalid before click");
+        // ShowFolder retains this clone in Hierarchy but also schedules its
+        // ActiveItems owner for destruction. Capture enum data while it is live.
+        expectedNativeTeam = team;
+        expectedNativeRoles.Clear();
+        foreach (var role in selected.RoleChildren)
+            if (role && !UnsupportedNativeRoles.Contains(role.Role)) expectedNativeRoles.Add(role.Role);
         selected.OnClick();
     }
 
     private bool InspectNativeRolePage(RoleTeamTypes team)
     {
+        var currentOwner = owner!;
+        if (expectedNativeTeam != team || expectedNativeRoles.Count == 0)
+            return Fail("native_role_folder_snapshot_missing");
+        int registeredRoles = DestroyableSingleton<RoleManager>.Instance.AllRoles.Count;
+        checks.Add(new { check = "native_role_page_inventory", pass, team = team.ToString(),
+            active_items = currentOwner.ActiveItems.Count, expected_role_count = expectedNativeRoles.Count,
+            registered_native_role_count = registeredRoles, roles = expectedNativeRoles.Select(role => role.ToString()).ToArray() });
         var roles = new HashSet<RoleTypes>();
-        foreach (var item in owner!.ActiveItems)
+        foreach (var item in currentOwner.ActiveItems)
         {
             var button = item.GetComponent<TaskAddButton>();
             if (!button || !button.Role || ShowFolderPatch.TryGetCustomRole(button, out _) || button.Role.TeamType != team ||
                 !roles.Add(button.Role.Role)) return Fail("native_role_page_contents");
             if (UnsupportedNativeRoles.Contains(button.Role.Role)) return Fail("unsupported_native_role_exposed");
             if (!CheckClickable(button.Button)) return false;
+            foreach (var renderer in item.GetComponentsInChildren<Renderer>())
+                if (renderer.enabled && !BoundsVisible(renderer.bounds)) return Fail("native_role_renderer_outside_viewport");
         }
-        if (roles.Count == 0 || owner.ActiveItems.Count > ShowFolderPatch.MaxPageItems) return Fail("native_role_page_empty_or_unbounded");
-        if (ControllerManager.Instance.CurrentUiState.BackButton != owner.FolderBackButton) return Fail("native_role_folder_back_button");
+        // MaxPageItems bounds only the added custom role tree. Native ShowFolder
+        // lays out every RoleChild across rows, including the seventh crew role.
+        if (roles.Count == 0 || currentOwner.ActiveItems.Count > registeredRoles || !roles.SetEquals(expectedNativeRoles))
+            return Fail("native_role_page_empty_extra_or_incomplete");
+        if (ControllerManager.Instance.CurrentUiState.BackButton != currentOwner.FolderBackButton) return Fail("native_role_folder_back_button");
         checks.Add(new { check = "native_role_page_excludes_unsupported", pass, team = team.ToString(), controls = roles.Count });
         return true;
     }
@@ -300,7 +342,7 @@ internal sealed class GuiTasksSmoke
     {
         if (rejectionOwner == null || !rejectionOwner || rejectionOwner.activeInHierarchy || !RejectionStateUnchanged())
             return Fail("rejected_native_roles_changed_state_after_updates");
-        checks.Add(new { check = "three_native_addtask_calls_rejected_without_role_task_or_ui_mutation", pass,
+        checks.Add(new { check = "unsupported_native_addtask_calls_rejected_without_role_task_or_ui_mutation", pass,
             roles = UnsupportedNativeRoles.Select(role => role.ToString()).ToArray(), native_and_custom_role_unchanged = true,
             task_id_type_completion_and_instances_unchanged = true, ui_unchanged = true });
         return true;
@@ -328,9 +370,12 @@ internal sealed class GuiTasksSmoke
             !ReferenceEquals(playerState.RoleClass._state, playerState)) return Fail("supported_native_role_state_or_lifecycle");
         if (roleChanged && (ReferenceEquals(previousInstance, playerState.RoleClass) || previousInstance!.IsEnable))
             return Fail("supported_native_previous_role_not_removed");
+        bool previousStillUsed = TOHE.Main.PlayerStates.Values.Any(current => current.MainRole == previousRole);
+        if (roleChanged && !previousStillUsed && previousRole.GetStaticRoleClass().IsEnable)
+            return Fail("supported_native_previous_static_role_still_enabled");
         foreach (var current in PlayerControl.AllPlayerControls)
             if (current && current.Data != null && nativeTaskCounts.TryGetValue(current.PlayerId, out int count) && current.Data.Tasks.Count != count)
-                return Fail("native_tasks_changed_after_native_crew_selection");
+                return Fail("native_tasks_changed_after_native_role_selection");
         foreach (var item in owner!.ActiveItems)
         {
             var button = item.GetComponent<TaskAddButton>();

@@ -1,6 +1,6 @@
 # IL2CPP patch inline 风险审计
 
-生成时间：2026-10-05T09:18:05.721029+00:00。本报告根据当前源码自动生成；结构化记录见 [il2cpp-patch-audit.json](il2cpp-patch-audit.json)。
+生成时间：2026-10-05T09:48:36.340664+00:00。本报告根据当前源码自动生成；结构化记录见 [il2cpp-patch-audit.json](il2cpp-patch-audit.json)。
 
 目标是 Among Us **2026.8.18 / Itch Windows x86**。本机只读 GameAssembly.dll PE header：`0x14c` / `x86`，未启动游戏。网站实际提供的同日期数据是 **2026.8.18 / steam-x86 / 游戏版本 18.0.0**；该版本仅列出 `steam-x86`、`android-arm64`，没有 Itch。版本匹配：`true`；平台匹配：`false`。**Steam 标签只能用于筛选风险，不能据此断言 Itch 的方法被内联、被剥离或不可 patch。**
 
@@ -19,7 +19,7 @@
 
 ## 覆盖范围
 
-扫描得到 293 个未注释的 `HarmonyPatch` 属性，折叠 type-only 容器和 overload 选择器后为 271 个目标声明、231 个唯一目标。270 个声明按类型、方法名及参数签名匹配网站；1 个没有网站记录；未解析动态目标 0 个。当前没有 `TargetMethod/TargetMethods` 动态选择器。
+扫描得到 302 个未注释的 `HarmonyPatch` 属性，折叠 type-only 容器和 overload 选择器后为 278 个目标声明、236 个唯一目标。277 个声明按类型、方法名及参数签名匹配网站；1 个没有网站记录；未解析动态目标 0 个。当前没有 `TargetMethod/TargetMethods` 动态选择器。
 
 scanner 处理类/方法级属性、字符串方法名、显式 `Type[]`/单独 `typeof` 参数、继承声明、`MethodType.Getter/Setter`、`ref/out`、C# 与 IDA 基础类型别名，并排除行/块注释。未指定 overload 时采用实际 source signature；发现多个 overload 会标记 ambiguity 而不猜测。条件编译未求值；这份源码清单不能替代 Harmony 在目标运行时的最终 `MethodBase` 解析。所有源文件 SHA-256、完整目标签名、源码位置和网站调用列表保留在 JSON。
 
@@ -89,8 +89,8 @@ GameOptionsMenu 的 HideModMenu 在 owning ChangeTab 路径先 CancelBuild，再
 | Patches/MapPickerMenuPatch.cs:13 | `GameOptionsMapPicker::Initialize(int)` | 3/0 | False |
 | Patches/PhantomRolePatch.cs:53 | `PlayerControl::CheckVanish(void)` | 2/1 | False |
 | Patches/PhantomRolePatch.cs:106 | `PlayerControl::CheckAppear(bool)` | 2/1 | False |
-| Patches/PlayerControlPatch.cs:516 | `PlayerControl::RpcMurderPlayer(PlayerControl,bool)` | 4/2 | False |
-| Patches/PlayerControlPatch.cs:1715 | `PlayerControl::CmdCheckName(System::String)` | 1/0 | False |
+| Patches/PlayerControlPatch.cs:517 | `PlayerControl::RpcMurderPlayer(PlayerControl,bool)` | 4/2 | False |
+| Patches/PlayerControlPatch.cs:1716 | `PlayerControl::CmdCheckName(System::String)` | 1/0 | False |
 | Patches/ServerVersionPatch.cs:3 | `Constants::GetBroadcastVersion(void)` | 7/3 | False |
 | Patches/ShipStatusPatch.cs:74 | `ShipStatus::UpdateSystem(SystemTypes,PlayerControl,unsignedchar)` | 10/5 | False |
 | Patches/ShipStatusPatch.cs:271 | `ShipStatus::SpawnPlayer(PlayerControl,int,bool)` | 4/1 | False |
@@ -114,10 +114,10 @@ GameOptionsMenu 的 HideModMenu 在 owning ChangeTab 路径先 CancelBuild，再
 | Modules/LobbySettingsPreview.cs:160 | LobbySettingsPreviewLobbyDestroyPatch | `LobbyBehaviour::OnDestroy(void)` | matched | exact-signature |
 | Modules/ModUpdater.cs:31 | ModUpdater | `MainMenuManager::Start(void)` | matched | exact-signature |
 | Modules/OptionHolder.cs:24 | Options | `TranslationController::Initialize(void)` | matched | exact-signature |
-| Modules/RPC.cs:128 | ShouldProcessRpcPatch | `PlayerControl::ShouldProcessRpc(RpcCalls,unsignedchar)` | matched | exact-signature |
-| Modules/RPC.cs:144 | RPCHandlerPatch | `PlayerControl::HandleRpc(unsignedchar,Hazel::MessageReader)` | matched | exact-signature |
-| Modules/RPC.cs:774 | PlayerPhysicsRPCHandlerPatch | `PlayerPhysics::HandleRpc(unsignedchar,Hazel::MessageReader)` | matched | exact-signature |
-| Modules/RPC.cs:1154 | StartRpcImmediatelyPatch | `InnerNet::InnerNetClient::StartRpcImmediately(unsignedint,unsignedchar,Hazel::SendOption,int)` | used-by-inline | exact-signature |
+| Modules/RPC.cs:129 | ShouldProcessRpcPatch | `PlayerControl::ShouldProcessRpc(RpcCalls,unsignedchar)` | matched | exact-signature |
+| Modules/RPC.cs:145 | RPCHandlerPatch | `PlayerControl::HandleRpc(unsignedchar,Hazel::MessageReader)` | matched | exact-signature |
+| Modules/RPC.cs:779 | PlayerPhysicsRPCHandlerPatch | `PlayerPhysics::HandleRpc(unsignedchar,Hazel::MessageReader)` | matched | exact-signature |
+| Modules/RPC.cs:1159 | StartRpcImmediatelyPatch | `InnerNet::InnerNetClient::StartRpcImmediately(unsignedint,unsignedchar,Hazel::SendOption,int)` | used-by-inline | exact-signature |
 | Modules/Zoom.cs:8 | Zoom | `HudManager::Update(void)` | matched | exact-signature |
 | Patches/AirShipElectricalDoors.cs:38 | ElectricalDoorsInitializePatch | `ElectricalDoors::Initialize(void)` | matched | exact-signature |
 | Patches/AirshipStatus.cs:4 | AirshipStatusPrespawnStepPatch | `AirshipStatus::PrespawnStep(void)` | matched | exact-signature |
@@ -133,9 +133,9 @@ GameOptionsMenu 的 HideModMenu 在 owning ChangeTab 路径先 CancelBuild，再
 | Patches/ChatBubblePatch.cs:7 | ChatBubbleSetRightPatch | `ChatBubble::SetRight(void)` | matched | exact-signature |
 | Patches/ChatBubblePatch.cs:15 | ChatBubbleSetNamePatch | `ChatBubble::SetName(System::String,bool,bool,UnityEngine::Color)` | matched | exact-signature |
 | Patches/ChatCommandPatch.cs:20 | ChatCommands | `ChatController::SendChat(void)` | matched | exact-signature |
-| Patches/ChatCommandPatch.cs:3300 | ChatUpdatePatch | `ChatController::Update(void)` | matched | exact-signature |
-| Patches/ChatCommandPatch.cs:3383 | UpdateCharCountPatch | `FreeChatInputField::UpdateCharCount(void)` | matched | exact-signature |
-| Patches/ChatCommandPatch.cs:3398 | RpcSendChatPatch | `PlayerControl::RpcSendChat(System::String)` | matched | exact-signature |
+| Patches/ChatCommandPatch.cs:3303 | ChatUpdatePatch | `ChatController::Update(void)` | matched | exact-signature |
+| Patches/ChatCommandPatch.cs:3386 | UpdateCharCountPatch | `FreeChatInputField::UpdateCharCount(void)` | matched | exact-signature |
+| Patches/ChatCommandPatch.cs:3401 | RpcSendChatPatch | `PlayerControl::RpcSendChat(System::String)` | matched | exact-signature |
 | Patches/ChatControlPatch.cs:6 | ChatControllerUpdatePatch | `ChatController::Update(void)` | matched | exact-signature |
 | Patches/CheckGameEndPatch.cs:15 | CheckEndGameViaTasksForNormalPatch | `GameManager::CheckEndGameViaTasks(void)` | inlined | exact-signature |
 | Patches/CheckGameEndPatch.cs:24 | CheckTaskCompletionPatch | `GameManager::CheckTaskCompletion(void)` | matched | exact-signature |
@@ -189,10 +189,10 @@ GameOptionsMenu 的 HideModMenu 在 owning ChangeTab 路径先 CancelBuild，再
 | Patches/GameOptionsMenuPatch.cs:697 | NumberOptionPatch | `NumberOption::Increase(void)` | matched | exact-signature |
 | Patches/GameOptionsMenuPatch.cs:720 | NumberOptionPatch | `NumberOption::Decrease(void)` | matched | exact-signature |
 | Patches/GameOptionsMenuPatch.cs:747 | StringOptionPatch | `StringOption::Initialize(void)` | matched | exact-signature |
-| Patches/GameOptionsMenuPatch.cs:820 | StringOptionPatch | `StringOption::UpdateValue(void)` | matched | exact-signature |
-| Patches/GameOptionsMenuPatch.cs:852 | StringOptionPatch | `StringOption::FixedUpdate(void)` | matched | exact-signature |
-| Patches/GameOptionsMenuPatch.cs:881 | StringOptionPatch | `StringOption::Increase(void)` | matched | exact-signature |
-| Patches/GameOptionsMenuPatch.cs:894 | StringOptionPatch | `StringOption::Decrease(void)` | matched | exact-signature |
+| Patches/GameOptionsMenuPatch.cs:821 | StringOptionPatch | `StringOption::UpdateValue(void)` | matched | exact-signature |
+| Patches/GameOptionsMenuPatch.cs:853 | StringOptionPatch | `StringOption::FixedUpdate(void)` | matched | exact-signature |
+| Patches/GameOptionsMenuPatch.cs:882 | StringOptionPatch | `StringOption::Increase(void)` | matched | exact-signature |
+| Patches/GameOptionsMenuPatch.cs:895 | StringOptionPatch | `StringOption::Decrease(void)` | matched | exact-signature |
 | Patches/GameOptionsPatch.cs:3 | ChanceChangePatch | `RoleOptionSetting::UpdateValuesAndText(AmongUs::GameOptions::IRoleOptionsCollection)` | inlined | exact-signature |
 | Patches/GameSettingMenuPatch.cs:25 | GameSettingMenuPatch | `GameSettingMenu::Start(void)` | matched | exact-signature |
 | Patches/GameSettingMenuPatch.cs:325 | GameSettingMenuPatch | `GameSettingMenu::ChangeTab(int,bool)` | matched | exact-signature |
@@ -221,12 +221,12 @@ GameOptionsMenu 的 HideModMenu 在 owning ChangeTab 路径先 CancelBuild，再
 | Patches/HideNSeek/PlayerControlPatchHnS.cs:56 | MurderPlayerInHidenSeekPatch | `PlayerControl::MurderPlayer(PlayerControl,MurderResultFlags)` | matched | exact-signature |
 | Patches/HideNSeek/PlayerControlPatchHnS.cs:95 | FixedUpdateInHidenSeekPatch | `PlayerControl::FixedUpdate(void)` | matched | exact-signature |
 | Patches/HudPatch.cs:11 | HudManagerPatch | `HudManager::Update(void)` | matched | exact-signature |
-| Patches/HudPatch.cs:176 | ToggleHighlightPatch | `PlayerControl::ToggleHighlight(bool,RoleTeamTypes)` | used-by-inline | exact-signature |
-| Patches/HudPatch.cs:192 | SetVentOutlinePatch | `Vent::SetOutline(bool,bool)` | matched | exact-signature |
-| Patches/HudPatch.cs:205 | SetHudActivePatch | `HudManager::SetHudActive(PlayerControl,RoleBehaviour,bool)` | matched | exact-signature |
-| Patches/HudPatch.cs:234 | VentButtonDoClickPatch | `VentButton::DoClick(void)` | matched | exact-signature |
-| Patches/HudPatch.cs:249 | MapBehaviourShowPatch | `MapBehaviour::Show(MapOptions)` | matched | exact-signature |
-| Patches/HudPatch.cs:267 | TaskPanelBehaviourPatch | `TaskPanelBehaviour::SetTaskText(System::String)` | matched | exact-signature |
+| Patches/HudPatch.cs:178 | ToggleHighlightPatch | `PlayerControl::ToggleHighlight(bool,RoleTeamTypes)` | used-by-inline | exact-signature |
+| Patches/HudPatch.cs:194 | SetVentOutlinePatch | `Vent::SetOutline(bool,bool)` | matched | exact-signature |
+| Patches/HudPatch.cs:207 | SetHudActivePatch | `HudManager::SetHudActive(PlayerControl,RoleBehaviour,bool)` | matched | exact-signature |
+| Patches/HudPatch.cs:236 | VentButtonDoClickPatch | `VentButton::DoClick(void)` | matched | exact-signature |
+| Patches/HudPatch.cs:251 | MapBehaviourShowPatch | `MapBehaviour::Show(MapOptions)` | matched | exact-signature |
+| Patches/HudPatch.cs:269 | TaskPanelBehaviourPatch | `TaskPanelBehaviour::SetTaskText(System::String)` | matched | exact-signature |
 | Patches/HudSpritePatch.cs:12 | HudSpritePatch | `HudManager::Update(void)` | matched | exact-signature |
 | Patches/InnerNetClientPatch.cs:21 | GameDataHandlerPatch | `InnerNet::InnerNetClient::HandleGameDataInner(Hazel::MessageReader,int)` | inlined | exact-signature |
 | Patches/InnerNetClientPatch.cs:157 | StartGameHostPatch | `AmongUsClient::CoStartGameHost(void)` | matched | exact-signature |
@@ -236,8 +236,8 @@ GameOptionsMenu 的 HideModMenu 在 owning ChangeTab 路径先 CancelBuild，再
 | Patches/IntroPatch.cs:67 | CoBeginPatch | `IntroCutscene::CoBegin(void)` | matched | exact-signature |
 | Patches/IntroPatch.cs:78 | SetUpRoleTextPatch | `IntroCutscene::ShowRole(void)` | inlined | exact-signature |
 | Patches/IntroPatch.cs:303 | BeginCrewmatePatch | `IntroCutscene::BeginCrewmate(System::Collections::Generic::List<PlayerControl>)` | matched | exact-signature |
-| Patches/IntroPatch.cs:528 | BeginImpostorPatch | `IntroCutscene::BeginImpostor(System::Collections::Generic::List<PlayerControl>)` | matched | exact-signature |
-| Patches/IntroPatch.cs:572 | IntroCutsceneDestroyPatch | `IntroCutscene::OnDestroy(void)` | matched | exact-signature |
+| Patches/IntroPatch.cs:534 | BeginImpostorPatch | `IntroCutscene::BeginImpostor(System::Collections::Generic::List<PlayerControl>)` | matched | exact-signature |
+| Patches/IntroPatch.cs:578 | IntroCutsceneDestroyPatch | `IntroCutscene::OnDestroy(void)` | matched | exact-signature |
 | Patches/JoinGameButtonPatch.cs:6 | JoinGameButtonPatch | `JoinGameButton::OnClick(void)` | matched | exact-signature |
 | Patches/LadderPatch.cs:63 | LadderPatch | `PlayerPhysics::ClimbLadder(Ladder,unsignedchar)` | matched | exact-signature |
 | Patches/LobbyPatch.cs:7 | LobbyStartPatch | `LobbyBehaviour::Start(void)` | matched | exact-signature |
@@ -274,9 +274,9 @@ GameOptionsMenu 的 HideModMenu 在 owning ChangeTab 路径先 CancelBuild，再
 | Patches/NotificationPopperPatch.cs:6 | NotificationPopperAwakePatch | `NotificationPopper::Awake(void)` | matched | exact-signature |
 | Patches/OneWayShadowsPatch.cs:5 | OneWayShadowsIsIgnoredPatch | `OneWayShadows::IsIgnored(LightSource)` | matched | exact-signature |
 | Patches/onGameStartedPatch.cs:17 | ChangeRoleSettings | `AmongUsClient::CoStartGame(void)` | matched | exact-signature |
-| Patches/onGameStartedPatch.cs:259 | StartGameHostPatch | `AmongUsClient::CoStartGameHost(void)` | matched | exact-signature |
-| Patches/onGameStartedPatch.cs:705 | SelectRolesPatch | `RoleManager::SelectRoles(void)` | matched | exact-signature |
-| Patches/onGameStartedPatch.cs:737 | RpcSetRoleReplacer | `PlayerControl::RpcSetRole(AmongUs::GameOptions::RoleTypes,bool)` | matched | exact-signature |
+| Patches/onGameStartedPatch.cs:261 | StartGameHostPatch | `AmongUsClient::CoStartGameHost(void)` | matched | exact-signature |
+| Patches/onGameStartedPatch.cs:707 | SelectRolesPatch | `RoleManager::SelectRoles(void)` | matched | exact-signature |
+| Patches/onGameStartedPatch.cs:739 | RpcSetRoleReplacer | `PlayerControl::RpcSetRole(AmongUs::GameOptions::RoleTypes,bool)` | matched | exact-signature |
 | Patches/OutroPatch.cs:17 | EndGamePatch | `AmongUsClient::OnGameEnd(EndGameResult)` | matched | exact-signature |
 | Patches/OutroPatch.cs:160 | SetEverythingUpPatch | `EndGameManager::SetEverythingUp(void)` | matched | exact-signature |
 | Patches/PhantomRolePatch.cs:19 | PhantomRolePatch | `PlayerControl::CmdCheckVanish(float)` | matched | exact-signature |
@@ -288,29 +288,29 @@ GameOptionsMenu 的 HideModMenu 在 owning ChangeTab 路径先 CancelBuild，再
 | Patches/PhantomRolePatch.cs:224 | PhantomRoleUseAbilityPatch | `PhantomRole::UseAbility(void)` | matched | exact-signature |
 | Patches/PlayerControlPatch.cs:24 | CheckProtectPatch | `PlayerControl::CheckProtect(PlayerControl)` | matched | exact-signature |
 | Patches/PlayerControlPatch.cs:67 | CheckMurderPatch | `PlayerControl::CheckMurder(PlayerControl)` | matched | exact-signature |
-| Patches/PlayerControlPatch.cs:352 | MurderPlayerPatch | `PlayerControl::MurderPlayer(PlayerControl,MurderResultFlags)` | matched | exact-signature |
-| Patches/PlayerControlPatch.cs:516 | RpcMurderPlayerPatch | `PlayerControl::RpcMurderPlayer(PlayerControl,bool)` | inlined | exact-signature |
-| Patches/PlayerControlPatch.cs:545 | CheckShapeshiftPatch | `PlayerControl::CheckShapeshift(PlayerControl,bool)` | used-by-inline | exact-signature |
-| Patches/PlayerControlPatch.cs:659 | ShapeshiftPatch | `PlayerControl::Shapeshift(PlayerControl,bool)` | used-by-inline | exact-signature |
-| Patches/PlayerControlPatch.cs:708 | ReportDeadBodyPatch | `PlayerControl::ReportDeadBody(NetworkedPlayerInfo)` | matched | exact-signature |
-| Patches/PlayerControlPatch.cs:935 | FixedUpdateInNormalGamePatch | `PlayerControl::FixedUpdate(void)` | matched | exact-signature |
-| Patches/PlayerControlPatch.cs:1457 | PlayerStartPatch | `PlayerControl::Start(void)` | matched | exact-signature |
-| Patches/PlayerControlPatch.cs:1474 | CoEnterVentPatch | `PlayerPhysics::CoEnterVent(int)` | matched | exact-signature |
-| Patches/PlayerControlPatch.cs:1518 | EnterVentPatch | `Vent::EnterVent(PlayerControl)` | matched | exact-signature |
-| Patches/PlayerControlPatch.cs:1540 | CoExitVentPatch | `PlayerPhysics::CoExitVent(int)` | matched | exact-signature |
-| Patches/PlayerControlPatch.cs:1561 | PlayerControlCompleteTaskPatch | `PlayerControl::CompleteTask(unsignedint)` | matched | exact-signature |
-| Patches/PlayerControlPatch.cs:1649 | PlayerControlCheckNamePatch | `PlayerControl::CheckName(System::String)` | used-by-inline | exact-signature |
-| Patches/PlayerControlPatch.cs:1701 | RpcSetColorPatch | `PlayerControl::SetColor(int)` | used-by-inline | exact-signature |
-| Patches/PlayerControlPatch.cs:1715 | CmdCheckNameVersionCheckPatch | `PlayerControl::CmdCheckName(System::String)` | inlined | exact-signature |
-| Patches/PlayerControlPatch.cs:1723 | PlayerControlProtectPlayerPatch | `PlayerControl::ProtectPlayer(PlayerControl,int)` | used-by-inline | exact-signature |
-| Patches/PlayerControlPatch.cs:1731 | PlayerControlRemoveProtectionPatch | `PlayerControl::RemoveProtection(void)` | used-by-inline | exact-signature |
-| Patches/PlayerControlPatch.cs:1739 | PlayerControlMixupOutfitPatch | `PlayerControl::MixUpOutfit(NetworkedPlayerInfo::PlayerOutfit)` | matched | exact-signature |
-| Patches/PlayerControlPatch.cs:1758 | PlayerControlFixMixedUpOutfitPatch | `PlayerControl::FixMixedUpOutfit(void)` | matched | exact-signature |
-| Patches/PlayerControlPatch.cs:1772 | PlayerControlCheckSporeTriggerPatch | `PlayerControl::CheckSporeTrigger(Mushroom)` | matched | exact-signature |
-| Patches/PlayerControlPatch.cs:1785 | PlayerControlCheckUseZiplinePatch | `PlayerControl::CheckUseZipline(PlayerControl,ZiplineBehaviour,bool)` | matched | exact-signature |
-| Patches/PlayerControlPatch.cs:1799 | PlayerControlDiePatch | `PlayerControl::Die(DeathReason,bool)` | used-by-inline | exact-signature |
-| Patches/PlayerControlPatch.cs:1811 | PlayerControlSetRolePatch | `PlayerControl::RpcSetRole(AmongUs::GameOptions::RoleTypes,bool)` | matched | exact-signature |
-| Patches/PlayerControlPatch.cs:1918 | PlayerControlLocalSetRolePatch | `PlayerControl::CoSetRole(AmongUs::GameOptions::RoleTypes,bool)` | matched | exact-signature |
+| Patches/PlayerControlPatch.cs:353 | MurderPlayerPatch | `PlayerControl::MurderPlayer(PlayerControl,MurderResultFlags)` | matched | exact-signature |
+| Patches/PlayerControlPatch.cs:517 | RpcMurderPlayerPatch | `PlayerControl::RpcMurderPlayer(PlayerControl,bool)` | inlined | exact-signature |
+| Patches/PlayerControlPatch.cs:546 | CheckShapeshiftPatch | `PlayerControl::CheckShapeshift(PlayerControl,bool)` | used-by-inline | exact-signature |
+| Patches/PlayerControlPatch.cs:660 | ShapeshiftPatch | `PlayerControl::Shapeshift(PlayerControl,bool)` | used-by-inline | exact-signature |
+| Patches/PlayerControlPatch.cs:709 | ReportDeadBodyPatch | `PlayerControl::ReportDeadBody(NetworkedPlayerInfo)` | matched | exact-signature |
+| Patches/PlayerControlPatch.cs:936 | FixedUpdateInNormalGamePatch | `PlayerControl::FixedUpdate(void)` | matched | exact-signature |
+| Patches/PlayerControlPatch.cs:1458 | PlayerStartPatch | `PlayerControl::Start(void)` | matched | exact-signature |
+| Patches/PlayerControlPatch.cs:1475 | CoEnterVentPatch | `PlayerPhysics::CoEnterVent(int)` | matched | exact-signature |
+| Patches/PlayerControlPatch.cs:1519 | EnterVentPatch | `Vent::EnterVent(PlayerControl)` | matched | exact-signature |
+| Patches/PlayerControlPatch.cs:1541 | CoExitVentPatch | `PlayerPhysics::CoExitVent(int)` | matched | exact-signature |
+| Patches/PlayerControlPatch.cs:1562 | PlayerControlCompleteTaskPatch | `PlayerControl::CompleteTask(unsignedint)` | matched | exact-signature |
+| Patches/PlayerControlPatch.cs:1650 | PlayerControlCheckNamePatch | `PlayerControl::CheckName(System::String)` | used-by-inline | exact-signature |
+| Patches/PlayerControlPatch.cs:1702 | RpcSetColorPatch | `PlayerControl::SetColor(int)` | used-by-inline | exact-signature |
+| Patches/PlayerControlPatch.cs:1716 | CmdCheckNameVersionCheckPatch | `PlayerControl::CmdCheckName(System::String)` | inlined | exact-signature |
+| Patches/PlayerControlPatch.cs:1724 | PlayerControlProtectPlayerPatch | `PlayerControl::ProtectPlayer(PlayerControl,int)` | used-by-inline | exact-signature |
+| Patches/PlayerControlPatch.cs:1732 | PlayerControlRemoveProtectionPatch | `PlayerControl::RemoveProtection(void)` | used-by-inline | exact-signature |
+| Patches/PlayerControlPatch.cs:1740 | PlayerControlMixupOutfitPatch | `PlayerControl::MixUpOutfit(NetworkedPlayerInfo::PlayerOutfit)` | matched | exact-signature |
+| Patches/PlayerControlPatch.cs:1759 | PlayerControlFixMixedUpOutfitPatch | `PlayerControl::FixMixedUpOutfit(void)` | matched | exact-signature |
+| Patches/PlayerControlPatch.cs:1773 | PlayerControlCheckSporeTriggerPatch | `PlayerControl::CheckSporeTrigger(Mushroom)` | matched | exact-signature |
+| Patches/PlayerControlPatch.cs:1786 | PlayerControlCheckUseZiplinePatch | `PlayerControl::CheckUseZipline(PlayerControl,ZiplineBehaviour,bool)` | matched | exact-signature |
+| Patches/PlayerControlPatch.cs:1800 | PlayerControlDiePatch | `PlayerControl::Die(DeathReason,bool)` | used-by-inline | exact-signature |
+| Patches/PlayerControlPatch.cs:1812 | PlayerControlSetRolePatch | `PlayerControl::RpcSetRole(AmongUs::GameOptions::RoleTypes,bool)` | matched | exact-signature |
+| Patches/PlayerControlPatch.cs:1919 | PlayerControlLocalSetRolePatch | `PlayerControl::CoSetRole(AmongUs::GameOptions::RoleTypes,bool)` | matched | exact-signature |
 | Patches/PlayerJoinAndLeftPatch.cs:15 | OnGameJoinedPatch | `AmongUsClient::OnGameJoined(System::String)` | matched | exact-signature |
 | Patches/PlayerJoinAndLeftPatch.cs:180 | DisconnectInternalPatch | `InnerNet::InnerNetClient::DisconnectInternal(DisconnectReasons,System::String)` | matched | exact-signature |
 | Patches/PlayerJoinAndLeftPatch.cs:189 | OnPlayerJoinedPatch | `AmongUsClient::OnPlayerJoined(InnerNet::ClientData)` | matched | exact-signature |
@@ -323,6 +323,13 @@ GameOptionsMenu 的 HideModMenu 在 owning ChangeTab 路径先 CancelBuild，再
 | Patches/RecomputeTaskPatch.cs:35 | InstalledTaskStatePatch | `NetworkedPlayerInfo::SetTasks(System::Byte[])` | matched | exact-signature |
 | Patches/RecomputeTaskPatch.cs:69 | InitialInstalledTaskCountsPatch | `ShipStatus::Begin(void)` | matched | exact-signature |
 | Patches/RegionMenuPatch.cs:8 | RegionMenuPatch | `RegionMenu::OnEnable(void)` | matched | exact-signature |
+| Patches/RegionMenuPatch.cs:47 | ServerDropdownLayoutPatch | `ServerDropdown::FillServerOptions(void)` | matched | exact-signature |
+| Patches/RegionMenuPatch.cs:61 | ServerDropdownLayoutPatch | `ServerDropdown::FillServerOptions(void)` | matched | exact-signature |
+| Patches/RegionMenuPatch.cs:108 | ServerDropdownLayoutPatch | `ServerDropdown::OnDisable(void)` | matched | exact-signature |
+| Patches/RoomBrowserPatch.cs:53 | RoomBrowserPatch | `FindAGameManager::Start(void)` | matched | exact-signature |
+| Patches/RoomBrowserPatch.cs:179 | RoomBrowserPatch | `FindAGameManager::HandleList(InnerNet::InnerNetClient::TotalGameData,HttpMatchmakerManager::FindGamesListFilteredResponse)` | matched | exact-signature |
+| Patches/RoomBrowserPatch.cs:194 | RoomBrowserPatch | `FindAGameManager::HandleList(InnerNet::InnerNetClient::TotalGameData,HttpMatchmakerManager::FindGamesListFilteredResponse)` | matched | exact-signature |
+| Patches/RoomBrowserPatch.cs:258 | RoomBrowserPatch | `FindAGameManager::OnDestroy(void)` | matched | exact-signature |
 | Patches/SabotageButtonPatch.cs:5 | SabotageButtonDoClickPatch | `SabotageButton::DoClick(void)` | matched | exact-signature |
 | Patches/SabotageSystemPatch.cs:18 | ReactorSystemTypePatch | `ReactorSystemType::Deteriorate(float)` | matched | exact-signature |
 | Patches/SabotageSystemPatch.cs:60 | HeliSabotageSystemPatch | `HeliSabotageSystem::Deteriorate(float)` | matched | exact-signature |

@@ -1,5 +1,12 @@
 namespace TOHE;
 
+// This suite isolates envelope routing; feature authorization has its own linked-production suite.
+internal static class AfkMonitor { public static void RecordActivity(PlayerControl player) => Sink.Activity++; }
+internal static class FeatureChatCommands
+{
+    public static bool TryHandle(PlayerControl player, string text) { Sink.FeatureCalls++; return false; }
+}
+
 // Native/network boundary sinks only. Routing and privacy guards are generated
 // from production; role outcomes/permissions are deliberately not simulated.
 enum RpcCalls : byte { SendChat = 13 }
@@ -16,6 +23,7 @@ sealed class MessageWriter
 sealed class AmongUsClient
 {
     public static AmongUsClient Instance = new();
+    public static implicit operator bool(AmongUsClient client) => client != null;
     public bool AmHost = true, AmConnected = true, AmClient = true;
     public int HostId = 42;
     public MessageWriter StartRpcImmediately(uint netId, byte rpc, SendOption option, int target = -1)
@@ -25,6 +33,8 @@ sealed class AmongUsClient
 sealed class PlayerControl
 {
     public static PlayerControl LocalPlayer = new();
+    public static implicit operator bool(PlayerControl player) => player != null;
+    public PlayerData Data = new();
     public bool AmOwner = true, Alive = true;
     public byte PlayerId = 1;
     public uint NetId = 200;
@@ -35,6 +45,7 @@ sealed class PlayerControl
     public string GetRealName() => "player";
     public string GetNameWithRole() => "player-role";
 }
+sealed class PlayerData { public bool Disconnected; }
 static class GameStates
 {
     public static bool IsModHost = true, IsInGame = true, IsExilling;
@@ -116,7 +127,7 @@ static class Sink
     public static readonly List<(string Text, byte Target)> Echoes = [];
     public static readonly List<(string Text, bool Private)> LocalVisits = [];
     public static bool ThrowCore, HandleRole, ThrowLocal, LocalCanceled;
-    public static int Spam, Hides, Replays, Delayed, Telemetry;
+    public static int Spam, Hides, Replays, Delayed, Telemetry, Activity, FeatureCalls;
     public static bool LocalCommand(string text)
     {
         LocalVisits.Add((text, HostOnlyChatCommand.IsActive));
@@ -132,7 +143,7 @@ static class Sink
         GameStates.IsModHost = true; GameStates.IsInGame = true; GameStates.IsExilling = false;
         Writers.Clear(); Visible.Clear(); CoreVisits.Clear(); Echoes.Clear(); LocalVisits.Clear();
         ThrowCore = HandleRole = ThrowLocal = LocalCanceled = false;
-        Spam = Hides = Replays = Delayed = Telemetry = 0;
+        Spam = Hides = Replays = Delayed = Telemetry = Activity = FeatureCalls = 0;
         Options.HideExileChat.Enabled = false;
         ChatManager.Reset(); ChatCommands.ChatHistory.Clear();
     }

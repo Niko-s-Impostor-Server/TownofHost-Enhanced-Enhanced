@@ -33,6 +33,8 @@ public static class CustomRolesHelper
             CustomRoles.EngineerTOHE => CustomRoles.Engineer,
             CustomRoles.NoisemakerTOHE => CustomRoles.Noisemaker,
             CustomRoles.TrackerTOHE => CustomRoles.Tracker,
+            CustomRoles.DetectiveTOHE => CustomRoles.DetectiveVanilla,
+            CustomRoles.ViperTOHE => CustomRoles.Viper,
             _ => role.IsImpostor() ? CustomRoles.Impostor : CustomRoles.Crewmate,
         };
     }
@@ -50,13 +52,13 @@ public static class CustomRolesHelper
     {
         if (player == null) return false;
         var customRole = player.GetCustomRole();
-        bool ModSideHasKillButton = customRole.GetDYRole() == RoleTypes.Impostor || customRole.GetVNRole() is CustomRoles.Impostor or CustomRoles.Shapeshifter or CustomRoles.Phantom;
+        bool ModSideHasKillButton = customRole.GetDYRole() == RoleTypes.Impostor || customRole.GetVNRole() is CustomRoles.Impostor or CustomRoles.Shapeshifter or CustomRoles.Phantom or CustomRoles.Viper;
 
         if (player.IsModded() || (!considerVanillaShift && !player.IsModded()))
             return ModSideHasKillButton;
 
         bool vanillaSideHasKillButton = EAC.OriginalRoles.TryGetValue(player.PlayerId, out var OriginalRole) ?
-                                         (OriginalRole.GetDYRole() is RoleTypes.Impostor or RoleTypes.Shapeshifter || OriginalRole.GetVNRole() is CustomRoles.Impostor or CustomRoles.Shapeshifter or CustomRoles.Phantom) : ModSideHasKillButton;
+                                         (OriginalRole.GetDYRole() is RoleTypes.Impostor or RoleTypes.Shapeshifter || OriginalRole.GetVNRole() is CustomRoles.Impostor or CustomRoles.Shapeshifter or CustomRoles.Phantom or CustomRoles.Viper) : ModSideHasKillButton;
 
         return vanillaSideHasKillButton;
     }
@@ -290,7 +292,7 @@ public static class CustomRolesHelper
         return role is
             CustomRoles.Impostor or
             CustomRoles.Shapeshifter or
-            CustomRoles.Phantom;
+            CustomRoles.Phantom or CustomRoles.Viper;
     }
 
     public static bool IsAbleToBeSidekicked(this CustomRoles role)
@@ -1105,6 +1107,8 @@ public static class CustomRolesHelper
             CustomRoles.Noisemaker => RoleTypes.Noisemaker,
             CustomRoles.Phantom => RoleTypes.Phantom,
             CustomRoles.Tracker => RoleTypes.Tracker,
+            CustomRoles.DetectiveVanilla => RoleTypes.Detective,
+            CustomRoles.Viper => RoleTypes.Viper,
             _ => role.IsImpostor() ? RoleTypes.Impostor : RoleTypes.Crewmate,
         };
     public static bool IsDesyncRole(this CustomRoles role) => role.GetDYRole() != RoleTypes.GuardianAngel;
@@ -1143,7 +1147,7 @@ public static class CustomRolesHelper
             CustomRoles.Shapeshifter or
             CustomRoles.Noisemaker or
             CustomRoles.Phantom or
-            CustomRoles.Tracker;
+            CustomRoles.Tracker or CustomRoles.DetectiveVanilla or CustomRoles.Viper;
     }
     public static Custom_Team GetCustomRoleTeam(this CustomRoles role)
     {
@@ -1174,6 +1178,8 @@ public static class CustomRolesHelper
                 CustomRoles.Noisemaker => roleOpt.GetNumPerGame(RoleTypes.Noisemaker),
                 CustomRoles.Phantom => roleOpt.GetNumPerGame(RoleTypes.Phantom),
                 CustomRoles.Tracker => roleOpt.GetNumPerGame(RoleTypes.Tracker),
+                CustomRoles.DetectiveVanilla => roleOpt.GetNumPerGame(RoleTypes.Detective),
+                CustomRoles.Viper => roleOpt.GetNumPerGame(RoleTypes.Viper),
                 _ => 0
             };
         }
@@ -1198,6 +1204,8 @@ public static class CustomRolesHelper
                 CustomRoles.Noisemaker => roleOpt.GetChancePerGame(RoleTypes.Noisemaker),
                 CustomRoles.Phantom => roleOpt.GetChancePerGame(RoleTypes.Phantom),
                 CustomRoles.Tracker => roleOpt.GetChancePerGame(RoleTypes.Tracker),
+                CustomRoles.DetectiveVanilla => roleOpt.GetChancePerGame(RoleTypes.Detective),
+                CustomRoles.Viper => roleOpt.GetChancePerGame(RoleTypes.Viper),
                 _ => 0
             } / 100f;
         }

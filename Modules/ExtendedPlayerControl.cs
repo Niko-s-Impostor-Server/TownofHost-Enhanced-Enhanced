@@ -930,9 +930,9 @@ static class ExtendedPlayerControl
     {
         return Main.PlayerStates[player.PlayerId].TaskState;
     }
-    public static string GetDisplayRoleAndSubName(this PlayerControl seer, PlayerControl target, bool notShowAddOns = false)
+    public static string GetDisplayRoleAndSubName(this PlayerControl seer, PlayerControl target, bool notShowAddOns = false, bool? isMeeting = null)
     {
-        return Utils.GetDisplayRoleAndSubName(seer.PlayerId, target.PlayerId, notShowAddOns);
+        return Utils.GetDisplayRoleAndSubName(seer.PlayerId, target.PlayerId, notShowAddOns, isMeeting);
     }
     public static string GetSubRoleName(this PlayerControl player, bool forUser = false)
     {
@@ -945,7 +945,7 @@ static class ExtendedPlayerControl
         foreach (var role in SubRoles)
         {
             if (role == CustomRoles.NotAssigned) continue;
-            sb.Append($"{Utils.ColorString(Color.white, " + ")}{Utils.GetRoleName(role, forUser)}");
+            sb.Append($"{Utils.ColorString(Color.white, " + ")}{Utils.GetAddOnDisplayName(role, preferPrefix: false, forUser: forUser)}");
         }
 
         return sb.ToString();
@@ -1060,6 +1060,7 @@ static class ExtendedPlayerControl
             CustomRoles.Impostor => true,
             CustomRoles.Shapeshifter => true,
             CustomRoles.Phantom => true,
+            CustomRoles.Viper => true,
             _ => false
         };
     }

@@ -197,6 +197,14 @@ public class RoleAssign
             AllPlayers.Remove(PlayerControl.LocalPlayer);
             SetRoles.Remove(PlayerControl.LocalPlayer.PlayerId);
         }
+        // Explicit host-local GM assignments are excluded from every normal role pool.
+        foreach (var gm in AllPlayers.Where(TOHE.Modules.LocalPlayerTags.IsDesignatedGameMaster).ToArray())
+        {
+            RoleResult[gm.PlayerId] = CustomRoles.GM;
+            AllPlayers.Remove(gm);
+            SetRoles.Remove(gm.PlayerId);
+        }
+        playerCount = AllPlayers.Count;
         // Pre-Assigned Roles By Host Are Selected First
         foreach (var item in SetRoles)
         {
@@ -738,8 +746,11 @@ public class RoleAssign
         if (NKs.Any()) Logger.Info(string.Join(", ", NKs.Select(x => $"{x.Role} - {x.AssignedCount}/{x.MaxCount} ({x.SpawnChance}%)")), "NKRoleResult");
         if (Crews.Any()) Logger.Info(string.Join(", ", Crews.Select(x => $"{x.Role} - {x.AssignedCount}/{x.MaxCount} ({x.SpawnChance}%)")), "CrewRoleResult");
 
-        if (Sunnyboy.CheckSpawn() && FinalRolesList.Remove(CustomRoles.Jester)) FinalRolesList.Add(CustomRoles.Sunnyboy);
-        if (Bard.CheckSpawn() && FinalRolesList.Remove(CustomRoles.Arrogance)) FinalRolesList.Add(CustomRoles.Bard);
+        if (!Options.DisableHiddenRoles.GetBool())
+        {
+            if (Sunnyboy.CheckSpawn() && FinalRolesList.Remove(CustomRoles.Jester)) FinalRolesList.Add(CustomRoles.Sunnyboy);
+            if (Bard.CheckSpawn() && FinalRolesList.Remove(CustomRoles.Arrogance)) FinalRolesList.Add(CustomRoles.Bard);
+        }
 
         if (Romantic.HasEnabled)
         {
@@ -796,6 +807,8 @@ public class RoleAssign
     public static int AddNoisemakerNum;
     public static int AddPhantomNum;
     public static int AddTrackerNum;
+    public static int AddDetectiveNum;
+    public static int AddViperNum;
     public static void CalculateVanillaRoleCount()
     {
         // Calculate the number of base roles
@@ -805,6 +818,8 @@ public class RoleAssign
         AddNoisemakerNum = 0;
         AddPhantomNum = 0;
         AddTrackerNum = 0;
+        AddDetectiveNum = 0;
+        AddViperNum = 0;
         foreach (var role in AllRoles)
         {
             switch (role.GetVNRole())
@@ -826,6 +841,12 @@ public class RoleAssign
                     break;
                 case CustomRoles.Tracker:
                     AddTrackerNum++;
+                    break;
+                case CustomRoles.DetectiveVanilla:
+                    AddDetectiveNum++;
+                    break;
+                case CustomRoles.Viper:
+                    AddViperNum++;
                     break;
             }
         }

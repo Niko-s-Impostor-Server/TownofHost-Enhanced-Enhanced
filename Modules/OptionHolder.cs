@@ -128,6 +128,15 @@ public static class Options
     ];
 
 
+    [Obfuscation(Exclude = true)]
+    public enum ShortAddOnNamesMode
+    {
+        ShortAddOnNamesMode_Disable,
+        ShortAddOnNamesMode_Always,
+        ShortAddOnNamesMode_OnlyInMeeting,
+        ShortAddOnNamesMode_OnlyInGame
+    }
+
     //public static OptionItem EnableGM;
     public static float DefaultKillCooldown = Main.NormalOptions?.KillCooldown ?? 20;
     public static OptionItem GhostsDoTasks;
@@ -312,6 +321,7 @@ public static class Options
     public static OptionItem DisableShieldAnimations;
     public static OptionItem DisableKillAnimationOnGuess;
     public static OptionItem DisableVanillaRoles;
+    public static OptionItem DisableHiddenRoles;
     public static OptionItem DisableTaskWin;
     public static OptionItem DisableTaskWinIfAllCrewsAreDead;
     public static OptionItem DisableTaskWinIfAllCrewsAreConverted;
@@ -369,6 +379,7 @@ public static class Options
     public static OptionItem LadderDeathChance;
 
     public static OptionItem FixFirstKillCooldown;
+    public static OptionItem ChangeFirstKillCooldown;
     public static OptionItem FixKillCooldownValue;
     public static OptionItem ShieldPersonDiedFirst;
     public static OptionItem ShowShieldedPlayerToAll;
@@ -517,6 +528,7 @@ public static class Options
     // Add-on
     public static OptionItem NameDisplayAddons;
     public static OptionItem AddBracketsToAddons;
+    public static OptionItem ShowShortNamesForAddOns;
     public static OptionItem NoLimitAddonsNumMax;
 
     // Add-Ons settings 
@@ -721,6 +733,8 @@ public static class Options
             .SetGameMode(CustomGameMode.Standard)
             .SetHeader(true);
         AddBracketsToAddons = BooleanOptionItem.Create(60021, "BracketAddons", true, TabGroup.Addons, false)
+            .SetParent(NameDisplayAddons);
+        ShowShortNamesForAddOns = StringOptionItem.Create(60035, "ShowShortNamesForAddOns", EnumHelper.GetAllNames<ShortAddOnNamesMode>(), 0, TabGroup.Addons, false)
             .SetParent(NameDisplayAddons);
         NoLimitAddonsNumMax = IntegerOptionItem.Create(60020, "NoLimitAddonsNumMax", new(1, 15, 1), 1, TabGroup.Addons, false)
             .SetGameMode(CustomGameMode.Standard);
@@ -1419,6 +1433,9 @@ public static class Options
         DisableVanillaRoles = BooleanOptionItem.Create(60562, "DisableVanillaRoles", true, TabGroup.ModSettings, false)
             .SetGameMode(CustomGameMode.Standard)
             .SetColor(new Color32(255, 153, 153, byte.MaxValue));
+        DisableHiddenRoles = BooleanOptionItem.Create(60568, "DisableHiddenRoles", false, TabGroup.ModSettings, false)
+            .SetGameMode(CustomGameMode.Standard)
+            .SetColor(new Color32(255, 153, 153, byte.MaxValue));
         DisableTaskWin = BooleanOptionItem.Create(60563, "DisableTaskWin", false, TabGroup.ModSettings, false)
             .SetGameMode(CustomGameMode.Standard)
             .SetColor(new Color32(255, 153, 153, byte.MaxValue));
@@ -1792,13 +1809,15 @@ public static class Options
         LadderDeathChance = StringOptionItem.Create(60761, "LadderDeathChance", EnumHelper.GetAllNames<SpawnChance>()[1..], 0, TabGroup.ModSettings, false)
             .SetParent(LadderDeath);
 
-        // 修正首刀时间
+        // Reset starting kill cooldown, optionally override the role's cooldown.
         FixFirstKillCooldown = BooleanOptionItem.Create(60770, "FixFirstKillCooldown", true, TabGroup.ModSettings, false)
             .SetGameMode(CustomGameMode.Standard)
             .SetColor(new Color32(193, 255, 209, byte.MaxValue));
+        ChangeFirstKillCooldown = BooleanOptionItem.Create(60772, "ChangeFirstKillCooldown", true, TabGroup.ModSettings, false)
+            .SetParent(FixFirstKillCooldown);
         FixKillCooldownValue = FloatOptionItem.Create(60771, "FixKillCooldownValue", new(0f, 180f, 2.5f), 15f, TabGroup.ModSettings, false)
             .SetValueFormat(OptionFormat.Seconds)
-            .SetParent(FixFirstKillCooldown);
+            .SetParent(ChangeFirstKillCooldown);
         // First dead shield
         ShieldPersonDiedFirst = BooleanOptionItem.Create(60780, "ShieldPersonDiedFirst", false, TabGroup.ModSettings, false)
             .SetGameMode(CustomGameMode.Standard)
@@ -1868,6 +1887,7 @@ public static class Options
         yield return null;
 
         // End Load Settings
+        AfkMonitor.SetupCustomOptions();
         OptionSaver.Load();
         IsLoaded = true;
         Logger.Msg("Mod option loading eng", "Load Options");

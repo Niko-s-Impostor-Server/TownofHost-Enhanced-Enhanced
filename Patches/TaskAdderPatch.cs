@@ -40,7 +40,8 @@ public static class ShowFolderPatch
 
         // New native abilities need their own mod state/HUD integration. Do not
         // expose a button that changes the native role while retaining a different
-        // custom role (the existing Detective/Judge are unrelated mod roles).
+        // custom role (the existing Judge is an unrelated mod role; native
+        // Detective uses the dedicated DetectiveTOHE wrapper).
         for (int index = taskFolder.RoleChildren.Count - 1; index >= 0; index--)
             if (!AddTaskButtonPatch.TryMapNativeRole(taskFolder.RoleChildren[index].Role, out _))
                 taskFolder.RoleChildren.RemoveAt(index);
@@ -187,6 +188,8 @@ class AddTaskButtonPatch
             RoleTypes.Noisemaker => CustomRoles.Noisemaker,
             RoleTypes.Phantom => CustomRoles.Phantom,
             RoleTypes.Tracker => CustomRoles.Tracker,
+            RoleTypes.Detective => CustomRoles.DetectiveTOHE,
+            RoleTypes.Viper => CustomRoles.ViperTOHE,
             _ => CustomRoles.NotAssigned
         };
         return role != CustomRoles.NotAssigned;

@@ -20,9 +20,9 @@ internal sealed class RoleActivationSmoke(string smokeDirectory)
     private static readonly CustomRoles[] Scenarios =
     [
         CustomRoles.CrewmateTOHE, CustomRoles.EngineerTOHE, CustomRoles.ScientistTOHE,
-        CustomRoles.TrackerTOHE, CustomRoles.NoisemakerTOHE, CustomRoles.Doctor,
+        CustomRoles.TrackerTOHE, CustomRoles.NoisemakerTOHE, CustomRoles.DetectiveTOHE, CustomRoles.Doctor,
         CustomRoles.Detective, CustomRoles.Mayor, CustomRoles.Sheriff, CustomRoles.Snitch,
-        CustomRoles.ImpostorTOHE, CustomRoles.PhantomTOHE, CustomRoles.ShapeshifterTOHE,
+        CustomRoles.ImpostorTOHE, CustomRoles.PhantomTOHE, CustomRoles.ShapeshifterTOHE, CustomRoles.ViperTOHE,
         CustomRoles.Blackmailer, CustomRoles.EvilTracker, CustomRoles.Camouflager, CustomRoles.BountyHunter,
         CustomRoles.Jester, CustomRoles.Opportunist, CustomRoles.Amnesiac, CustomRoles.Arsonist,
         CustomRoles.Jackal, CustomRoles.Maverick, CustomRoles.Pursuer, CustomRoles.Innocent

@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <LangVersion>12.0</LangVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../Modules/PresentationRecovery.cs" Link="Production/PresentationRecovery.cs" />
+    <Compile Include="../../Modules/RpcCompatibility.cs" Link="Production/RpcCompatibility.cs" />
+  </ItemGroup>
+</Project>

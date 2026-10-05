@@ -62,6 +62,29 @@ Sink.Reset(); AmongUsClient.Instance.AmHost = false;
 ChatCommands.OnReceiveChat(PlayerControl.LocalPlayer, "/cmd guess 1", out bool nonhostCanceled);
 Check(nonhostCanceled && Sink.CoreVisits.Count == 0, "nonhost receive no execute");
 
+foreach (string text in new[] { "/cmd guess 1", "normal text" })
+{
+    foreach (string invalidState in new[] { "disconnected client", "disconnected player", "null Data", "null player" })
+    {
+        Sink.Reset();
+        var sender = PlayerControl.LocalPlayer;
+        switch (invalidState)
+        {
+            case "disconnected client": AmongUsClient.Instance.AmConnected = false; break;
+            case "disconnected player": sender.Data.Disconnected = true; break;
+            case "null Data": sender.Data = null; break;
+            case "null player": sender = null; break;
+        }
+        ChatCommands.OnReceiveChat(sender, text, out bool invalidCanceled);
+        Check(invalidCanceled == HostOnlyChatCommand.IsEnvelope(text), $"invalid sender retains envelope privacy: {invalidState}");
+        Check(Sink.CoreVisits.Count == 0 && Sink.FeatureCalls == 0 && Sink.Activity == 0,
+            $"invalid sender never reaches role, feature, or AFK dispatch: {invalidState}");
+        Check(ChatManager.HistoryCount == 0 && Sink.Spam == 0 && Sink.Writers.Count == 0,
+            $"invalid sender causes no public history or network side effect: {invalidState}");
+        Check(!HostOnlyChatCommand.IsActive, $"invalid sender cleans private scope: {invalidState}");
+    }
+}
+
 Sink.Reset(); ChatCommands.OnReceiveChat(PlayerControl.LocalPlayer, "/cmd start", out bool unknownCanceled);
 Check(unknownCanceled, "unknown private consumed despite core canceled false");
 Check(Sink.CoreVisits.SequenceEqual(new[] { ("/start", true) }), "receive normalized under scope");

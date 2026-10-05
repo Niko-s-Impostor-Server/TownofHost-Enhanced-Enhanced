@@ -25,7 +25,7 @@ public sealed class SmokePlugin : BasePlugin
         Session = new SmokeSession(Paths.GameRootPath, Log);
         BepInEx.Logging.Logger.Listeners.Add(new SmokeErrorCounter());
         AddComponent<SmokeDriver>();
-        Log.LogInfo("Test-only fixed commands: snapshot, capture, freeplay, locallobby, gui_local, gui_lobby, lobby_welcome, gui_tasks, gui_roles, leave, local_join, local_start, local_leave, local_chat_watch, local_cmd_id, local_task, local_meeting, local_meeting_request, local_skip, local_prepare_abilities, local_phantom, local_ability_meeting, local_judge, nikocn_host, nikocn_join, online_leave, online_start. No command arguments.");
+        Log.LogInfo("Test-only fixed commands: snapshot, capture, freeplay, locallobby, gui_local, gui_lobby, lobby_welcome, gui_tasks, gui_roles, gui_servers, leave, local_join, local_start, local_leave, local_chat_watch, local_cmd_id, local_task, local_meeting, local_meeting_request, local_skip, local_prepare_abilities, local_phantom, local_ability_meeting, local_judge, nikocn_host, nikocn_join, online_leave, online_start. No command arguments.");
     }
 }
 
@@ -58,6 +58,7 @@ internal sealed class SmokeSession
     private readonly AbilitySmoke abilities;
     private readonly LocalChatSmoke localChat;
     private readonly LobbyUiSmoke lobbyUi;
+    private readonly ServerDropdownSmoke servers;
 
     internal SmokeSession(string gameRoot, ManualLogSource log)
     {
@@ -70,6 +71,7 @@ internal sealed class SmokeSession
         abilities = new AbilitySmoke(() => local.OwnsSession);
         localChat = new LocalChatSmoke(() => local.OwnsSession);
         lobbyUi = new LobbyUiSmoke(() => local.OwnsSession, directory);
+        servers = new ServerDropdownSmoke(directory);
     }
 
     internal void Tick()
@@ -128,7 +130,7 @@ internal sealed class SmokeSession
 
     private void RunCommand(string command, double now)
     {
-        if (command is not ("snapshot" or "capture" or "freeplay" or "locallobby" or "gui_local" or "gui_tasks" or "gui_roles" or "leave") && !OnlineSmoke.IsCommand(command) && !LocalPlaySmoke.IsCommand(command) && !LocalChatSmoke.IsCommand(command) && !LobbyUiSmoke.IsCommand(command) && !MeetingSmoke.IsCommand(command) && !TaskCompletionSmoke.IsCommand(command) && !AbilitySmoke.IsCommand(command))
+        if (command is not ("snapshot" or "capture" or "freeplay" or "locallobby" or "gui_local" or "gui_tasks" or "gui_roles" or "gui_servers" or "leave") && !OnlineSmoke.IsCommand(command) && !LocalPlaySmoke.IsCommand(command) && !LocalChatSmoke.IsCommand(command) && !LobbyUiSmoke.IsCommand(command) && !MeetingSmoke.IsCommand(command) && !TaskCompletionSmoke.IsCommand(command) && !AbilitySmoke.IsCommand(command))
         {
             Report("invalid", "rejected", "Only fixed documented commands are accepted", now);
             return;
@@ -148,7 +150,17 @@ internal sealed class SmokeSession
             }
 
             var client = AmongUsClient.Instance;
-            if (LobbyUiSmoke.IsCommand(command))
+            if (command == "gui_servers")
+            {
+                if (!servers.Begin(now, out string rejection))
+                {
+                    Report(command, "rejected", rejection, now);
+                    return;
+                }
+                pending = new Pending(command, now) { Servers = servers };
+                Report(command, "started", "Fixed disconnected Itch server dropdown UI; 8 second total limit", now);
+            }
+            else if (LobbyUiSmoke.IsCommand(command))
             {
                 if (!lobbyUi.Begin(command, now, out string rejection))
                 {
@@ -370,6 +382,11 @@ internal sealed class SmokeSession
             pending?.TaskCompletion?.Stop("failed", ex.GetType().Name);
             pending?.Abilities?.Stop("failed", ex.GetType().Name);
             pending?.LocalChat?.Fail(ex);
+            if (pending?.Servers != null)
+            {
+                pending.Servers.Stop("failed", ex.GetType().Name);
+                QueueWrite("gui-servers.json", JsonSerializer.Serialize(pending.Servers.Result()), now);
+            }
             if (pending?.LobbyUi != null)
             {
                 pending.LobbyUi.Stop("failed", ex.GetType().Name);
@@ -400,6 +417,17 @@ internal sealed class SmokeSession
         var operation = pending!;
         try
         {
+            if (operation.Servers != null)
+            {
+                if (operation.Servers.Tick(now))
+                {
+                    pending = null;
+                    QueueWrite("gui-servers.json", JsonSerializer.Serialize(operation.Servers.Result()), now);
+                    QueueWrite("snapshot.json", JsonSerializer.Serialize(Snapshot()), now);
+                    Report(operation.Command, operation.Servers.Outcome, operation.Servers.Detail, now);
+                }
+                return;
+            }
             if (operation.LobbyUi != null)
             {
                 if (operation.LobbyUi.Tick(now))
@@ -497,7 +525,10 @@ internal sealed class SmokeSession
                 }
                 return;
             }
-            if (now - operation.Started >= TimeoutSeconds)
+            // Settings builds yield across thousands of controls and three
+            // owners. Bound that complete sequence separately from disk/network work.
+            double operationTimeout = operation.Gui != null ? 30 : TimeoutSeconds;
+            if (now - operation.Started >= operationTimeout)
             {
                 if (operation.Gui != null)
                 {
@@ -510,7 +541,7 @@ internal sealed class SmokeSession
                     QueueWrite("gui-tasks.json", JsonSerializer.Serialize(operation.Tasks.Result()), now);
                 }
                 pending = null;
-                Report(operation.Command, "timed_out", "8 second operation timeout; no automatic retry", now);
+                Report(operation.Command, "timed_out", $"{operationTimeout} second operation timeout; no automatic retry", now);
                 return;
             }
             bool complete = false;
@@ -623,6 +654,11 @@ internal sealed class SmokeSession
             operation.TaskCompletion?.Stop("failed", ex.GetType().Name);
             operation.Abilities?.Stop("failed", ex.GetType().Name);
             operation.LocalChat?.Fail(ex);
+            if (operation.Servers != null)
+            {
+                operation.Servers.Stop("failed", ex.GetType().Name);
+                QueueWrite("gui-servers.json", JsonSerializer.Serialize(operation.Servers.Result()), now);
+            }
             if (operation.LobbyUi != null)
             {
                 operation.LobbyUi.Stop("failed", ex.GetType().Name);
@@ -696,6 +732,7 @@ internal sealed class SmokeSession
             abilities = abilities.Snapshot(),
             private_chat = localChat.Snapshot(),
             lobby_layout = LobbyUiSmoke.Layout(),
+            server_dropdown = servers.Result(),
             credentials_layout = CredentialsLayout(),
             gui_objects = ui
         };
@@ -794,6 +831,7 @@ internal sealed class SmokeSession
         internal AbilitySmoke? Abilities;
         internal LocalChatSmoke? LocalChat;
         internal LobbyUiSmoke? LobbyUi;
+        internal ServerDropdownSmoke? Servers;
     }
 
     private sealed record WriteWork(Task Task, double Started, string Name);

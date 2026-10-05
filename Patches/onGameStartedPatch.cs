@@ -252,7 +252,9 @@ internal class StartGameHostPatch
             { RoleTypes.Shapeshifter, RoleAssign.AddShapeshifterNum },
             { RoleTypes.Noisemaker, RoleAssign.AddNoisemakerNum },
             { RoleTypes.Phantom, RoleAssign.AddPhantomNum },
-            { RoleTypes.Tracker, RoleAssign.AddTrackerNum }
+            { RoleTypes.Tracker, RoleAssign.AddTrackerNum },
+            { RoleTypes.Detective, RoleAssign.AddDetectiveNum },
+            { RoleTypes.Viper, RoleAssign.AddViperNum }
         };
     }
 

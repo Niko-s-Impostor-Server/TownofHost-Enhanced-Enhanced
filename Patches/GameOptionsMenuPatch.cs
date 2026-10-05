@@ -800,7 +800,8 @@ public static class StringOptionPatch
                 var name = item.GetName();
                 if (Enum.GetValues<CustomRoles>().Find(x => GetString($"{x}") == name.RemoveHtmlTags(), out var role))
                 {
-                    var roleName = role.IsVanilla() ? role + "TOHE" : role.ToString();
+                    var roleName = role == CustomRoles.DetectiveVanilla ? nameof(CustomRoles.DetectiveTOHE)
+                        : role.IsVanilla() ? role + "TOHE" : role.ToString();
                     var str = GetString($"{roleName}InfoLong");
                     int size = str.Length > 500 ? str.Length > 550 ? 65 : 70 : 100;
                     var infoLong = str[(str.IndexOf('\n') + 1)..str.Length];

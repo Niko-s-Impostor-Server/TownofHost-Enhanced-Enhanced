@@ -62,6 +62,8 @@ internal class ChatCommands
         var cancelVal = "";
         Main.isChatCommand = true;
         Logger.Info(text, "SendChat");
+        AfkMonitor.RecordActivity(PlayerControl.LocalPlayer);
+        if (FeatureChatCommands.TryHandle(PlayerControl.LocalPlayer, text)) goto Canceled;
         if ((Options.NewHideMsg.GetBool() || Blackmailer.HasEnabled) && AmongUsClient.Instance.AmHost) // Blackmailer.ForBlackmailer.Contains(PlayerControl.LocalPlayer.PlayerId)) && PlayerControl.LocalPlayer.IsAlive())
         {
             ChatManager.SendMessage(PlayerControl.LocalPlayer, text);
@@ -2033,8 +2035,10 @@ internal class ChatCommands
     private static void OnReceiveChatCore(PlayerControl player, string text, out bool canceled)
     {
         canceled = false;
-        if (!AmongUsClient.Instance.AmHost) return;
-       
+        if (!AmongUsClient.Instance || !AmongUsClient.Instance.AmConnected || !AmongUsClient.Instance.AmHost ||
+            !player || player.Data == null || player.Data.Disconnected) return;
+        AfkMonitor.RecordActivity(player);
+        if (FeatureChatCommands.TryHandle(player, text)) { canceled = true; return; }
         if (!Blackmailer.CheckBlackmaile(player)) ChatManager.SendMessage(player, text);
 
         if (text.StartsWith("\n")) text = text[1..];
@@ -2574,7 +2578,7 @@ internal class ChatCommands
                 }
 
                 // Prevent moderators from baning other moderators
-                if (Utils.IsPlayerModerator(bannedPlayer.FriendCode))
+                if (Utils.IsPlayerModerator(bannedPlayer.FriendCode) || LocalPlayerTags.HasPermission(bannedPlayer, LocalPlayerPermission.Moderate))
                 {
                     Utils.SendMessage(GetString("BanCommandBanMod"), player.PlayerId);
                     break;
@@ -2711,7 +2715,7 @@ internal class ChatCommands
                 }
 
                 // Prevent moderators from kicking other moderators
-                if (Utils.IsPlayerModerator(kickedPlayer.FriendCode))
+                if (Utils.IsPlayerModerator(kickedPlayer.FriendCode) || LocalPlayerTags.HasPermission(kickedPlayer, LocalPlayerPermission.Moderate))
                 {
                     Utils.SendMessage(GetString("KickCommandKickMod"), player.PlayerId);
                     break;

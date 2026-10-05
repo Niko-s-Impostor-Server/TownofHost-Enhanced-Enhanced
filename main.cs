@@ -42,8 +42,8 @@ public class Main : BasePlugin
     public static ConfigEntry<string> DebugKeyInput { get; private set; }
 
     public const string PluginGuid = "com.0xdrmoe.townofhostenhanced";
-    public const string PluginVersion = "2026.1005.211.1";
-    public const string PluginDisplayVersion = "2.1.1-au20260818";
+    public const string PluginVersion = "2026.1005.211.2";
+    public const string PluginDisplayVersion = "2.1.1-au20260818.2";
     public const string SupportedVersionAU = "2026.8.18";
 
     /******************* Change one of the three variables to true before making a release. *******************/
@@ -868,6 +868,12 @@ public enum CustomRoles
 
     //GM
     GM,
+
+    // Keep existing serialized role IDs stable; Detective is already a custom role.
+    DetectiveVanilla = 480,
+    Viper = 481,
+    DetectiveTOHE = 482,
+    ViperTOHE = 483,
 
     // Sub-role after 500
     NotAssigned = 500,

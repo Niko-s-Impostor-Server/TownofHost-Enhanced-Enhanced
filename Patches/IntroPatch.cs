@@ -399,6 +399,12 @@ class BeginCrewmatePatch
             case CustomRoles.TrackerTOHE:
                 PlayerControl.LocalPlayer.Data.Role.IntroSound = GetIntroSound(RoleTypes.Tracker);
                 break;
+            case CustomRoles.DetectiveTOHE:
+                PlayerControl.LocalPlayer.Data.Role.IntroSound = GetIntroSound(RoleTypes.Detective);
+                break;
+            case CustomRoles.ViperTOHE:
+                PlayerControl.LocalPlayer.Data.Role.IntroSound = GetIntroSound(RoleTypes.Viper);
+                break;
             case CustomRoles.NoisemakerTOHE:
                 PlayerControl.LocalPlayer.Data.Role.IntroSound = GetIntroSound(RoleTypes.Noisemaker);
                 break;
@@ -679,7 +685,10 @@ class IntroCutsceneDestroyPatch
 
                                 if (Main.AllPlayerKillCooldown.TryGetValue(pc.PlayerId, out var killTimer) && (killTimer - 2f) > 0f)
                                 {
-                                    pc.SetKillCooldown(Options.FixKillCooldownValue.GetFloat() - 2f);
+                                    var firstCooldown = Options.ChangeFirstKillCooldown.GetBool()
+                                        ? Options.FixKillCooldownValue.GetFloat()
+                                        : killTimer;
+                                    pc.SetKillCooldown(Math.Max(0f, firstCooldown - 2f));
                                 }
                             }
                         }, 2f, $"Fix Kill Cooldown Task for playerId {pc.PlayerId}");
@@ -687,12 +696,12 @@ class IntroCutsceneDestroyPatch
                 }
             }
 
-            if (PlayerControl.LocalPlayer.Is(CustomRoles.GM)) // Incase user has /up access
+            foreach (var gm in Main.AllPlayerControls.Where(player => player && player.Data != null && !player.Data.Disconnected && player.Is(CustomRoles.GM)))
             {
-                PlayerControl.LocalPlayer.RpcExile();
-                Main.PlayerStates[PlayerControl.LocalPlayer.PlayerId].SetDead();
+                gm.RpcExile();
+                Main.PlayerStates[gm.PlayerId].SetDead();
             }
-            else if (GhostRoleAssign.forceRole.Any())
+            if (GhostRoleAssign.forceRole.Any())
             {
                 // Needs to be delayed for the game to load it properly
                 _ = new LateTask(() =>

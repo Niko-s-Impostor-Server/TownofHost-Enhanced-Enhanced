@@ -22,6 +22,8 @@ class HudManagerPatch
     public static GameObject TempLowerInfoText;
     public static void Postfix(HudManager __instance)
     {
+        FeatureChatCommands.UpdateSession();
+        AfkMonitor.Tick();
         if (!GameStates.IsModHost || __instance == null) return;
 
         var player = PlayerControl.LocalPlayer;

@@ -84,8 +84,12 @@ public static class OptionSaver
     }
     /// <summary>Save current options to json file</summary>
     public static void Save()
+        => TrySave();
+
+    /// <summary>Atomically persist all presets and report whether the file was committed.</summary>
+    public static bool TrySave()
     {
-        if (AmongUsClient.Instance != null && !AmongUsClient.Instance.AmHost) return;
+        if (AmongUsClient.Instance != null && !AmongUsClient.Instance.AmHost) return false;
 
         var temporaryPath = OptionSaverFileInfo.FullName + "." + Guid.NewGuid().ToString("N") + ".tmp";
         try
@@ -94,10 +98,12 @@ public static class OptionSaver
             Directory.CreateDirectory(SaveDataDirectoryInfo.FullName);
             File.WriteAllText(temporaryPath, jsonString);
             File.Move(temporaryPath, OptionSaverFileInfo.FullName, overwrite: true);
+            return true;
         }
         catch (System.Exception error)
         {
             Logger.Error($"Error: {error}", "OptionSaver.Save");
+            return false;
         }
         finally
         {
