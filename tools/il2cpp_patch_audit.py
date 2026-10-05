@@ -313,7 +313,7 @@ def main():
     parser.add_argument("--native-source", type=Path, default=Path(r"D:\SharedUserFiles\TestDesktop\opencode-chat\assembly-compare\src-2026.8.18"))
     parser.add_argument("--native-binary", type=Path, default=Path(r"D:\Game\20260818\Itch\GameAssembly.dll"))
     parser.add_argument("--offline", action="store_true")
-    parser.add_argument("--output", type=Path, default=ROOT / "docs/il2cpp-patch-audit.json")
+    parser.add_argument("--output", type=Path, default=ROOT / "artifacts/il2cpp-patch-audit.json")
     args = parser.parse_args()
     cache = ROOT / "artifacts/il2cpp-audit"
     versions_path = cache / "available_versions.json"

@@ -13,7 +13,6 @@
     <CodePage>65001</CodePage>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Remove="tests/**/*.cs" />
     <!-- Translator reads every language from the main assembly, including dotted Features locale files. -->
     <EmbeddedResource Include="Resources/**" WithCulture="false" />
   </ItemGroup>

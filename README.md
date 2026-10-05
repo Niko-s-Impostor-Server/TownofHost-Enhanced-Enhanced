@@ -2,7 +2,6 @@
 <h1 align="center">Town of Host: Enhanced (TOHE)</h1>
 
 This branch adapts the TOHE v2.1.1 stable baseline to **Among Us 2026.8.18 (Windows Itch)**.
-See [migration notes, build instructions and verification coverage](docs/2026.8.18-migration.md).
 The retired TOHE API and its login dependency have been removed. Gameplay migration and runtime verification are still in progress.
 
 <br>
