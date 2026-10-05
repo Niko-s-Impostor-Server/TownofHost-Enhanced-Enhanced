@@ -279,6 +279,7 @@ class VersionShowerStartPatch
 {
     static TextMeshPro SpecialEventText;
     private static TextMeshPro credentials;
+    private static Sprite backgroundSprite;
     private static void Postfix(VersionShower __instance)
     {
         Main.credentialsText = $"<size=70%><size=85%><color={Main.ModColor}>{Main.ModName}</color> v{Main.PluginDisplayVersion}</size>";
@@ -361,13 +362,18 @@ class VersionShowerStartPatch
 
     private static void AddCredentialsBackground(TextMeshPro text)
     {
-        var sprite = Utils.LoadSprite("TOHE.Resources.Images.PresetBox.png", 100f);
         var textRenderer = text.GetComponent<Renderer>();
-        if (!sprite || !textRenderer) return;
+        if (!textRenderer) return;
         text.ForceMeshUpdate();
         var bounds = text.textBounds;
-        var spriteSize = sprite.bounds.size;
-        if (bounds.size.x <= 0f || bounds.size.y <= 0f || spriteSize.x <= 0f || spriteSize.y <= 0f) return;
+        if (bounds.size.x <= 0f || bounds.size.y <= 0f) return;
+        if (!backgroundSprite)
+        {
+            // A unit rectangle using Unity's solid white texture; no image asset.
+            backgroundSprite = Sprite.Create(Texture2D.whiteTexture, new Rect(0f, 0f, 1f, 1f),
+                new Vector2(0.5f, 0.5f), 1f, 0, SpriteMeshType.FullRect);
+            backgroundSprite.hideFlags = HideFlags.HideAndDontSave;
+        }
 
         var background = new GameObject("TOHEECredentialsBackground");
         background.layer = text.gameObject.layer;
@@ -376,10 +382,9 @@ class VersionShowerStartPatch
         // rather than the much wider native version label's RectTransform.
         background.transform.localPosition = new Vector3(bounds.center.x, bounds.center.y, 0.02f);
         background.transform.localScale = new Vector3(
-            (bounds.size.x + 0.32f) / spriteSize.x,
-            (bounds.size.y + 0.16f) / spriteSize.y, 1f);
+            bounds.size.x + 0.32f, bounds.size.y + 0.16f, 1f);
         var renderer = background.AddComponent<SpriteRenderer>();
-        renderer.sprite = sprite;
+        renderer.sprite = backgroundSprite;
         renderer.color = new Color(0f, 0f, 0f, 0.78f);
         renderer.sortingLayerID = textRenderer.sortingLayerID;
         // Keep the text's UI order; a lower order can put the panel behind the
