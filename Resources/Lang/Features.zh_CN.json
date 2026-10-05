@@ -1,10 +1,13 @@
 {
   "LanguageID": "13",
   "DetectiveVanilla": "侦探（原版）",
+  "DetectiveVanillaBlurb": "使用原版侦探技能调查线索。",
+  "DetectiveVanillaInfoLong": "原版侦探，可设置嫌疑人数上限。与模组原有的自定义侦探是不同职业。",
   "DetectiveTOHE": "侦探（原版）",
   "DetectiveTOHEInfo": "使用原版侦探技能调查线索。",
   "DetectiveTOHEInfoLong": "原版侦探，可设置嫌疑人数上限。与模组原有的自定义侦探是不同职业。",
   "Viper": "毒蛇",
+  "ViperInfoLong": "原版毒蛇，可设置受害者尸体溶解所需时间。",
   "ViperTOHE": "毒蛇",
   "ViperTOHEInfo": "击杀船员并溶解尸体。",
   "ViperTOHEInfoLong": "原版毒蛇，可设置受害者尸体溶解所需时间。",

@@ -14,7 +14,8 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Remove="tests/**/*.cs" />
-    <EmbeddedResource Include="Resources/**" />
+    <!-- Translator reads every language from the main assembly, including dotted Features locale files. -->
+    <EmbeddedResource Include="Resources/**" WithCulture="false" />
   </ItemGroup>
   <!-- Use the interop assemblies generated for the actual IL2CPP installation. -->
   <ItemGroup Condition="'$(LocalAmongUsPath)' != ''">

@@ -3790,5 +3790,16 @@
   "Evader_ChanceNotExiled": "Chance not be exiled",
 
   "EavesdropperMsgTitle": "You found a secret",
-  "EavesdropPercentChance": "Chance to eavesdrop"
+  "EavesdropPercentChance": "Chance to eavesdrop",
+  "NewHideMsg": "Hide Command Messages",
+  "DisableDevicesInfo": "Selected information devices are disabled according to the host's settings.",
+  "SyncButtonModeInfo": "Emergency meetings share the host's configured button budget.",
+  "SabotageTimeControlInfo": "Selected sabotage countdowns use the host's configured timers.",
+  "RandomMapsModeInfo": "The map is selected from the enabled maps when a game starts.",
+  "NoGameEndInfo": "Automatic game endings are disabled. The host must end the game manually.",
+  "Mad-": "Madmate ",
+  "ChiefOfPolice": "Police Commissioner",
+  "SpeedBooster": "Speed Booster",
+  "NotAssigned": "Not Assigned",
+  "CoinflipCommandInfo": "<b>This Command can only be used when in the lobby or after you die.</b>"
 }

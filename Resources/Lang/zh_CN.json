@@ -3632,5 +3632,16 @@
   "Minion_Blind": "失明",
   "Evader_ChanceNotExiled": "概率不被驱逐",
   "EavesdropperMsgTitle": "你发现了一个秘密",
-  "EavesdropPercentChance": "概率偷听"
+  "EavesdropPercentChance": "概率偷听",
+  "NewHideMsg": "隐藏指令消息",
+  "DisableDevicesInfo": "根据房主设置禁用选定的信息设备。",
+  "SyncButtonModeInfo": "所有玩家的紧急会议共用房主设置的按钮次数上限。",
+  "SabotageTimeControlInfo": "选定破坏的倒计时采用房主设置的时长。",
+  "RandomMapsModeInfo": "游戏开始时，从启用的地图中随机选择地图。",
+  "NoGameEndInfo": "禁用自动游戏结束条件，需由房主手动结束游戏。",
+  "Mad-": "背叛的 ",
+  "ChiefOfPolice": "警察局长",
+  "SpeedBooster": "加速者",
+  "NotAssigned": "未分配",
+  "CoinflipCommandInfo": "<b>此指令只能在大厅或死亡后使用</b>"
 }

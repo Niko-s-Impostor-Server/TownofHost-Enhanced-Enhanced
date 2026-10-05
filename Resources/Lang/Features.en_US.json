@@ -1,10 +1,13 @@
 {
   "LanguageID": "0",
   "DetectiveVanilla": "Detective (Vanilla)",
+  "DetectiveVanillaBlurb": "Investigate clues with the native Detective ability.",
+  "DetectiveVanillaInfoLong": "The native Detective, with a configurable suspect limit. This is separate from the custom Detective role.",
   "DetectiveTOHE": "Detective (Vanilla)",
   "DetectiveTOHEInfo": "Investigate clues with the native Detective ability.",
   "DetectiveTOHEInfoLong": "The native Detective, with a configurable suspect limit. This is separate from the custom Detective role.",
   "Viper": "Viper",
+  "ViperInfoLong": "The native Viper. Configure how long its victim's body takes to dissolve.",
   "ViperTOHE": "Viper",
   "ViperTOHEInfo": "Eliminate crewmates and dissolve bodies.",
   "ViperTOHEInfoLong": "The native Viper. Configure how long its victim's body takes to dissolve.",
