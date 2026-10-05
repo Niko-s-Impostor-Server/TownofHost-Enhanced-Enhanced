@@ -27,6 +27,7 @@ internal sealed class LocalPlaySmoke
     private bool optionPending;
     private int originalNoGameEnd;
     private int originalPreset;
+    private int startPlayerCount;
 
     internal LocalPlaySmoke(string directory, Func<bool> ownsLocalHost)
     {
@@ -56,12 +57,13 @@ internal sealed class LocalPlaySmoke
         }
         else if (value == "local_start")
         {
-            if (!OwnsHost() || !ReadyLobby() || GameData.Instance.PlayerCount != 2 ||
+            if (!OwnsHost() || !ReadyLobby() || GameData.Instance.PlayerCount is < 2 or > 3 ||
                 GameSettingMenu.Instance || !TOHE.Options.IsLoaded || TOHE.Options.NoGameEnd == null ||
                 !TOHE.GameStates.IsNormalGame)
-            { rejection = "requires_owned_loopback_host_normal_lobby_with_two_players"; return false; }
+            { rejection = "requires_owned_loopback_host_normal_lobby_with_two_or_three_players"; return false; }
             if (TOHE.Main.AutoStart.Value || TOHE.Main.AutoRehost.Value || optionPending)
             { rejection = "automatic_start_rehost_or_previous_option_restore_pending"; return false; }
+            startPlayerCount = GameData.Instance.PlayerCount;
         }
         else
         {
@@ -93,8 +95,8 @@ internal sealed class LocalPlaySmoke
             if (command == "local_join") return Join(now);
             if (command == "local_leave") return Leave(now);
             if (!OwnsHost()) return Finish("failed", "owned_loopback_host_lost", restore: true);
-            if (!GameData.Instance || GameData.Instance.PlayerCount != 2)
-                return Finish("failed", "two_player_session_changed", restore: true);
+            if (!GameData.Instance || GameData.Instance.PlayerCount != startPlayerCount)
+                return Finish("failed", "local_player_count_changed_after_start_request", restore: true);
             if (stage == 0)
             {
                 if (!ReadyLobby() || GameSettingMenu.Instance)
@@ -108,13 +110,13 @@ internal sealed class LocalPlaySmoke
             }
             else if (stage == 1 && client.GameState == InnerNetClient.GameStates.Started)
                 Advance(2, now);
-            else if (stage == 2 && ShipStatus.Instance && Counts().NativeRoles == 2 &&
+            else if (stage == 2 && ShipStatus.Instance && Counts().NativeRoles == startPlayerCount &&
                      DestroyableSingleton<HudManager>.InstanceExists && HudManager.Instance.IsIntroDisplayed)
                 Advance(3, now);
             else if (stage == 3 && DestroyableSingleton<HudManager>.InstanceExists && !HudManager.Instance.IsIntroDisplayed)
                 Advance(4, now);
             else if (stage == 4 && GameplayReady())
-                return Finish("succeeded", "two_player_roles_intro_tasks_and_local_movement_ready", restore: false);
+                return Finish("succeeded", "local_roles_intro_tasks_and_local_movement_ready", restore: false);
             return false;
         }
         catch (Exception ex)
@@ -166,9 +168,9 @@ internal sealed class LocalPlaySmoke
                 return Finish("failed", "joined_session_is_not_fixed_loopback", restore: true);
             if (ReadyLobby() && OwnsJoin())
             {
-                if (GameData.Instance.PlayerCount != 2)
-                    return Finish("failed", "joined_room_does_not_have_two_players", restore: true);
-                return Finish("succeeded", "native_loopback_two_player_lobby_ready", restore: false);
+                if (GameData.Instance.PlayerCount is < 2 or > 3)
+                    return Finish("failed", "joined_room_does_not_have_two_or_three_players", restore: true);
+                return Finish("succeeded", "native_loopback_two_or_three_player_lobby_ready", restore: false);
             }
             if (!client.AmConnected && client.GameState == InnerNetClient.GameStates.NotJoined &&
                 !joinButton && SceneManager.GetActiveScene().name != "MatchMaking")
@@ -262,12 +264,13 @@ internal sealed class LocalPlaySmoke
     private static bool GameplayReady()
     {
         if (!LoopbackLocal() || AmongUsClient.Instance.GameState != InnerNetClient.GameStates.Started ||
-            !GameData.Instance || GameData.Instance.PlayerCount != 2 || !ShipStatus.Instance ||
+            !GameData.Instance || GameData.Instance.PlayerCount is < 2 or > 3 || !ShipStatus.Instance ||
             !TOHE.Main.IntroDestroyed || TOHE.Main.RealOptionsData == null ||
             !PlayerControl.LocalPlayer || !PlayerControl.LocalPlayer.CanMove ||
             !DestroyableSingleton<HudManager>.InstanceExists || HudManager.Instance.IsIntroDisplayed) return false;
         var counts = Counts();
-        return counts.Players == 2 && counts.NativeRoles == 2 && counts.ModRoles == 2 &&
+        int expectedPlayers = GameData.Instance.PlayerCount;
+        return counts.Players == expectedPlayers && counts.NativeRoles == expectedPlayers && counts.ModRoles == expectedPlayers &&
             counts.PlayersWithTasks > 0 && GameData.Instance.TotalTasks > 0;
     }
 
@@ -339,6 +342,7 @@ internal sealed class LocalPlaySmoke
             game_state = client ? client.GameState.ToString() : null,
             loopback_local = LoopbackLocal(), owned_host = OwnsHost(), owned_join = OwnsJoin(),
             option_restore_pending = optionPending, player_count = GameData.Instance ? GameData.Instance.PlayerCount : 0,
+            start_expected_player_count = startPlayerCount,
             connected_player_count = counts.Players, native_role_ready_count = counts.NativeRoles,
             mod_role_ready_count = counts.ModRoles, players_with_tasks_count = counts.PlayersWithTasks,
             local_task_state_total = PlayerControl.LocalPlayer &&
