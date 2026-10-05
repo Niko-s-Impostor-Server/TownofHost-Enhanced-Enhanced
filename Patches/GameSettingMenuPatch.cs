@@ -138,18 +138,56 @@ public class GameSettingMenuPatch
     {
         var ParentLeftPanel = __instance.GamePresetsButton.transform.parent;
 
-        var labeltag = GameObject.Find("ModeValue");
-        var preset = Object.Instantiate(labeltag, ParentLeftPanel);
+        // These serialized option prefabs exist even before the vanilla tab has
+        // created its rows. Global Find depends on unrelated active scene UI.
+        var options = __instance.GameSettingsTab;
+        // The sidebar label is outside the settings scroller's stencil mask.
+        var valueTemplate = __instance.GamePresetsButton.GetComponentInChildren<TextMeshPro>(true);
+        var minusSprite = options.numberOptionOrigin.MinusBtn.buttonSprite.sprite;
+        var labeltag = __instance.GetComponentsInChildren<Transform>(true)
+            .FirstOrDefault(child => child.name == "ModeValue"
+                && child.GetComponentInChildren<TextMeshPro>(true)
+                && child.GetComponentInChildren<SpriteRenderer>(true));
+        GameObject preset;
+        if (labeltag)
+        {
+            preset = Object.Instantiate(labeltag.gameObject, ParentLeftPanel);
+        }
+        else
+        {
+            // ModeValue is not part of the 2026 GameSettingMenu contract. Copy
+            // only its owner's text presentation, never an OptionBehaviour with
+            // native Start/Initialize handlers or an unbound setting value.
+            preset = new GameObject("TOHEPresetValue");
+            preset.layer = __instance.GamePresetsButton.gameObject.layer;
+            preset.transform.SetParent(ParentLeftPanel, false);
+            var background = new GameObject("Background");
+            background.layer = preset.layer;
+            background.transform.SetParent(preset.transform, false);
+            var renderer = background.AddComponent<SpriteRenderer>();
+            renderer.sprite = Utils.LoadSprite("TOHE.Resources.Images.PresetBox.png", 55f);
+            // Keep the display centred between the existing preset arrows.
+            background.transform.localPosition = new Vector3(-1.2f, -3.37f, 0f);
+            float backgroundScale = 3.6f / renderer.sprite.bounds.size.x;
+            background.transform.localScale = new Vector3(backgroundScale, backgroundScale, 1f);
+            var label = Object.Instantiate(valueTemplate, preset.transform);
+            label.gameObject.SetActive(true);
+            label.transform.localPosition = new Vector3(-1.2f, -3.37f, -1f);
+            label.transform.localScale = Vector3.one;
+            label.rectTransform.sizeDelta = new Vector2(2.2f, 0.65f);
+            label.alignment = TextAlignmentOptions.Center;
+        }
+        preset.SetActive(true);
         preset.transform.localPosition = new Vector3(-3.33f, -0.45f, -2f);
 
         preset.transform.localScale = new Vector3(0.65f, 0.63f, 1f);
-        var SpriteRenderer = preset.GetComponentInChildren<SpriteRenderer>();
+        var SpriteRenderer = preset.GetComponentInChildren<SpriteRenderer>(true);
         SpriteRenderer.color = Color.white;
         //SpriteRenderer.material = null;
         SpriteRenderer.sprite = Utils.LoadSprite("TOHE.Resources.Images.PresetBox.png", 55f);
 
         Color clr = new(-1, -1, -1);
-        var PLabel = preset.GetComponentInChildren<TextMeshPro>();
+        var PLabel = preset.GetComponentInChildren<TextMeshPro>(true);
         PresetLabel = PLabel;
         PLabel.DestroyTranslator();
         PLabel.text = GetString($"Preset_{OptionItem.CurrentPreset + 1}");
@@ -161,7 +199,6 @@ public class GameSettingMenuPatch
         };
         (PLabel.fontSizeMax, PLabel.fontSizeMin) = (size, size);
 
-        var TempMinus = GameObject.Find("MinusButton").gameObject;
         var GMinus = Object.Instantiate(__instance.GamePresetsButton.gameObject, preset.transform);
         GMinus.gameObject.SetActive(true);
         GMinus.transform.localScale = new Vector3(0.08f, 0.4f, 1f);
@@ -190,9 +227,9 @@ public class GameSettingMenuPatch
         Minus.selectedTextColor = new Color(255f, 255f, 255f);
 
         Minus.transform.localPosition = new Vector3(-2f, -3.37f, -4f);
-        Minus.inactiveSprites.GetComponent<SpriteRenderer>().sprite = TempMinus.GetComponentInChildren<SpriteRenderer>().sprite;
-        Minus.activeSprites.GetComponent<SpriteRenderer>().sprite = TempMinus.GetComponentInChildren<SpriteRenderer>().sprite;
-        Minus.selectedSprites.GetComponent<SpriteRenderer>().sprite = TempMinus.GetComponentInChildren<SpriteRenderer>().sprite;
+        Minus.inactiveSprites.GetComponent<SpriteRenderer>().sprite = minusSprite;
+        Minus.activeSprites.GetComponent<SpriteRenderer>().sprite = minusSprite;
+        Minus.selectedSprites.GetComponent<SpriteRenderer>().sprite = minusSprite;
 
         Minus.inactiveSprites.GetComponent<SpriteRenderer>().color = new Color32(55, 59, 60, 255);
         Minus.activeSprites.GetComponent<SpriteRenderer>().color = new Color32(61, 62, 63, 255);
@@ -526,8 +563,19 @@ public static class FixDarkThemeForSearchBar
 [HarmonyPatch(typeof(PlayerControl), nameof(PlayerControl.RpcSyncSettings))]
 public class RpcSyncSettingsPatch
 {
-    public static void Postfix()
+    public static bool Prefix()
     {
-        OptionItem.SyncAllOptions();
+        // AU 2026.8.18 still sends legacy PlayerControl RPC 2 here, but its
+        // HandleRpc no longer handles it: it falls through to Data.Role in the
+        // lobby. All callers use the current options, which LogicOptions already
+        // owns; its normal dirty serialization is the native synchronization path.
+        var client = AmongUsClient.Instance;
+        if (client && client.AmConnected && client.AmHost && !GameStates.IsFreePlay &&
+            GameManager.Instance && GameManager.Instance.LogicOptions != null)
+        {
+            GameManager.Instance.LogicOptions.SetDirty();
+            OptionItem.SyncAllOptions();
+        }
+        return false;
     }
 }

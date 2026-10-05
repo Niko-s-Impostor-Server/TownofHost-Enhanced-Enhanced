@@ -1,5 +1,5 @@
 {
-  "generated_utc": "2026-10-05T09:48:36.340664+00:00",
+  "generated_utc": "2026-10-05T14:05:36.539699+00:00",
   "target": {
     "version": "2026.8.18",
     "platform": "Itch Windows x86",
@@ -28,15 +28,15 @@
     "retrieved_utc": "2026-10-05T03:12:39.389633+00:00",
     "fetch_mode": "offline-cache"
   },
-  "source_attribute_count": 302,
-  "target_count": 278,
-  "unique_target_count": 236,
+  "source_attribute_count": 309,
+  "target_count": 285,
+  "unique_target_count": 240,
   "matching_counts": {
-    "exact-signature": 277,
+    "exact-signature": 284,
     "not-in-dataset": 1
   },
   "risk_counts": {
-    "no-site-warning": 254,
+    "no-site-warning": 261,
     "potential-inline-comparison-only": 23,
     "uncovered-review": 1
   },
@@ -44,18 +44,19 @@
     "GameModes/FFAManager.cs": "9b99e010923ae3901e1cec11218d05ab2092cabdcf2fc47293fa773d2c57e85d",
     "Modules/BanManager.cs": "8cb20f3f36d51432419658515a225758fd06fb2235228e7c3548eaf59ec525cc",
     "Modules/DisableDevice.cs": "1cc8c67f84dca9a8c5a4a0ef2a55a448ad7bfe251ffe97389de45c9a91f68a21",
+    "Modules/ExileText.cs": "ac627ffde40f59ad08dd919d377d19457f17e35192c2c3d5050761a62c569d97",
     "Modules/GuessManager.cs": "97330c17e6f759013ae1ea449a1b4326b0e754109be084ae63aa0a4e3c1c3a7d",
     "Modules/LobbySettingsPreview.cs": "d89243a5ddd806558768de8b939ca430ea0849d29113d91712e6700787cbb6e0",
     "Modules/ModUpdater.cs": "af7b7cc11021f2d378a4dabe8bd9fc0a38bdbde9f1941e468a6e428c9319e3cd",
     "Modules/OptionHolder.cs": "ed47ed1fc8ed3628167bb369787f57535e6067fd031d1028954d1737b170a421",
-    "Modules/RPC.cs": "2b6d2d3723e8a77fa644f5de44e34bffc679f1213a167f033b96d556420af66d",
+    "Modules/RPC.cs": "12d37901e865bf43f7e95ff8d6f9843b1b0b6a615298b9858b44c5e8c5335102",
     "Modules/Zoom.cs": "0c8a35f5f888fc56eb21e97acb179fe7133e9d02b52581bdac86948658d01101",
     "Patches/AirShipElectricalDoors.cs": "d9a68e399d0eb4df4f6fc61989b39a96965cc8a4c6b0756ead1b3b2af81261c4",
     "Patches/AirshipStatus.cs": "c670e2ecce1f4f1f95a8bc53b382fce8f7f63f7f0cecf58cac9c9eacca5a63c8",
     "Patches/AnnouncementPatch.cs": "16af734cff112d6bdc4216839dc52bcb038615e708de0372e79bd6841d7a3a45",
     "Patches/AprilFoolsModePatch.cs": "641fe1af34f62507f943bdab2a61210795cee7c0bdb043d7d802f2ca5e0fd306",
     "Patches/ChatBubblePatch.cs": "ab119fb14ae4acd199ece4590ae98b6bf0836adb95b31c960ff9477a912cb51d",
-    "Patches/ChatCommandPatch.cs": "b995c2fc989aecfddc1545e2ae4c4e4cc6e6b352670297ed2fa49657eba5c60d",
+    "Patches/ChatCommandPatch.cs": "3d815d44f63da6835585d7066e6e7a6b77d01f7fc5fa2cddcb1288c7757ae9c5",
     "Patches/ChatControlPatch.cs": "0bf8d38c030c64a4189c98f323f041a643d8e0443ceeb1fc20a3f3321e043d76",
     "Patches/CheckGameEndPatch.cs": "b7de445f66b1b9a3200fe014bfc8ce6a6aaebb4fb09f800ced2f80b955a94907",
     "Patches/ClientOptionsPatch.cs": "2bd49e5a8d9520f6d55829ee8e5a30837e96ad3459dd0da74b397c807a28d675",
@@ -69,12 +70,12 @@
     "Patches/DiscordPatch.cs": "930ca1f4b3f83c1960745a1d64b2f575bc7458a5fa5fa7ce9860080e4d142f1c",
     "Patches/DleksPatch.cs": "a134f264d7069ea5475d4c17675ef00be7967ea57f4ad00bba917ecf89655610",
     "Patches/EndGameManagerPatch.cs": "a474a2d0fdc08120acf2559121a89c35186fbfa1e2290795d91c1247bc39984b",
-    "Patches/ExilePatch.cs": "7639da8db689b35d231c65cfb96a0b792b64f3cf4321ba521e2dd1d05cccef33",
+    "Patches/ExilePatch.cs": "3d719376011669460593266076b430e39e7709c3f682af1446c08de5e4659457",
     "Patches/FreeplayPatch.cs": "0d5ad14853e3652fb6bf6049ca776e61e2a219e3695d7a2ef2a38db3f5265fb8",
     "Patches/GameManagerPatch.cs": "b06f1fc95f0b4f4b608792714dedc6bb814881068f373fc99912592c52ef8f5c",
-    "Patches/GameOptionsMenuPatch.cs": "9cd603f6fafdaa69cf48235dca4699afeb29be86af6496328ff0f6db445d7bab",
+    "Patches/GameOptionsMenuPatch.cs": "c525338dbd24501eb81390a22ac67e60668814083778cb46a31bed7e48893ca8",
     "Patches/GameOptionsPatch.cs": "cf7e23a4f691edf8bcfac19861c251f8f4b24d21de54bd6772a63371068afc80",
-    "Patches/GameSettingMenuPatch.cs": "e55ce000a9eb406abb5ca078d15f47a81fe1f378c3687cf33745448242893d5b",
+    "Patches/GameSettingMenuPatch.cs": "94dfc1789a2debea9a80cb2cec857c2fd362a0d4ebdac0b1b960abb61caa445f",
     "Patches/GameStartManagerPatch.cs": "b3d0b6689fce1c48ca13e30d942f6f0812f6a6709f3fe4243741e9db16094e56",
     "Patches/GuardAngelPatch.cs": "5e65dcbb41eb8cb89fbeff39232b1de614f3a0c906ee008adfaff6539390188c",
     "Patches/HashRandomPatch.cs": "de6816d4d63f74629755d7c27a6f0eba06a0230d31bc0caff536fd3795d3dd9f",
@@ -85,14 +86,14 @@
     "Patches/HudPatch.cs": "28b88cc8aa475f86151105003dc126d99db0406188493aac41d536d74edde214",
     "Patches/HudSpritePatch.cs": "de03c5996f66735c168900df9113221f0ae4715403c78a4ae9bce601b3deca34",
     "Patches/InnerNetClientPatch.cs": "bc94d05d68070ca28505370be74ea040b9e19dc17eca8406a24d07c93f5e2a6c",
-    "Patches/IntroPatch.cs": "117def346169051ffde8cda227f97b562bdb5a463318433e4a6e248c63eee374",
+    "Patches/IntroPatch.cs": "30616eb186faf9c9197d489f966334f95431fe94c5a306e8d21272500396f042",
     "Patches/JoinGameButtonPatch.cs": "fbeb598d6775514d8de1ac6a60e416fa1d86122727267a3e4cda3d916420fba5",
     "Patches/LadderPatch.cs": "cab54217d3c624dae9b546f0f08d6c8cd6e8d8f54bbef0194711af6bf3cbf603",
     "Patches/LobbyPatch.cs": "7de10068e4a7f19e1f02c5c6330d093e63aa462b86d636b59a8eebadbc278946",
     "Patches/MainMenuManagerPatch.cs": "1fd0913fff244efcbd8150c265e942c02d9e91bdfd9342ce50c0c75380ad752e",
     "Patches/MapPickerMenuPatch.cs": "23ca7748dcb89f967901fc726373ea5e004ff48c38f0e76a73e1d450cc9824a4",
     "Patches/MeetingAbilityPatch.cs": "2bc291b8412dec5c4015ab4295af9aef7d4b5faab7af79e6c11b3c98046f6a3a",
-    "Patches/MeetingHudPatch.cs": "c7acec221a9e4d79fff7988ebc2bad040ec2e69065217ac6ffc1ad3e4545899c",
+    "Patches/MeetingHudPatch.cs": "20b0033c2a7e0a6134d7b3064f39f4e560d949f1c8bd0a56566e15222d2bfd54",
     "Patches/ModRegistrationPatch.cs": "f8684ad82d27a84184e6d4463161973bebc18191794e8cf2816e3b55c0d642b0",
     "Patches/MovingPlatformBehaviourPatch.cs": "253cc5e166aa93759ba711ea9f7ab2a3924514607c253636e641f573c54cac31",
     "Patches/NoBlackoutPatch.cs": "2351ef781097eff897d79fee861820bc1934ce554a3c1a771fce4218b67f734f",
@@ -100,19 +101,19 @@
     "Patches/OneWayShadowsPatch.cs": "c7da6c908e5e798aaf73fd0a4233261767ffb9ec7efac9543537d89d7e5de29e",
     "Patches/OutroPatch.cs": "cc5aeb7c2ee4429669cfe7465172efff02f39d738640831b7663eb709d0b327e",
     "Patches/PhantomRolePatch.cs": "9282cb672942f1d5067d35037d5ad7f41dcffd56ff3913e45c33cf2fbef1b7d9",
-    "Patches/PlayerControlPatch.cs": "c0615ddfe0ac4e72488581063917b886c86e949f699b8a25a8cecfff8dc7172a",
+    "Patches/PlayerControlPatch.cs": "c03120d07c067b2c5ba0d1f7c43b5899b85e3adc9a82357411bea3c39f63e1c4",
     "Patches/PlayerJoinAndLeftPatch.cs": "63b8ab2d317677e40a38680ab1a23af19b3697ff473878087daa0e6ae8bbfb2f",
     "Patches/RandomSpawnPatch.cs": "562d55bdfbd1ec5b7dee34d197daf46e774bfeb2a034b2ef364a1b25b390cc4f",
     "Patches/RecomputeTaskPatch.cs": "1b7edcb1aa76d0c7a479bbf4c7b1f8a2d74c53d1ad763b4462de2e27959784f7",
     "Patches/RegionMenuPatch.cs": "51f0a6df8f284320c48a1aeb44c1440a4152ad14513b074c77fadf580c1a4253",
-    "Patches/RoomBrowserPatch.cs": "37e69363c6ded50c61239aedf41b90c11f622fac4eede26f9cb27ee261da1371",
+    "Patches/RoomBrowserPatch.cs": "04eb08aae1e1c6b1ef6b23ee4d9160fa003e956d0e2e658acade78d35af896e3",
     "Patches/SabotageButtonPatch.cs": "0d0f5c5a50d79885273776bde21161b9b4d3b4929724713025f19f18f5e8fa1f",
     "Patches/SabotageSystemPatch.cs": "8311075642f70306fb8e2a446dd346c5c5bdb598d6f917012a0fa0b41b2cdff4",
     "Patches/ServerVersionPatch.cs": "ba27e3d1f3843d5a8825969fa166594a4bf93f6e99098c2e82956d965e573c35",
     "Patches/ShipStatusPatch.cs": "6515a20de861d0f1b8a99d5212d0cf818e6afc7a0705257c58c499d99ebccbd0",
     "Patches/ShowHostMeetingPatch.cs": "c9a40f3f94c8388db134e65cd0ff2393f10fd3d8a352488febd22f607f360dde",
     "Patches/TOHEOnlySearch.cs": "b59efb088d6347b93ae9d848f477435a8deb1ef12e25fc1e76dcafbf24a0acb8",
-    "Patches/TaskAdderPatch.cs": "8c0f7c845abf8d3de1506c64da66b5741753e1f89fcf517f0189c7301d0cdea2",
+    "Patches/TaskAdderPatch.cs": "cad4ceaf92e45874402cd03beb3edf21222f8b2ba02667e73f50dee90440bebc",
     "Patches/TaskAssignPatch.cs": "ab5aaf1d0dd465b358ca63d6287f53045b0bf86033030f7577297c7139b30f78",
     "Patches/TextBoxPatch.cs": "063441ec02a8e76db8978f4abba34985904777dc4b26d12fdf9233b831202798",
     "Patches/UsablesPatch.cs": "d02ec7d920e44df58684090947fc4543895b0e89c257bbeabb4d9f7fab0aa336",
@@ -291,6 +292,294 @@
           "MonoCount": 0,
           "XrefCount": 0,
           "ThisCount": 2,
+          "Type": "Method",
+          "Tags": [
+            "matched"
+          ],
+          "MonoUsages": [],
+          "XrefUsages": []
+        }
+      ],
+      "matching": "exact-signature",
+      "tags": [
+        "matched"
+      ],
+      "empty_body": false,
+      "coroutine_factory": false,
+      "risk": "no-site-warning"
+    },
+    {
+      "file": "Modules/ExileText.cs",
+      "line": 148,
+      "patch_class": "ExileTextMeetingStartPatch",
+      "target_type": "MeetingHud",
+      "target_method": "Start",
+      "argument_types": null,
+      "attribute": "[HarmonyPatch(typeof(MeetingHud), nameof(MeetingHud.Start))]",
+      "source_candidates": [
+        {
+          "signature": "MeetingHud::Start(void)",
+          "parameter_types": [],
+          "file": "D:\\SharedUserFiles\\TestDesktop\\opencode-chat\\assembly-compare\\src-2026.8.18\\MeetingHud.cs",
+          "line": 168,
+          "return_type": "void",
+          "empty_body": false,
+          "coroutine_factory": false
+        }
+      ],
+      "website_candidates": [
+        {
+          "signature": "MeetingHud::Start(void)",
+          "parameter_types": [],
+          "ReturnType": "System::Void",
+          "MonoCount": 0,
+          "XrefCount": 0,
+          "ThisCount": 10,
+          "Type": "Method",
+          "Tags": [
+            "matched"
+          ],
+          "MonoUsages": [],
+          "XrefUsages": []
+        }
+      ],
+      "matching": "exact-signature",
+      "tags": [
+        "matched"
+      ],
+      "empty_body": false,
+      "coroutine_factory": false,
+      "risk": "no-site-warning"
+    },
+    {
+      "file": "Modules/ExileText.cs",
+      "line": 154,
+      "patch_class": "ExileTextMeetingClosePatch",
+      "target_type": "MeetingHud",
+      "target_method": "Close",
+      "argument_types": null,
+      "attribute": "[HarmonyPatch(typeof(MeetingHud), nameof(MeetingHud.Close))]",
+      "source_candidates": [
+        {
+          "signature": "MeetingHud::Close(void)",
+          "parameter_types": [],
+          "file": "D:\\SharedUserFiles\\TestDesktop\\opencode-chat\\assembly-compare\\src-2026.8.18\\MeetingHud.cs",
+          "line": 351,
+          "return_type": "void",
+          "empty_body": false,
+          "coroutine_factory": false
+        }
+      ],
+      "website_candidates": [
+        {
+          "signature": "MeetingHud::Close(void)",
+          "parameter_types": [],
+          "ReturnType": "System::Void",
+          "MonoCount": 2,
+          "XrefCount": 4,
+          "ThisCount": 2,
+          "Type": "Method",
+          "Tags": [
+            "used-by-inline"
+          ],
+          "MonoUsages": [
+            "MeetingHud::RpcClose(void)",
+            "MeetingHud::HandleRpc(unsignedchar,Hazel::MessageReader)"
+          ],
+          "XrefUsages": [
+            "MeetingHud::HandleProceed(void)",
+            "MeetingHud::HandleRpc(unsignedchar,Hazel::MessageReader)",
+            "MeetingHud::RpcClose(void)",
+            "MeetingHud::Update(void)"
+          ]
+        }
+      ],
+      "matching": "exact-signature",
+      "tags": [
+        "used-by-inline"
+      ],
+      "empty_body": false,
+      "coroutine_factory": false,
+      "risk": "no-site-warning"
+    },
+    {
+      "file": "Modules/ExileText.cs",
+      "line": 160,
+      "patch_class": "ExileTextBeginPatch",
+      "target_type": "ExileController",
+      "target_method": "BeginForGameplay",
+      "argument_types": null,
+      "attribute": "[HarmonyPatch(typeof(ExileController), nameof(ExileController.BeginForGameplay))]",
+      "source_candidates": [
+        {
+          "signature": "ExileController::BeginForGameplay(NetworkedPlayerInfo, Boolean, Boolean)",
+          "parameter_types": [
+            "NetworkedPlayerInfo",
+            "Boolean",
+            "Boolean"
+          ],
+          "file": "D:\\SharedUserFiles\\TestDesktop\\opencode-chat\\assembly-compare\\src-2026.8.18\\ExileController.cs",
+          "line": 105,
+          "return_type": "void",
+          "empty_body": false,
+          "coroutine_factory": false
+        }
+      ],
+      "website_candidates": [
+        {
+          "signature": "ExileController::BeginForGameplay(NetworkedPlayerInfo,bool,bool)",
+          "parameter_types": [
+            "NetworkedPlayerInfo",
+            "Boolean",
+            "Boolean"
+          ],
+          "ReturnType": "System::Void",
+          "MonoCount": 1,
+          "XrefCount": 1,
+          "ThisCount": 1,
+          "Type": "Method",
+          "Tags": [
+            "matched"
+          ],
+          "MonoUsages": [
+            "MeetingHud::_CoStartCutscene_d__58::MoveNext(void)"
+          ],
+          "XrefUsages": [
+            "MeetingHud::_CoStartCutscene_d__58::MoveNext(void)"
+          ]
+        }
+      ],
+      "matching": "exact-signature",
+      "tags": [
+        "matched"
+      ],
+      "empty_body": false,
+      "coroutine_factory": false,
+      "risk": "no-site-warning"
+    },
+    {
+      "file": "Modules/ExileText.cs",
+      "line": 167,
+      "patch_class": "ExileTextRestorePatch",
+      "target_type": "ExileController",
+      "target_method": "ReEnableGameplay",
+      "argument_types": null,
+      "attribute": "[HarmonyPatch(typeof(ExileController), nameof(ExileController.ReEnableGameplay))]",
+      "source_candidates": [
+        {
+          "signature": "ExileController::ReEnableGameplay(void)",
+          "parameter_types": [],
+          "file": "D:\\SharedUserFiles\\TestDesktop\\opencode-chat\\assembly-compare\\src-2026.8.18\\ExileController.cs",
+          "line": 238,
+          "return_type": "void",
+          "empty_body": false,
+          "coroutine_factory": false
+        }
+      ],
+      "website_candidates": [
+        {
+          "signature": "ExileController::ReEnableGameplay(void)",
+          "parameter_types": [],
+          "ReturnType": "System::Void",
+          "MonoCount": 2,
+          "XrefCount": 2,
+          "ThisCount": 0,
+          "Type": "Method",
+          "Tags": [
+            "matched"
+          ],
+          "MonoUsages": [
+            "AirshipExileController::_WrapUpAndSpawn_d__11::MoveNext(void)",
+            "ExileController::WrapUp(void)"
+          ],
+          "XrefUsages": [
+            "AirshipExileController::_WrapUpAndSpawn_d__11::MoveNext(void)",
+            "ExileController::WrapUp(void)"
+          ]
+        }
+      ],
+      "matching": "exact-signature",
+      "tags": [
+        "matched"
+      ],
+      "empty_body": false,
+      "coroutine_factory": false,
+      "risk": "no-site-warning"
+    },
+    {
+      "file": "Modules/ExileText.cs",
+      "line": 173,
+      "patch_class": "ExileTextJoinedPatch",
+      "target_type": "AmongUsClient",
+      "target_method": "OnGameJoined",
+      "argument_types": null,
+      "attribute": "[HarmonyPatch(typeof(AmongUsClient), nameof(AmongUsClient.OnGameJoined))]",
+      "source_candidates": [
+        {
+          "signature": "AmongUsClient::OnGameJoined(String)",
+          "parameter_types": [
+            "String"
+          ],
+          "file": "D:\\SharedUserFiles\\TestDesktop\\opencode-chat\\assembly-compare\\src-2026.8.18\\AmongUsClient.cs",
+          "line": 556,
+          "return_type": "void",
+          "empty_body": false,
+          "coroutine_factory": false
+        }
+      ],
+      "website_candidates": [
+        {
+          "signature": "AmongUsClient::OnGameJoined(System::String)",
+          "parameter_types": [
+            "String"
+          ],
+          "ReturnType": "System::Void",
+          "MonoCount": 0,
+          "XrefCount": 0,
+          "ThisCount": 3,
+          "Type": "Method",
+          "Tags": [
+            "matched"
+          ],
+          "MonoUsages": [],
+          "XrefUsages": []
+        }
+      ],
+      "matching": "exact-signature",
+      "tags": [
+        "matched"
+      ],
+      "empty_body": false,
+      "coroutine_factory": false,
+      "risk": "no-site-warning"
+    },
+    {
+      "file": "Modules/ExileText.cs",
+      "line": 179,
+      "patch_class": "ExileTextDisconnectedPatch",
+      "target_type": "AmongUsClient",
+      "target_method": "OnDisconnected",
+      "argument_types": null,
+      "attribute": "[HarmonyPatch(typeof(AmongUsClient), nameof(AmongUsClient.OnDisconnected))]",
+      "source_candidates": [
+        {
+          "signature": "AmongUsClient::OnDisconnected(void)",
+          "parameter_types": [],
+          "file": "D:\\SharedUserFiles\\TestDesktop\\opencode-chat\\assembly-compare\\src-2026.8.18\\AmongUsClient.cs",
+          "line": 653,
+          "return_type": "void",
+          "empty_body": false,
+          "coroutine_factory": false
+        }
+      ],
+      "website_candidates": [
+        {
+          "signature": "AmongUsClient::OnDisconnected(void)",
+          "parameter_types": [],
+          "ReturnType": "System::Void",
+          "MonoCount": 0,
+          "XrefCount": 0,
+          "ThisCount": 1,
           "Type": "Method",
           "Tags": [
             "matched"
@@ -614,7 +903,7 @@
     },
     {
       "file": "Modules/RPC.cs",
-      "line": 129,
+      "line": 132,
       "patch_class": "ShouldProcessRpcPatch",
       "target_type": "PlayerControl",
       "target_method": "ShouldProcessRpc",
@@ -667,7 +956,7 @@
     },
     {
       "file": "Modules/RPC.cs",
-      "line": 145,
+      "line": 148,
       "patch_class": "RPCHandlerPatch",
       "target_type": "PlayerControl",
       "target_method": "HandleRpc",
@@ -716,7 +1005,7 @@
     },
     {
       "file": "Modules/RPC.cs",
-      "line": 779,
+      "line": 773,
       "patch_class": "PlayerPhysicsRPCHandlerPatch",
       "target_type": "PlayerPhysics",
       "target_method": "HandleRpc",
@@ -765,7 +1054,7 @@
     },
     {
       "file": "Modules/RPC.cs",
-      "line": 1159,
+      "line": 1150,
       "patch_class": "StartRpcImmediatelyPatch",
       "target_type": "InnerNetClient",
       "target_method": "StartRpcImmediately",
@@ -1652,7 +1941,7 @@
     },
     {
       "file": "Patches/ChatCommandPatch.cs",
-      "line": 3303,
+      "line": 3304,
       "patch_class": "ChatUpdatePatch",
       "target_type": "ChatController",
       "target_method": "Update",
@@ -1695,7 +1984,7 @@
     },
     {
       "file": "Patches/ChatCommandPatch.cs",
-      "line": 3386,
+      "line": 3387,
       "patch_class": "UpdateCharCountPatch",
       "target_type": "FreeChatInputField",
       "target_method": "UpdateCharCount",
@@ -1742,7 +2031,7 @@
     },
     {
       "file": "Patches/ChatCommandPatch.cs",
-      "line": 3401,
+      "line": 3402,
       "patch_class": "RpcSendChatPatch",
       "target_type": "PlayerControl",
       "target_method": "RpcSendChat",
@@ -3465,7 +3754,7 @@
     },
     {
       "file": "Patches/ExilePatch.cs",
-      "line": 206,
+      "line": 207,
       "patch_class": "PolusExileHatFixPatch",
       "target_type": "PbExileController",
       "target_method": "PlayerSpin",
@@ -3891,6 +4180,49 @@
       "line": 563,
       "patch_class": "ToggleOptionPatch",
       "target_type": "ToggleOption",
+      "target_method": "Toggle",
+      "argument_types": null,
+      "attribute": "[HarmonyPatch(nameof(ToggleOption.Toggle)), HarmonyPrefix]",
+      "source_candidates": [
+        {
+          "signature": "ToggleOption::Toggle(void)",
+          "parameter_types": [],
+          "file": "D:\\SharedUserFiles\\TestDesktop\\opencode-chat\\assembly-compare\\src-2026.8.18\\ToggleOption.cs",
+          "line": 47,
+          "return_type": "void",
+          "empty_body": false,
+          "coroutine_factory": false
+        }
+      ],
+      "website_candidates": [
+        {
+          "signature": "ToggleOption::Toggle(void)",
+          "parameter_types": [],
+          "ReturnType": "System::Void",
+          "MonoCount": 0,
+          "XrefCount": 0,
+          "ThisCount": 5,
+          "Type": "Method",
+          "Tags": [
+            "matched"
+          ],
+          "MonoUsages": [],
+          "XrefUsages": []
+        }
+      ],
+      "matching": "exact-signature",
+      "tags": [
+        "matched"
+      ],
+      "empty_body": false,
+      "coroutine_factory": false,
+      "risk": "no-site-warning"
+    },
+    {
+      "file": "Patches/GameOptionsMenuPatch.cs",
+      "line": 575,
+      "patch_class": "ToggleOptionPatch",
+      "target_type": "ToggleOption",
       "target_method": "Initialize",
       "argument_types": null,
       "attribute": "[HarmonyPatch(nameof(ToggleOption.Initialize)), HarmonyPrefix]",
@@ -3931,7 +4263,7 @@
     },
     {
       "file": "Patches/GameOptionsMenuPatch.cs",
-      "line": 576,
+      "line": 588,
       "patch_class": "ToggleOptionPatch",
       "target_type": "ToggleOption",
       "target_method": "UpdateValue",
@@ -3976,7 +4308,7 @@
     },
     {
       "file": "Patches/GameOptionsMenuPatch.cs",
-      "line": 607,
+      "line": 619,
       "patch_class": "NumberOptionPatch",
       "target_type": "NumberOption",
       "target_method": "Initialize",
@@ -4019,7 +4351,7 @@
     },
     {
       "file": "Patches/GameOptionsMenuPatch.cs",
-      "line": 649,
+      "line": 661,
       "patch_class": "NumberOptionPatch",
       "target_type": "NumberOption",
       "target_method": "UpdateValue",
@@ -4068,7 +4400,7 @@
     },
     {
       "file": "Patches/GameOptionsMenuPatch.cs",
-      "line": 675,
+      "line": 687,
       "patch_class": "NumberOptionPatch",
       "target_type": "NumberOption",
       "target_method": "FixedUpdate",
@@ -4111,7 +4443,7 @@
     },
     {
       "file": "Patches/GameOptionsMenuPatch.cs",
-      "line": 697,
+      "line": 709,
       "patch_class": "NumberOptionPatch",
       "target_type": "NumberOption",
       "target_method": "Increase",
@@ -4154,7 +4486,7 @@
     },
     {
       "file": "Patches/GameOptionsMenuPatch.cs",
-      "line": 720,
+      "line": 745,
       "patch_class": "NumberOptionPatch",
       "target_type": "NumberOption",
       "target_method": "Decrease",
@@ -4197,7 +4529,7 @@
     },
     {
       "file": "Patches/GameOptionsMenuPatch.cs",
-      "line": 747,
+      "line": 785,
       "patch_class": "StringOptionPatch",
       "target_type": "StringOption",
       "target_method": "Initialize",
@@ -4240,7 +4572,7 @@
     },
     {
       "file": "Patches/GameOptionsMenuPatch.cs",
-      "line": 821,
+      "line": 859,
       "patch_class": "StringOptionPatch",
       "target_type": "StringOption",
       "target_method": "UpdateValue",
@@ -4289,7 +4621,7 @@
     },
     {
       "file": "Patches/GameOptionsMenuPatch.cs",
-      "line": 853,
+      "line": 891,
       "patch_class": "StringOptionPatch",
       "target_type": "StringOption",
       "target_method": "FixedUpdate",
@@ -4332,7 +4664,7 @@
     },
     {
       "file": "Patches/GameOptionsMenuPatch.cs",
-      "line": 882,
+      "line": 920,
       "patch_class": "StringOptionPatch",
       "target_type": "StringOption",
       "target_method": "Increase",
@@ -4375,7 +4707,7 @@
     },
     {
       "file": "Patches/GameOptionsMenuPatch.cs",
-      "line": 895,
+      "line": 940,
       "patch_class": "StringOptionPatch",
       "target_type": "StringOption",
       "target_method": "Decrease",
@@ -4515,7 +4847,7 @@
     },
     {
       "file": "Patches/GameSettingMenuPatch.cs",
-      "line": 325,
+      "line": 362,
       "patch_class": "GameSettingMenuPatch",
       "target_type": "GameSettingMenu",
       "target_method": "ChangeTab",
@@ -4580,7 +4912,7 @@
     },
     {
       "file": "Patches/GameSettingMenuPatch.cs",
-      "line": 415,
+      "line": 452,
       "patch_class": "GameSettingMenuPatch",
       "target_type": "GameSettingMenu",
       "target_method": "OnEnable",
@@ -4623,7 +4955,7 @@
     },
     {
       "file": "Patches/GameSettingMenuPatch.cs",
-      "line": 467,
+      "line": 504,
       "patch_class": "GameSettingMenuPatch",
       "target_type": "GameSettingMenu",
       "target_method": "Close",
@@ -4675,7 +5007,7 @@
     },
     {
       "file": "Patches/GameSettingMenuPatch.cs",
-      "line": 493,
+      "line": 530,
       "patch_class": "GameSettingMenuPatch",
       "target_type": "GameSettingMenu",
       "target_method": "OnDisable",
@@ -4718,7 +5050,7 @@
     },
     {
       "file": "Patches/GameSettingMenuPatch.cs",
-      "line": 496,
+      "line": 533,
       "patch_class": "FixInputChatField",
       "target_type": "FreeChatInputField",
       "target_method": "UpdateCharCount",
@@ -4765,7 +5097,7 @@
     },
     {
       "file": "Patches/GameSettingMenuPatch.cs",
-      "line": 511,
+      "line": 548,
       "patch_class": "FixDarkThemeForSearchBar",
       "target_type": "ChatController",
       "target_method": "Update",
@@ -4808,7 +5140,7 @@
     },
     {
       "file": "Patches/GameSettingMenuPatch.cs",
-      "line": 526,
+      "line": 563,
       "patch_class": "RpcSyncSettingsPatch",
       "target_type": "PlayerControl",
       "target_method": "RpcSyncSettings",
@@ -7671,7 +8003,7 @@
     },
     {
       "file": "Patches/MeetingHudPatch.cs",
-      "line": 657,
+      "line": 620,
       "patch_class": "CastVotePatch",
       "target_type": "MeetingHud",
       "target_method": "CastVote",
@@ -7727,7 +8059,7 @@
     },
     {
       "file": "Patches/MeetingHudPatch.cs",
-      "line": 829,
+      "line": 792,
       "patch_class": "MeetingHudStartPatch",
       "target_type": "MeetingHud",
       "target_method": "Start",
@@ -7770,7 +8102,7 @@
     },
     {
       "file": "Patches/MeetingHudPatch.cs",
-      "line": 1215,
+      "line": 1178,
       "patch_class": "MeetingHudUpdatePatch",
       "target_type": "MeetingHud",
       "target_method": "Update",
@@ -7813,7 +8145,7 @@
     },
     {
       "file": "Patches/MeetingHudPatch.cs",
-      "line": 1277,
+      "line": 1240,
       "patch_class": "SetHighlightedPatch",
       "target_type": "PlayerVoteArea",
       "target_method": "SetHighlighted",
@@ -7860,7 +8192,7 @@
     },
     {
       "file": "Patches/MeetingHudPatch.cs",
-      "line": 1288,
+      "line": 1251,
       "patch_class": "MeetingHudOnDestroyPatch",
       "target_type": "MeetingHud",
       "target_method": "OnDestroy",
@@ -9072,7 +9404,7 @@
     },
     {
       "file": "Patches/PlayerControlPatch.cs",
-      "line": 353,
+      "line": 356,
       "patch_class": "MurderPlayerPatch",
       "target_type": "PlayerControl",
       "target_method": "MurderPlayer",
@@ -9127,7 +9459,7 @@
     },
     {
       "file": "Patches/PlayerControlPatch.cs",
-      "line": 517,
+      "line": 520,
       "patch_class": "RpcMurderPlayerPatch",
       "target_type": "PlayerControl",
       "target_method": "RpcMurderPlayer",
@@ -9184,7 +9516,7 @@
     },
     {
       "file": "Patches/PlayerControlPatch.cs",
-      "line": 546,
+      "line": 549,
       "patch_class": "CheckShapeshiftPatch",
       "target_type": "PlayerControl",
       "target_method": "CheckShapeshift",
@@ -9241,7 +9573,7 @@
     },
     {
       "file": "Patches/PlayerControlPatch.cs",
-      "line": 660,
+      "line": 663,
       "patch_class": "ShapeshiftPatch",
       "target_type": "PlayerControl",
       "target_method": "Shapeshift",
@@ -9299,7 +9631,7 @@
     },
     {
       "file": "Patches/PlayerControlPatch.cs",
-      "line": 709,
+      "line": 712,
       "patch_class": "ReportDeadBodyPatch",
       "target_type": "PlayerControl",
       "target_method": "ReportDeadBody",
@@ -9352,7 +9684,7 @@
     },
     {
       "file": "Patches/PlayerControlPatch.cs",
-      "line": 936,
+      "line": 939,
       "patch_class": "FixedUpdateInNormalGamePatch",
       "target_type": "PlayerControl",
       "target_method": "FixedUpdate",
@@ -9395,7 +9727,7 @@
     },
     {
       "file": "Patches/PlayerControlPatch.cs",
-      "line": 1458,
+      "line": 1461,
       "patch_class": "PlayerStartPatch",
       "target_type": "PlayerControl",
       "target_method": "Start",
@@ -9438,7 +9770,7 @@
     },
     {
       "file": "Patches/PlayerControlPatch.cs",
-      "line": 1475,
+      "line": 1478,
       "patch_class": "CoEnterVentPatch",
       "target_type": "PlayerPhysics",
       "target_method": "CoEnterVent",
@@ -9491,7 +9823,7 @@
     },
     {
       "file": "Patches/PlayerControlPatch.cs",
-      "line": 1519,
+      "line": 1522,
       "patch_class": "EnterVentPatch",
       "target_type": "Vent",
       "target_method": "EnterVent",
@@ -9542,7 +9874,7 @@
     },
     {
       "file": "Patches/PlayerControlPatch.cs",
-      "line": 1541,
+      "line": 1544,
       "patch_class": "CoExitVentPatch",
       "target_type": "PlayerPhysics",
       "target_method": "CoExitVent",
@@ -9597,7 +9929,7 @@
     },
     {
       "file": "Patches/PlayerControlPatch.cs",
-      "line": 1562,
+      "line": 1565,
       "patch_class": "PlayerControlCompleteTaskPatch",
       "target_type": "PlayerControl",
       "target_method": "CompleteTask",
@@ -9650,7 +9982,7 @@
     },
     {
       "file": "Patches/PlayerControlPatch.cs",
-      "line": 1650,
+      "line": 1653,
       "patch_class": "PlayerControlCheckNamePatch",
       "target_type": "PlayerControl",
       "target_method": "CheckName",
@@ -9704,7 +10036,7 @@
     },
     {
       "file": "Patches/PlayerControlPatch.cs",
-      "line": 1702,
+      "line": 1705,
       "patch_class": "RpcSetColorPatch",
       "target_type": "PlayerControl",
       "target_method": "SetColor",
@@ -9770,7 +10102,7 @@
     },
     {
       "file": "Patches/PlayerControlPatch.cs",
-      "line": 1716,
+      "line": 1719,
       "patch_class": "CmdCheckNameVersionCheckPatch",
       "target_type": "PlayerControl",
       "target_method": "CmdCheckName",
@@ -9819,7 +10151,7 @@
     },
     {
       "file": "Patches/PlayerControlPatch.cs",
-      "line": 1724,
+      "line": 1727,
       "patch_class": "PlayerControlProtectPlayerPatch",
       "target_type": "PlayerControl",
       "target_method": "ProtectPlayer",
@@ -9875,7 +10207,7 @@
     },
     {
       "file": "Patches/PlayerControlPatch.cs",
-      "line": 1732,
+      "line": 1735,
       "patch_class": "PlayerControlRemoveProtectionPatch",
       "target_type": "PlayerControl",
       "target_method": "RemoveProtection",
@@ -9927,7 +10259,7 @@
     },
     {
       "file": "Patches/PlayerControlPatch.cs",
-      "line": 1740,
+      "line": 1743,
       "patch_class": "PlayerControlMixupOutfitPatch",
       "target_type": "PlayerControl",
       "target_method": "MixUpOutfit",
@@ -9978,7 +10310,7 @@
     },
     {
       "file": "Patches/PlayerControlPatch.cs",
-      "line": 1759,
+      "line": 1762,
       "patch_class": "PlayerControlFixMixedUpOutfitPatch",
       "target_type": "PlayerControl",
       "target_method": "FixMixedUpOutfit",
@@ -10027,7 +10359,7 @@
     },
     {
       "file": "Patches/PlayerControlPatch.cs",
-      "line": 1773,
+      "line": 1776,
       "patch_class": "PlayerControlCheckSporeTriggerPatch",
       "target_type": "PlayerControl",
       "target_method": "CheckSporeTrigger",
@@ -10080,7 +10412,7 @@
     },
     {
       "file": "Patches/PlayerControlPatch.cs",
-      "line": 1786,
+      "line": 1789,
       "patch_class": "PlayerControlCheckUseZiplinePatch",
       "target_type": "PlayerControl",
       "target_method": "CheckUseZipline",
@@ -10137,7 +10469,7 @@
     },
     {
       "file": "Patches/PlayerControlPatch.cs",
-      "line": 1800,
+      "line": 1803,
       "patch_class": "PlayerControlDiePatch",
       "target_type": "PlayerControl",
       "target_method": "Die",
@@ -10195,7 +10527,7 @@
     },
     {
       "file": "Patches/PlayerControlPatch.cs",
-      "line": 1812,
+      "line": 1815,
       "patch_class": "PlayerControlSetRolePatch",
       "target_type": "PlayerControl",
       "target_method": "RpcSetRole",
@@ -10264,7 +10596,7 @@
     },
     {
       "file": "Patches/PlayerControlPatch.cs",
-      "line": 1919,
+      "line": 1922,
       "patch_class": "PlayerControlLocalSetRolePatch",
       "target_type": "PlayerControl",
       "target_method": "CoSetRole",
@@ -11107,7 +11439,7 @@
     },
     {
       "file": "Patches/RoomBrowserPatch.cs",
-      "line": 53,
+      "line": 56,
       "patch_class": "RoomBrowserPatch",
       "target_type": "FindAGameManager",
       "target_method": "Start",
@@ -11150,7 +11482,7 @@
     },
     {
       "file": "Patches/RoomBrowserPatch.cs",
-      "line": 179,
+      "line": 214,
       "patch_class": "RoomBrowserPatch",
       "target_type": "FindAGameManager",
       "target_method": "HandleList",
@@ -11199,7 +11531,7 @@
     },
     {
       "file": "Patches/RoomBrowserPatch.cs",
-      "line": 194,
+      "line": 229,
       "patch_class": "RoomBrowserPatch",
       "target_type": "FindAGameManager",
       "target_method": "HandleList",
@@ -11248,7 +11580,7 @@
     },
     {
       "file": "Patches/RoomBrowserPatch.cs",
-      "line": 258,
+      "line": 300,
       "patch_class": "RoomBrowserPatch",
       "target_type": "FindAGameManager",
       "target_method": "OnDestroy",
@@ -12724,7 +13056,7 @@
     },
     {
       "file": "Patches/TaskAdderPatch.cs",
-      "line": 145,
+      "line": 146,
       "patch_class": "TaskAdderClosePatch",
       "target_type": "TaskAdderGame",
       "target_method": "OnDisable",
@@ -12767,7 +13099,7 @@
     },
     {
       "file": "Patches/TaskAdderPatch.cs",
-      "line": 151,
+      "line": 152,
       "patch_class": "TaskAddButtonUpdatePatch",
       "target_type": "TaskAddButton",
       "target_method": "Update",
@@ -12810,7 +13142,7 @@
     },
     {
       "file": "Patches/TaskAdderPatch.cs",
-      "line": 169,
+      "line": 170,
       "patch_class": "TaskAddButtonStartPatch",
       "target_type": "TaskAddButton",
       "target_method": "Start",
@@ -12853,7 +13185,7 @@
     },
     {
       "file": "Patches/TaskAdderPatch.cs",
-      "line": 174,
+      "line": 175,
       "patch_class": "AddTaskButtonPatch",
       "target_type": "TaskAddButton",
       "target_method": "AddTask",

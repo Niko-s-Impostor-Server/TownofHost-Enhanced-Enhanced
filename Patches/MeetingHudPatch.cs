@@ -517,44 +517,7 @@ class CheckForEndVotingPatch
     EndOfSession:
         name += "<size=0>";
         TempExileMsg = name;
-
-        _ = new LateTask(() =>
-        {
-            try
-            {
-                if (GameStates.IsInGame)
-                {
-                    exiledPlayer.UpdateName(name, GetClientById(exiledPlayer.ClientId));
-                    player?.RpcSetName(name);
-                }
-            }
-            catch (Exception error)
-            {
-                Logger.Error($"Error after change exiled player name: {error}", "ConfirmEjections");
-            }
-        }, 4f, "Change Exiled Player Name");
-
-        _ = new LateTask(() =>
-        {
-            try
-            {
-                if (GameStates.IsInGame && !player.Data.Disconnected)
-                {
-                    player?.RpcSetName(realName);
-                }
-
-                if (GameStates.IsInGame && player.Data.Disconnected)
-                {
-                    player.Data.PlayerName = realName;
-                    exiledPlayer.UpdateName(realName, GetClientById(exiledPlayer.ClientId));
-                    //Await Next Send Data or Next Meeting
-                }
-            }
-            catch (Exception error)
-            {
-                Logger.Error($"Error after change exiled player name back: {error}", "ConfirmEjections");
-            }
-        }, 7f, "Change Exiled Player Name Back");
+        ExileText.Publish(exiledPlayer, name, realName, AntiBlackoutStore);
 
         if (AntiBlackoutStore)
         {

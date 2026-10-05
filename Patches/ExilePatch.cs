@@ -130,6 +130,7 @@ class ExileControllerWrapUpPatch
 
     private static void WrapUpFinalizer(NetworkedPlayerInfo exiled)
     {
+        ExileText.Reset();
         // Even if an exception occurs in WrapUpPostfix, this is the only part that will be executed reliably.
         if (AmongUsClient.Instance.AmHost)
         {

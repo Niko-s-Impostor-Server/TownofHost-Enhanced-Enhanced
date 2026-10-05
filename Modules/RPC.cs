@@ -117,6 +117,7 @@ enum CustomRPC : uint
     ClearShroudOwner,
     MeetingAbilityRequest = 188,
     RecoverPresentation = 189,
+    SyncExileText = 190,
 }
 public enum Sounds
 {
@@ -222,6 +223,10 @@ internal class RPCHandlerPatch
         var rpcType = (CustomRPC)callId;
         switch (rpcType)
         {
+            case CustomRPC.SyncExileText:
+                if (isLocalRecipient && __instance.OwnerId == AmongUsClient.Instance.HostId)
+                    ExileText.Receive(__instance, reader);
+                break;
             case CustomRPC.RecoverPresentation:
                 if (isLocalRecipient && reader.BytesRemaining == 0 && __instance.OwnerId == AmongUsClient.Instance.HostId)
                     PresentationRecovery.RecoverLocal();

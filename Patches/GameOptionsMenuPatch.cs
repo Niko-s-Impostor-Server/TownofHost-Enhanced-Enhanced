@@ -560,6 +560,18 @@ public static class GameOptionsMenuPatch
 [HarmonyPatch(typeof(ToggleOption))]
 public static class ToggleOptionPatch
 {
+    [HarmonyPatch(nameof(ToggleOption.Toggle)), HarmonyPrefix]
+    public static bool TogglePrefix(ToggleOption __instance)
+    {
+        if (!ModGameOptionsMenu.OptionList.ContainsKey(__instance)) return true;
+        if (!GameOptionsMenuPatch.CanEdit) return false;
+        __instance.CheckMark.enabled = !__instance.CheckMark.enabled;
+        // Native Toggle inlines UpdateValue on this game version. Route registered
+        // mod rows directly; their synthetic data has no native option identifier.
+        UpdateValuePrefix(__instance);
+        __instance.OnValueChanged?.Invoke(__instance);
+        return false;
+    }
     [HarmonyPatch(nameof(ToggleOption.Initialize)), HarmonyPrefix]
     private static bool InitializePrefix(ToggleOption __instance)
     {
@@ -697,7 +709,20 @@ public static class NumberOptionPatch
     [HarmonyPatch(nameof(NumberOption.Increase)), HarmonyPrefix]
     public static bool IncreasePrefix(NumberOption __instance)
     {
-        if (ModGameOptionsMenu.OptionList.ContainsKey(__instance) && !GameOptionsMenuPatch.CanEdit) return false;
+        if (ModGameOptionsMenu.OptionList.ContainsKey(__instance))
+        {
+            if (!GameOptionsMenuPatch.CanEdit) return false;
+            if (__instance.Value == __instance.ValidRange.max) __instance.Value = __instance.ValidRange.min;
+            else
+            {
+                var modIncrement = IncrementMultiplier * __instance.Increment;
+                __instance.Value = __instance.Value + modIncrement < __instance.ValidRange.max
+                    ? __instance.Value + modIncrement : __instance.ValidRange.Clamp(__instance.Value + __instance.Increment);
+            }
+            UpdateValuePrefix(__instance);
+            __instance.OnValueChanged?.Invoke(__instance);
+            return false;
+        }
         if (__instance.Value == __instance.ValidRange.max)
         {
             __instance.Value = __instance.ValidRange.min;
@@ -720,7 +745,20 @@ public static class NumberOptionPatch
     [HarmonyPatch(nameof(NumberOption.Decrease)), HarmonyPrefix]
     public static bool DecreasePrefix(NumberOption __instance)
     {
-        if (ModGameOptionsMenu.OptionList.ContainsKey(__instance) && !GameOptionsMenuPatch.CanEdit) return false;
+        if (ModGameOptionsMenu.OptionList.ContainsKey(__instance))
+        {
+            if (!GameOptionsMenuPatch.CanEdit) return false;
+            if (__instance.Value == __instance.ValidRange.min) __instance.Value = __instance.ValidRange.max;
+            else
+            {
+                var modIncrement = IncrementMultiplier * __instance.Increment;
+                __instance.Value = __instance.Value - modIncrement > __instance.ValidRange.min
+                    ? __instance.Value - modIncrement : __instance.ValidRange.Clamp(__instance.Value - __instance.Increment);
+            }
+            UpdateValuePrefix(__instance);
+            __instance.OnValueChanged?.Invoke(__instance);
+            return false;
+        }
         if (__instance.Value == __instance.ValidRange.min)
         {
             __instance.Value = __instance.ValidRange.max;
@@ -882,7 +920,14 @@ public static class StringOptionPatch
     [HarmonyPatch(nameof(StringOption.Increase)), HarmonyPrefix]
     public static bool IncreasePrefix(StringOption __instance)
     {
-        if (ModGameOptionsMenu.OptionList.ContainsKey(__instance) && !GameOptionsMenuPatch.CanEdit) return false;
+        if (ModGameOptionsMenu.OptionList.ContainsKey(__instance))
+        {
+            if (!GameOptionsMenuPatch.CanEdit) return false;
+            __instance.Value = __instance.Value == __instance.Values.Length - 1 ? 0 : __instance.Value + 1;
+            UpdateValuePrefix(__instance);
+            __instance.OnValueChanged?.Invoke(__instance);
+            return false;
+        }
         if (__instance.Value == __instance.Values.Length - 1)
         {
             __instance.Value = 0;
@@ -895,7 +940,14 @@ public static class StringOptionPatch
     [HarmonyPatch(nameof(StringOption.Decrease)), HarmonyPrefix]
     public static bool DecreasePrefix(StringOption __instance)
     {
-        if (ModGameOptionsMenu.OptionList.ContainsKey(__instance) && !GameOptionsMenuPatch.CanEdit) return false;
+        if (ModGameOptionsMenu.OptionList.ContainsKey(__instance))
+        {
+            if (!GameOptionsMenuPatch.CanEdit) return false;
+            __instance.Value = __instance.Value == 0 ? __instance.Values.Length - 1 : __instance.Value - 1;
+            UpdateValuePrefix(__instance);
+            __instance.OnValueChanged?.Invoke(__instance);
+            return false;
+        }
         if (__instance.Value == 0)
         {
             __instance.Value = __instance.Values.Length - 1;

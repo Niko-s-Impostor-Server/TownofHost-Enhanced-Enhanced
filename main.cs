@@ -42,8 +42,8 @@ public class Main : BasePlugin
     public static ConfigEntry<string> DebugKeyInput { get; private set; }
 
     public const string PluginGuid = "com.0xdrmoe.townofhostenhanced";
-    public const string PluginVersion = "2026.1005.211.3";
-    public const string PluginDisplayVersion = "2.1.1-au20260818.3";
+    public const string PluginVersion = "2026.1005.211.4";
+    public const string PluginDisplayVersion = "2.1.1-au20260818.4";
     public const string SupportedVersionAU = "2026.8.18";
 
     /******************* Change one of the three variables to true before making a release. *******************/

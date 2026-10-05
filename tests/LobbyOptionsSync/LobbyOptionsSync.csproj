@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>12.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <NativeSource Condition="'$(TOHE_NATIVE_SOURCE)' != ''">$(TOHE_NATIVE_SOURCE)</NativeSource>
+    <NativeSource Condition="'$(NativeSource)' == ''">D:/SharedUserFiles/TestDesktop/opencode-chat/assembly-compare/src-2026.8.18</NativeSource>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../Modules/GameOptionsSender/GameOptionsSender.cs" Link="GameOptionsSender.cs" />
+    <Compile Include="../../Modules/GameOptionsSender/NormalGameOptionsSender.cs" Link="NormalGameOptionsSender.cs" />
+    <Compile Include="$(NativeSource)/GameLogicComponent.cs" Link="NativeGameLogicComponent.cs" />
+  </ItemGroup>
+  <Target Name="ExtractLobbyOptionsMethods" BeforeTargets="CoreCompile">
+    <Exec Command="python &quot;$(MSBuildProjectDirectory)/generate.py&quot; &quot;$(IntermediateOutputPath)GeneratedLobbyOptions.cs&quot; &quot;$(NativeSource)&quot;" WorkingDirectory="$(MSBuildProjectDirectory)" />
+    <ItemGroup>
+      <Compile Include="$(IntermediateOutputPath)GeneratedLobbyOptions.cs" />
+    </ItemGroup>
+  </Target>
+</Project>
