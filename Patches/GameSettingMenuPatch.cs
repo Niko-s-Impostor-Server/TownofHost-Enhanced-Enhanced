@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using TMPro;
 using UnityEngine;
 using static TOHE.Translator;
@@ -138,130 +138,9 @@ public class GameSettingMenuPatch
     {
         var ParentLeftPanel = __instance.GamePresetsButton.transform.parent;
 
-        // These serialized option prefabs exist even before the vanilla tab has
-        // created its rows. Global Find depends on unrelated active scene UI.
-        var options = __instance.GameSettingsTab;
         // The sidebar label is outside the settings scroller's stencil mask.
         var valueTemplate = __instance.GamePresetsButton.GetComponentInChildren<TextMeshPro>(true);
-        var minusSprite = options.numberOptionOrigin.MinusBtn.buttonSprite.sprite;
-        var labeltag = __instance.GetComponentsInChildren<Transform>(true)
-            .FirstOrDefault(child => child.name == "ModeValue"
-                && child.GetComponentInChildren<TextMeshPro>(true)
-                && child.GetComponentInChildren<SpriteRenderer>(true));
-        GameObject preset;
-        if (labeltag)
-        {
-            preset = Object.Instantiate(labeltag.gameObject, ParentLeftPanel);
-        }
-        else
-        {
-            // ModeValue is not part of the 2026 GameSettingMenu contract. Copy
-            // only its owner's text presentation, never an OptionBehaviour with
-            // native Start/Initialize handlers or an unbound setting value.
-            preset = new GameObject("TOHEPresetValue");
-            preset.layer = __instance.GamePresetsButton.gameObject.layer;
-            preset.transform.SetParent(ParentLeftPanel, false);
-            var background = new GameObject("Background");
-            background.layer = preset.layer;
-            background.transform.SetParent(preset.transform, false);
-            var renderer = background.AddComponent<SpriteRenderer>();
-            renderer.sprite = Utils.LoadSprite("TOHE.Resources.Images.PresetBox.png", 55f);
-            // Keep the display centred between the existing preset arrows.
-            background.transform.localPosition = new Vector3(-1.2f, -3.37f, 0f);
-            float backgroundScale = 3.6f / renderer.sprite.bounds.size.x;
-            background.transform.localScale = new Vector3(backgroundScale, backgroundScale, 1f);
-            var label = Object.Instantiate(valueTemplate, preset.transform);
-            label.gameObject.SetActive(true);
-            label.transform.localPosition = new Vector3(-1.2f, -3.37f, -1f);
-            label.transform.localScale = Vector3.one;
-            label.rectTransform.sizeDelta = new Vector2(2.2f, 0.65f);
-            label.alignment = TextAlignmentOptions.Center;
-        }
-        preset.SetActive(true);
-        preset.transform.localPosition = new Vector3(-3.33f, -0.45f, -2f);
-
-        preset.transform.localScale = new Vector3(0.65f, 0.63f, 1f);
-        var SpriteRenderer = preset.GetComponentInChildren<SpriteRenderer>(true);
-        SpriteRenderer.color = Color.white;
-        //SpriteRenderer.material = null;
-        SpriteRenderer.sprite = Utils.LoadSprite("TOHE.Resources.Images.PresetBox.png", 55f);
-
-        Color clr = new(-1, -1, -1);
-        var PLabel = preset.GetComponentInChildren<TextMeshPro>(true);
-        PresetLabel = PLabel;
-        PLabel.DestroyTranslator();
-        PLabel.text = GetString($"Preset_{OptionItem.CurrentPreset + 1}");
-        //PLabel.font = PLuLabel.font; 
-        float size = DestroyableSingleton<TranslationController>.Instance.currentLanguage.languageID switch
-        {
-            SupportedLangs.Russian => 1.45f,
-            _ => 2.45f,
-        };
-        (PLabel.fontSizeMax, PLabel.fontSizeMin) = (size, size);
-
-        var GMinus = Object.Instantiate(__instance.GamePresetsButton.gameObject, preset.transform);
-        GMinus.gameObject.SetActive(true);
-        GMinus.transform.localScale = new Vector3(0.08f, 0.4f, 1f);
-
-
-        var MLabel = GMinus.transform.Find("FontPlacer/Text_TMP").GetComponent<TextMeshPro>();
-        MLabel.alignment = TextAlignmentOptions.Center;
-        MLabel.DestroyTranslator();
-        MLabel.text = "-";
-        MLabel.transform.localPosition = new Vector3(MLabel.transform.localPosition.x, MLabel.transform.localPosition.y + 0.26f, MLabel.transform.localPosition.z);
-        MLabel.color = new Color(255f, 255f, 255f);
-        MLabel.SetFaceColor(new Color(255f, 255f, 255f));
-        MLabel.transform.localScale = new Vector3(12f, 4f, 1f);
-
-
-        var Minus = GMinus.GetComponent<PassiveButton>();
-        Minus.OnClick.RemoveAllListeners();
-        Minus.OnClick.AddListener(
-                (UnityEngine.Events.UnityAction)(() =>
-                {
-                    ChangePreset(__instance, -1);
-                }));
-        Minus.gameObject.SetActive(GameOptionsMenuPatch.CanEdit);
-        Minus.activeTextColor = new Color(255f, 255f, 255f);
-        Minus.inactiveTextColor = new Color(255f, 255f, 255f);
-        Minus.disabledTextColor = new Color(255f, 255f, 255f);
-        Minus.selectedTextColor = new Color(255f, 255f, 255f);
-
-        Minus.transform.localPosition = new Vector3(-2f, -3.37f, -4f);
-        Minus.inactiveSprites.GetComponent<SpriteRenderer>().sprite = minusSprite;
-        Minus.activeSprites.GetComponent<SpriteRenderer>().sprite = minusSprite;
-        Minus.selectedSprites.GetComponent<SpriteRenderer>().sprite = minusSprite;
-
-        Minus.inactiveSprites.GetComponent<SpriteRenderer>().color = new Color32(55, 59, 60, 255);
-        Minus.activeSprites.GetComponent<SpriteRenderer>().color = new Color32(61, 62, 63, 255);
-        Minus.selectedSprites.GetComponent<SpriteRenderer>().color = new Color32(55, 59, 60, 255);
-
-
-
-        var PlusFab = Object.Instantiate(GMinus, preset.transform);
-        var PLuLabel = PlusFab.transform.Find("FontPlacer/Text_TMP").GetComponent<TextMeshPro>();
-        PLuLabel.alignment = TextAlignmentOptions.Center;
-        PLuLabel.DestroyTranslator();
-        PLuLabel.text = "+";
-        PLuLabel.color = new Color(255f, 255f, 255f);
-        // PlusFab already inherits the minus label's offset; applying it again
-        // raises only the plus glyph above the shared preset row.
-        PLuLabel.transform.localScale = new Vector3(12f, 4f, 1f);
-
-        var plus = PlusFab.GetComponent<PassiveButton>();
-        plus.OnClick.RemoveAllListeners();
-        plus.OnClick.AddListener(
-                (UnityEngine.Events.UnityAction)(() =>
-                {
-                    ChangePreset(__instance, 1);
-                }));
-        plus.gameObject.SetActive(GameOptionsMenuPatch.CanEdit);
-        plus.activeTextColor = new Color(255f, 255f, 255f);
-        plus.inactiveTextColor = new Color(255f, 255f, 255f);
-        plus.disabledTextColor = new Color(255f, 255f, 255f);
-        plus.selectedTextColor = new Color(255f, 255f, 255f);
-
-        plus.transform.localPosition = new Vector3(-0.4f, -3.37f, -4f);
+        var presetBackground = CreatePresetSelector(__instance, valueTemplate);
 
         var GameSettingsLabel = __instance.GameSettingsButton.transform.parent.parent.FindChild("GameSettingsLabel").GetComponent<TextMeshPro>();
         GameSettingsLabel.DestroyTranslator();
@@ -272,9 +151,17 @@ public class GameSettingMenuPatch
         TextField.transform.localScale = new Vector3(0.3f, 0.59f, 1);
         TextField.transform.localPosition = new Vector3(-2.07f, -2.57f, -5f);
         TextField.textArea.outputText.transform.localScale = new Vector3(3.5f, 2f, 1f);
-        TextField.textArea.outputText.font = PLuLabel.font;
+        TextField.textArea.outputText.font = valueTemplate.font;
         TextField.name = "InputField";
 
+        // Both controls share a row, but the search field belongs to a different
+        // parent. Align their rendered bounds in world space to avoid overlap.
+        var searchBounds = TextField.Background.bounds;
+        var presetBounds = presetBackground.bounds;
+        float gap = ParentLeftPanel.TransformVector(new Vector3(0.12f, 0f, 0f)).magnitude;
+        TextField.transform.position += new Vector3(
+            presetBounds.max.x + gap - searchBounds.min.x,
+            presetBounds.center.y - searchBounds.center.y, 0f);
         InputField = TextField;
 
 
@@ -338,6 +225,123 @@ public class GameSettingMenuPatch
         }
     }
 
+    private static SpriteRenderer CreatePresetSelector(GameSettingMenu menu, TextMeshPro textTemplate)
+    {
+        var parent = menu.GamePresetsButton.transform.parent;
+        // Measure the two columns rather than carrying coordinates/scales from
+        // the old ModeValue prefab into the current game's menu.
+        var sidebarBounds = new Bounds();
+        bool hasBounds = false;
+        foreach (var button in ModSettingsButtons.Values)
+        {
+            var sprite = button.inactiveSprites.GetComponent<SpriteRenderer>();
+            var bounds = sprite.localBounds;
+            var min = parent.InverseTransformPoint(sprite.transform.TransformPoint(bounds.min));
+            var max = parent.InverseTransformPoint(sprite.transform.TransformPoint(bounds.max));
+            if (!hasBounds)
+            {
+                sidebarBounds = new Bounds(min, Vector3.zero);
+                hasBounds = true;
+            }
+            sidebarBounds.Encapsulate(min);
+            sidebarBounds.Encapsulate(max);
+        }
+
+        const float height = 0.5f;
+        const float arrowWidth = 0.48f;
+        float width = sidebarBounds.size.x;
+        var root = new GameObject("TOHEPresetSelector");
+        root.layer = menu.GamePresetsButton.gameObject.layer;
+        root.transform.SetParent(parent, false);
+        root.transform.localPosition = new Vector3(sidebarBounds.center.x,
+            sidebarBounds.min.y - 0.08f - height / 2f, -2f);
+
+        var backgroundObject = new GameObject("Background");
+        backgroundObject.layer = root.layer;
+        backgroundObject.transform.SetParent(root.transform, false);
+        var background = backgroundObject.AddComponent<SpriteRenderer>();
+        background.sprite = Utils.LoadSprite("TOHE.Resources.Images.PresetBox.png", 55f);
+        background.transform.localScale = new Vector3(width / background.sprite.bounds.size.x,
+            height / background.sprite.bounds.size.y, 1f);
+
+        PresetLabel = Object.Instantiate(textTemplate, root.transform);
+        ConfigurePresetText(PresetLabel, GetString($"Preset_{OptionItem.CurrentPreset + 1}"),
+            new Vector2(width - 2f * arrowWidth - 0.16f, height), 3.2f);
+        PresetLabel.enableAutoSizing = true;
+        PresetLabel.fontSizeMin = 2.2f;
+        CenterPresetText(PresetLabel);
+
+        CreateArrow(-1, "−");
+        CreateArrow(1, "+");
+        return background;
+
+        void CreateArrow(int direction, string caption)
+        {
+            var button = Object.Instantiate(menu.GamePresetsButton, root.transform);
+            button.name = direction < 0 ? "PreviousPreset" : "NextPreset";
+            foreach (var anchor in button.GetComponentsInChildren<AspectPosition>(true))
+            {
+                anchor.enabled = false;
+                Object.Destroy(anchor);
+            }
+            button.transform.localScale = Vector3.one;
+            button.transform.localPosition = new Vector3(direction * (width - arrowWidth) / 2f, 0f, -1f);
+            foreach (var sprite in button.GetComponentsInChildren<SpriteRenderer>(true))
+            {
+                // Keep the native hover/selection states, sized to this row.
+                sprite.drawMode = SpriteDrawMode.Sliced;
+                sprite.transform.localScale = Vector3.one;
+                sprite.transform.localPosition = new Vector3(0f, 0f, sprite.transform.localPosition.z);
+                sprite.size = new Vector2(arrowWidth - 0.06f, height - 0.1f);
+            }
+            var collider = button.GetComponent<BoxCollider2D>();
+            collider.offset = Vector2.zero;
+            collider.size = new Vector2(arrowWidth, height);
+            var label = button.GetComponentInChildren<TextMeshPro>(true);
+            label.transform.SetParent(button.transform, false);
+            ConfigurePresetText(label, caption, new Vector2(arrowWidth, height), 3.6f);
+            label.color = Color.white;
+            label.SetFaceColor(Color.white);
+            button.activeTextColor = button.inactiveTextColor = button.disabledTextColor =
+                button.selectedTextColor = Color.white;
+            button.OnClick = new();
+            button.OnClick.AddListener((UnityEngine.Events.UnityAction)(() => ChangePreset(menu, direction)));
+            button.gameObject.SetActive(GameOptionsMenuPatch.CanEdit);
+            CenterPresetText(label);
+            if (GameOptionsMenuPatch.CanEdit) menu.ControllerSelectable.Add(button);
+        }
+    }
+
+    private static void ConfigurePresetText(TextMeshPro label, string caption, Vector2 size, float fontSize)
+    {
+        label.DestroyTranslator();
+        var anchor = label.GetComponent<AspectPosition>();
+        if (anchor != null)
+        {
+            anchor.enabled = false;
+            Object.Destroy(anchor);
+        }
+        label.gameObject.SetActive(true);
+        label.transform.localScale = Vector3.one;
+        label.transform.localPosition = new Vector3(0f, 0f, -1f);
+        label.rectTransform.pivot = new Vector2(0.5f, 0.5f);
+        label.rectTransform.sizeDelta = size;
+        label.margin = Vector4.zero;
+        label.alignment = TextAlignmentOptions.Center;
+        label.enableWordWrapping = false;
+        label.enableAutoSizing = false;
+        label.fontSize = label.fontSizeMin = label.fontSizeMax = fontSize;
+        label.text = caption;
+    }
+
+    private static void CenterPresetText(TextMeshPro label)
+    {
+        // Align visible glyphs to the row center, independent of font baselines.
+        label.ForceMeshUpdate(true, true);
+        var center = label.textBounds.center;
+        label.transform.localPosition = new Vector3(-center.x, -center.y, -1f);
+    }
+
     private static void ChangePreset(GameSettingMenu menu, int delta)
     {
         if (menu == null || !GameOptionsMenuPatch.CanEdit ||
@@ -360,7 +364,11 @@ public class GameSettingMenuPatch
                 if (child != null) child.Initialize();
             GameOptionsMenuPatch.ReCreateSettings(tab);
         }
-        if (PresetLabel != null) PresetLabel.text = preset.GetString();
+        if (PresetLabel != null)
+        {
+            PresetLabel.text = preset.GetString();
+            CenterPresetText(PresetLabel);
+        }
         if (InputField != null) InputField.Clear();
     }
 

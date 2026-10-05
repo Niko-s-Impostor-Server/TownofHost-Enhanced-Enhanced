@@ -57,13 +57,7 @@ public class Main : BasePlugin
     public static readonly string GitHubInviteUrl = "https://github.com/Niko-s-Impostor-Server/TownofHost-Enhanced-Enhanced";
 
     public static readonly bool ShowDiscordButton = true;
-    public static readonly string DiscordInviteUrl = "https://discord.gg/tohe";
-
-    public static readonly bool ShowWebsiteButton = true;
-    public static readonly string WebsiteInviteUrl = "https://weareten.ca/";
-
-    public static readonly bool ShowDonationButton = true;
-    public static readonly string DonationInviteUrl = "https://weareten.ca/TOHE";
+    public static readonly string DiscordInviteUrl = "https://au.niko233.top/discord";
 
     public Harmony Harmony { get; } = new Harmony(PluginGuid);
     public static Version version = Version.Parse(PluginVersion);
