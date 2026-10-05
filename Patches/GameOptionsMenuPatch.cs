@@ -138,7 +138,6 @@ public static class GameOptionsMenuPatch
         if (__instance.Children == null || __instance.Children.Count == 0)
         {
             __instance.MapPicker.gameObject.SetActive(false);
-            __instance.Children = new Il2CppSystem.Collections.Generic.List<OptionBehaviour>();
             __instance.CreateSettings();
             __instance.cachedData = GameOptionsManager.Instance.CurrentGameOptions;
         }
@@ -187,6 +186,14 @@ public static class GameOptionsMenuPatch
 
         var menuId = __instance.GetInstanceID();
         if (Builds.ContainsKey(menuId)) return false;
+        // CreateSettings can be reached through native/inlined initialization as
+        // well as our Initialize prefix. Own the list at the actual build entry;
+        // never append into a list copied from a Unity template. A positive
+        // capacity also allocates storage without relying on the empty-array path.
+        ClearPartialBuild(__instance);
+        int capacity = Math.Max(1, OptionItem.AllOptions.Count(option => option.Tab == modTab && option is not TextOptionItem));
+        var children = new Il2CppSystem.Collections.Generic.List<OptionBehaviour>(capacity);
+        __instance.Children = children;
         var buildVersion = ++nextBuildVersion;
         BuildVersions[menuId] = buildVersion;
         __instance.ControllerSelectable.Clear();
@@ -290,7 +297,7 @@ public static class GameOptionsMenuPatch
                 ModGameOptionsMenu.BehaviourList.TryAdd(index, optionBehaviour);
                 optionBehaviour.gameObject.SetActive(enabled);
                 optionBehaviour.OnValueChanged = new Action<OptionBehaviour>(__instance.ValueChanged);
-                __instance.Children.Add(optionBehaviour);
+                children.Add(optionBehaviour);
                 optionBehaviour.Initialize();
                 if (!CanEdit) optionBehaviour.SetAsPlayer();
 

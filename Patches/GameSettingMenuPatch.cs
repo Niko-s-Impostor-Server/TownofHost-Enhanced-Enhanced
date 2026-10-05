@@ -439,7 +439,7 @@ public class GameSettingMenuPatch
                 header.transform.SetParent(null);
                 Object.Destroy(header.gameObject);
             }
-            TemplateGameOptionsMenu.Children = new();
+            TemplateGameOptionsMenu.Children = new(1);
             TemplateGameOptionsMenu.ControllerSelectable.Clear();
             TemplateGameOptionsMenu.cachedData = null;
         }
