@@ -18,7 +18,7 @@ dotnet run --project tests/SessionLifecycle/SessionLifecycle.csproj --configurat
 
 抽取的方法保持原文，生成文件位于 `obj`；方法找不到时构建失败。测试没有另写一份版本等待、会话判定或去重实现。完整 `InitializeSession` 不在此测试范围内，仅用计数桩观察何时被调用；测试容器增加只读 pending 数量观测。Unity 时间、协程调度、客户端、玩家、配置和 writer 均为桩。调度桩在 `StartCoroutine` 时推进到第一次 yield，之后由测试逐帧推进，并对完成或显式取消的 IEnumerator 调用 Dispose。
 
-六组场景覆盖 generation 变化、断开、主机变化、八秒超时、当前 ready 的一次发送以及同会话同类型去重与释放。另检查复用 client ID 但 native pointer 改变时拒绝旧对象、等待选项加载后只初始化一次、十秒选项加载超时，以及 writer 失败时释放等待 key。payload 断言只覆盖正常版本公告；测试不启用 VersionCheat。
+六组场景覆盖 generation 变化、断开、主机变化、八秒超时、当前 ready 的一次发送以及同会话同类型去重与释放。另检查复用 client ID 但 native pointer 改变时拒绝旧对象、等待选项加载后只初始化一次、十秒选项加载超时，以及 writer 失败时释放等待 key。写入字段断言只覆盖正常版本公告；测试不启用 VersionCheat。`CustomRpcTransport` 在此仅将调用转到已有记录 writer，`CallId` 记录逻辑 inner ID，记录四个字段的调用顺序；不生成 outer 123 envelope，也不验证字节编码、真实传输或 transport 的运行期约束。协议和接收入口分别由 `tests/RpcTransport`、`tests/RpcReceiver` 单独验证。
 
 `UnShapeShiftRegression` 覆盖延迟回调遇到断开、新 generation、客户端替换或消失、主机失去或变化、房间变化、游戏结束、返回大厅、退出游戏阶段、GameManager 替换或消失、PlayerStates 换局时不发送。正常回调保持变身、拒绝变身、重置外观与就绪标记；目标离开、Data 消失、断开、职业失效或更换、同 ID 玩家替换、注册集合变化均不会触发旧目标。固定更新覆盖多个失效 ID 的快照清理、集合仅剩失效 ID、已变身玩家不重复触发、没有可用目标，以及现有任务/房主/本地主机/low-load/mixup/就绪条件。LateTask 桩只保存并手动执行一次回调，不模拟实际三秒计时；变身及外观桩记录调用并模拟 outfit 状态，没有执行游戏方法。
 

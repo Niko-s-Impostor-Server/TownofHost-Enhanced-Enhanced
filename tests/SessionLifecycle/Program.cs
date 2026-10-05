@@ -116,9 +116,9 @@ static class Program
         RPC.RpcVersionCheck();
         var writer = client.Finished.Single();
         Check(writer.CallId == (byte)CustomRPC.VersionCheck && writer.TargetId == -1 && writer.NetId == 42
-            && writer.SendOption == SendOption.Reliable, "ready version uses correct RPC, source, destination and reliability");
+            && writer.SendOption == SendOption.Reliable, "ready version requests correct inner RPC, source, destination and reliability in recording fixture");
         Check(writer.Values.SequenceEqual(new object[] { global::Main.PluginVersion, "fixture(fixture)", global::Main.ForkId, false }),
-            "normal version payload contains the four expected fields in order");
+            "normal version writes the four expected fields in order to recording fixture");
         Check(global::Main.playerVersion[7].version.ToString() == global::Main.PluginVersion, "successful path records local version");
         At(20f);
         Check(client.Finished.Count == 1 && RPC.PendingCountForTest == 0, "finished ready request sends exactly once");

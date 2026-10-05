@@ -176,10 +176,10 @@ internal class Chronomancer : RoleBase
     {
         // Cant directly write Ability Limit, create another method to send it
         // Only send to the target to prevent logging in other's
-        var writer = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.SyncRoleSkill, SendOption.None, _Player.OwnerId);
+        var writer = CustomRpcTransport.Start(CustomRPC.SyncRoleSkill, SendOption.None, _Player.OwnerId);
         writer.WriteNetObject(_Player);
         writer.Write(ChargedTime);
-        AmongUsClient.Instance.FinishRpcImmediately(writer);
+        CustomRpcTransport.Finish(writer);
     }
 
     public override void ReceiveRPC(MessageReader reader, PlayerControl pc)

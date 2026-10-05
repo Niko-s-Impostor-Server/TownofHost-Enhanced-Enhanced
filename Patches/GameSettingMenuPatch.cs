@@ -346,7 +346,7 @@ public class GameSettingMenuPatch
                 if (ModSettingsTabs.TryGetValue(tab, out settingsTab) &&
                     settingsTab != null)
                 {
-                    settingsTab.gameObject.SetActive(false);
+                    GameOptionsMenuPatch.HideModMenu(settingsTab);
                 }
             }
             foreach (var tab in EnumHelper.GetAllValues<TabGroup>())
@@ -471,7 +471,10 @@ public class GameSettingMenuPatch
         foreach (var button in ModSettingsButtons.Values)
             Object.Destroy(button);
         foreach (var tab in ModSettingsTabs.Values)
+        {
+            GameOptionsMenuPatch.CancelBuild(tab);
             Object.Destroy(tab);
+        }
         ModSettingsButtons = [];
         ModSettingsTabs = [];
         TemplateGameOptionsMenu = null;

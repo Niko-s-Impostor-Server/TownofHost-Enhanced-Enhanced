@@ -32,20 +32,20 @@ static class ExtendedPlayerControl
         }
         if (AmongUsClient.Instance.AmHost)
         {
-            MessageWriter writer = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.SetCustomRole, SendOption.Reliable, -1);
+            MessageWriter writer = CustomRpcTransport.Start(CustomRPC.SetCustomRole, SendOption.Reliable, -1);
             writer.Write(player.PlayerId);
             writer.WritePacked((int)role);
-            AmongUsClient.Instance.FinishRpcImmediately(writer);
+            CustomRpcTransport.Finish(writer);
         }
     }
     public static void RpcSetCustomRole(byte PlayerId, CustomRoles role)
     {
         if (AmongUsClient.Instance.AmHost)
         {
-            MessageWriter writer = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.SetCustomRole, SendOption.Reliable, -1);
+            MessageWriter writer = CustomRpcTransport.Start(CustomRPC.SetCustomRole, SendOption.Reliable, -1);
             writer.Write(PlayerId);
             writer.WritePacked((int)role);
-            AmongUsClient.Instance.FinishRpcImmediately(writer);
+            CustomRpcTransport.Finish(writer);
         }
     }
     public static void SetRole(this PlayerControl player, RoleTypes role, bool canOverride)
@@ -505,9 +505,9 @@ static class ExtendedPlayerControl
             if (player.IsHost()) PlayerControl.LocalPlayer.SetKillTimer(time);
             else
             {
-                MessageWriter writer = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.SetKillTimer, SendOption.Reliable, player.GetClientId());
+                MessageWriter writer = CustomRpcTransport.Start(CustomRPC.SetKillTimer, SendOption.Reliable, player.GetClientId());
                 writer.Write(time);
-                AmongUsClient.Instance.FinishRpcImmediately(writer);
+                CustomRpcTransport.Finish(writer);
             }
             // Check Observer
             if (Observer.HasEnabled)
@@ -547,9 +547,9 @@ static class ExtendedPlayerControl
             if (player.IsHost()) PlayerControl.LocalPlayer.SetKillTimer(time);
             else
             {
-                MessageWriter writer = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.SetKillTimer, SendOption.Reliable, player.GetClientId());
+                MessageWriter writer = CustomRpcTransport.Start(CustomRPC.SetKillTimer, SendOption.Reliable, player.GetClientId());
                 writer.Write(time);
-                AmongUsClient.Instance.FinishRpcImmediately(writer);
+                CustomRpcTransport.Finish(writer);
             }
             // Check Observer
             if (Observer.HasEnabled)

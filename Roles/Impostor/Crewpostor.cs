@@ -70,10 +70,10 @@ internal class Crewpostor : RoleBase
         }
         else
         {
-            MessageWriter writer = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.SetCrewpostorTasksDone, SendOption.Reliable, -1);
+            MessageWriter writer = CustomRpcTransport.Start(CustomRPC.SetCrewpostorTasksDone, SendOption.Reliable, -1);
             writer.Write(cpID);
             writer.WritePacked(tasksDone);
-            AmongUsClient.Instance.FinishRpcImmediately(writer);
+            CustomRpcTransport.Finish(writer);
         }
     }
     public static void ReceiveRPC(MessageReader reader)

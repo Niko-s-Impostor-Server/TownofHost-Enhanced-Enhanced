@@ -57,12 +57,12 @@ internal class Follower : RoleBase
     }
     private void SendRPC(byte playerId)
     {
-        MessageWriter writer = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.SyncRoleSkill, SendOption.Reliable, -1);
+        MessageWriter writer = CustomRpcTransport.Start(CustomRPC.SyncRoleSkill, SendOption.Reliable, -1);
         writer.WriteNetObject(_Player); //SyncFollowerTargetAndTimes
         writer.Write(playerId);
         writer.Write(BetTimes.TryGetValue(playerId, out var times) ? times : MaxBetTimes.GetInt());
         writer.Write(BetPlayer.TryGetValue(playerId, out var player) ? player : byte.MaxValue);
-        AmongUsClient.Instance.FinishRpcImmediately(writer);
+        CustomRpcTransport.Finish(writer);
     }
     public override void ReceiveRPC(MessageReader reader, PlayerControl pc)
     {

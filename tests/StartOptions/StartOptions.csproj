@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <LangVersion>12.0</LangVersion>
+    <Nullable>disable</Nullable>
+  </PropertyGroup>
+  <Target Name="ExtractStartOptions" BeforeTargets="CoreCompile">
+    <Exec Command="python &quot;$(MSBuildProjectDirectory)/generate.py&quot; &quot;$(IntermediateOutputPath)GeneratedStart.cs&quot;" WorkingDirectory="$(MSBuildProjectDirectory)" />
+    <ItemGroup><Compile Include="$(IntermediateOutputPath)GeneratedStart.cs" /></ItemGroup>
+  </Target>
+</Project>

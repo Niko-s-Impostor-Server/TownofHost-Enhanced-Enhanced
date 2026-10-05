@@ -5,7 +5,7 @@ root=Path(__file__).resolve().parents[2]
 def method(path,name,scope=None):
  s=(root/path).read_text(encoding='utf-8-sig')
  if scope: s=s[s.index(scope):]
- m=re.search(r'^    (?:public|private) [^\n]*\b'+name+r'\(',s,re.M)
+ m=re.search(r'^    (?:public|private|internal) [^\n]*\b'+name+r'\(',s,re.M)
  if not m: raise Exception(name)
  start=m.start(); line=s[start:s.find('\n',start)]
  if '=>' in line: return line.replace('override ','')
@@ -18,7 +18,7 @@ def method(path,name,scope=None):
 
 def wrapper(name,path,fields,methods,scope=None):
  return 'class '+name+' {\n'+fields+'\n'+'\n'.join(method(path,n,scope) for n in methods)+'\n}\n'
-code='''using System; using System.Collections.Generic; using System.Linq; using static Utils; using UnityEngine; using AmongUs.GameOptions;
+code='''using System; using System.Collections.Generic; using System.Linq; using static Utils; using UnityEngine; using AmongUs.GameOptions; using TOHE;
 '''
 rpc_source=(root/'Modules/RPC.cs').read_text(encoding='utf-8-sig')
 code+=re.search(r'enum CustomRPC : byte[^\n]*\n\{.*?\n\}',rpc_source,re.S)[0]+'\n'
@@ -40,11 +40,12 @@ code+=wrapper('Pelican','Roles/Neutral/Pelican.cs','''public static Dictionary<b
 public static bool IsEaten(byte id)=>eatenList.Any(x=>x.Value.Contains(id)); private void SyncEatenList() { Syncs++; } private static Vector2 GetBlackRoomPSForPelican()=>new();''',['Init','IsEaten','CanEat','Remove','ReturnEatenPlayerBack','ReleaseEatenPlayers','OnMurderPlayerAsTarget','OnFixedUpdate','SendOwnerClear','ReceiveOwnerClear'])
 code+=wrapper('Shroud','Roles/Neutral/Shroud.cs','''public static Dictionary<byte,byte> ShroudList=[]; public PlayerState _state; public PlayerControl _Player=>_state==null?null:Utils.GetPlayerById(_state.PlayerId);
 ''',['Init','Add','Remove','ClearShrouds','SendRPC','OnFixedUpdateOthers','OnPlayerExiled','AfterMeetingTasks','SendOwnerClear','ReceiveOwnerClear'])
-postfix=method('Modules/RPC.cs','Postfix','internal class RPCHandlerPatch')
-entry=postfix[:postfix.index('        var rpcType =')]
-assert 'if (!__state) return;' in entry
-owner_dispatch='\n'.join(re.search(r'            case CustomRPC.'+name+r':\n.*?                break;',postfix,re.S)[0] for name in ['ClearPelicanOwner','ClearShroudOwner'])
-code+=wrapper('RPCHandlerPatch','Modules/RPC.cs','public static int Dispatches;',['TrustedRpc','Prefix','ValidateRpc'],'internal class RPCHandlerPatch')[:-2]+entry+'        switch ((CustomRPC)callId) {\n'+owner_dispatch+'\n        }\n        Dispatches++;\n    }\n}\n'
+dispatch=method('Modules/RPC.cs','DispatchCustomRpc','internal class RPCHandlerPatch')
+entry=dispatch[:dispatch.index('        switch (rpcType)')]
+owner_dispatch='\n'.join(re.search(r'            case CustomRPC.'+name+r':\n.*?                break;',dispatch,re.S)[0] for name in ['ClearPelicanOwner','ClearShroudOwner'])
+code+=wrapper('RPCHandlerPatch','Modules/RPC.cs','public static int Dispatches;',['TrustedRpc','Prefix','ValidateRpc'],'internal class RPCHandlerPatch')[:-2]+entry+'        switch (rpcType) {\n'+owner_dispatch+'\n        }\n        Dispatches++;\n    }\n}\n'
+code+=wrapper('CustomRpcReceiver','Modules/CustomRpcReceiver.cs','',['Receive'])
+code+='static partial class CustomRpcTransport {\n'+method('Modules/Rpc/CustomRpcTransport.cs','IsValidRpcId')+'\n}\n'
 
 output=Path(sys.argv[1]).resolve()
 output.parent.mkdir(parents=True, exist_ok=True)

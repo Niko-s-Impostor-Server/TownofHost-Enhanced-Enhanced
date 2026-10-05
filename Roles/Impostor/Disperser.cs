@@ -1,5 +1,6 @@
 ﻿using AmongUs.GameOptions;
 using TOHE.Modules;
+using TOHE.Roles.Core;
 using static TOHE.Options;
 using static TOHE.Translator;
 using static TOHE.Utils;
@@ -13,6 +14,8 @@ internal class Disperser : RoleBase
     private static readonly HashSet<byte> PlayerIds = [];
     public static bool HasEnabled => PlayerIds.Any();
     public override CustomRoles ThisRoleBase => CustomRoles.Shapeshifter;
+    public override bool UsesPhantomAbility => true;
+    public override float PhantomAbilityCooldown => DisperserShapeshiftCooldown.GetFloat();
     public override Custom_RoleType ThisRoleType => Custom_RoleType.ImpostorHindering;
     //==================================================================\\
 
@@ -41,11 +44,18 @@ internal class Disperser : RoleBase
     {
         AURoleOptions.ShapeshifterCooldown = DisperserShapeshiftCooldown.GetFloat();
         AURoleOptions.ShapeshifterDuration = DisperserShapeshiftDuration.GetFloat();
+        AURoleOptions.PhantomCooldown = DisperserShapeshiftCooldown.GetFloat();
+        AURoleOptions.PhantomDuration = 0f;
     }
     public override bool OnCheckShapeshift(PlayerControl shapeshifter, PlayerControl target, ref bool resetCooldown, ref bool shouldAnimate)
     {
         if (shapeshifter.PlayerId == target.PlayerId) return false;
-        
+        resetCooldown = PhantomAbility.TryActivate(shapeshifter, RoleTypes.Shapeshifter);
+        return false;
+    }
+
+    public override bool OnPhantomAbility(PlayerControl player)
+    {
         foreach (var pc in Main.AllAlivePlayerControls)
         {
             if (!pc.CanBeTeleported())
@@ -59,6 +69,6 @@ internal class Disperser : RoleBase
             pc.Notify(ColorString(GetRoleColor(CustomRoles.Disperser), GetString("TeleportedInRndVentByDisperser")));
         }
 
-        return false;
+        return true;
     }
 }

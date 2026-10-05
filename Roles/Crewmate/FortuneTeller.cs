@@ -10,7 +10,7 @@ using static TOHE.Utils;
 
 namespace TOHE.Roles.Crewmate;
 
-internal class FortuneTeller : RoleBase
+internal class FortuneTeller : RoleBase, IMeetingTargetAbility
 {
     //===========================SETUP================================\\
     private const int Id = 8000;
@@ -50,7 +50,7 @@ internal class FortuneTeller : RoleBase
 
     public void SendRPC(byte playerId, bool isTemp = false, bool voted = false)
     {
-        MessageWriter writer = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.SyncRoleSkill, SendOption.Reliable, -1);
+        MessageWriter writer = CustomRpcTransport.Start(CustomRPC.SyncRoleSkill, SendOption.Reliable, -1);
         writer.WriteNetObject(_Player);
         writer.Write(isTemp);
 
@@ -65,7 +65,7 @@ internal class FortuneTeller : RoleBase
             writer.Write(playerId);
             writer.Write(TempCheckLimit);
         }
-        AmongUsClient.Instance.FinishRpcImmediately(writer);
+        CustomRpcTransport.Finish(writer);
     }
     public override void ReceiveRPC(MessageReader reader, PlayerControl NaN)
     {
@@ -98,6 +98,15 @@ internal class FortuneTeller : RoleBase
         }
         return true;
     }
+    public bool CanUseMeetingAbility(PlayerControl actor) => actor && actor.Is(CustomRoles.FortuneTeller) &&
+        AbilityLimit >= 1 && !didVote.Contains(actor.PlayerId);
+
+    public bool CanTargetMeetingAbility(PlayerControl actor, PlayerControl target) => actor && target &&
+        actor != target && target.IsAlive() && (!RandomActiveRoles.GetBool() || !targetList.Contains(target.PlayerId));
+
+    public bool UseMeetingAbility(PlayerControl actor, PlayerControl target) =>
+        CanUseMeetingAbility(actor) && CanTargetMeetingAbility(actor, target) && !CheckVote(actor, target);
+
     public override bool CheckVote(PlayerControl player, PlayerControl target)
     {
         if (player == null || target == null) return true;
@@ -176,7 +185,8 @@ internal class FortuneTeller : RoleBase
         }
 
         SendMessage(GetString("FortuneTellerCheck") + "\n" + msg + "\n\n" + string.Format(GetString("FortuneTellerCheckLimit"), AbilityLimit), player.PlayerId, ColorString(GetRoleColor(CustomRoles.FortuneTeller), GetString("FortuneTellerCheckMsgTitle")));
-        SendMessage(GetString("VoteHasReturned"), player.PlayerId, title: ColorString(GetRoleColor(CustomRoles.FortuneTeller), string.Format(GetString("VoteAbilityUsed"), GetString("FortuneTeller"))));
+        if (!MeetingAbilities.UsesJudgeButton(player))
+            SendMessage(GetString("VoteHasReturned"), player.PlayerId, title: ColorString(GetRoleColor(CustomRoles.FortuneTeller), string.Format(GetString("VoteAbilityUsed"), GetString("FortuneTeller"))));
         return false;
     }
     public override string GetProgressText(byte playerId, bool comms)

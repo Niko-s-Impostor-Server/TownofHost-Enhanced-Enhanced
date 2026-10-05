@@ -7,7 +7,7 @@ using static TOHE.Translator;
 
 namespace TOHE.Roles.Impostor;
 
-internal class Eraser : RoleBase
+internal class Eraser : RoleBase, IMeetingTargetAbility
 {
     //===========================SETUP================================\\
     private const int Id = 24200;
@@ -41,6 +41,18 @@ internal class Eraser : RoleBase
     }
     public override string GetProgressText(byte playerId, bool comms)
         => Utils.ColorString(AbilityLimit >= 1 ? Utils.GetRoleColor(CustomRoles.Eraser) : Color.gray, $"({AbilityLimit})");
+
+    public bool CanUseMeetingAbility(PlayerControl actor) => actor && actor.Is(CustomRoles.Eraser) &&
+        AbilityLimit >= 1 && !didVote.Contains(actor.PlayerId);
+
+    public bool CanTargetMeetingAbility(PlayerControl actor, PlayerControl target) => actor && target &&
+        actor != target && target.IsAlive() && !target.Is(CustomRoles.Eraser) &&
+        !target.GetCustomRole().IsTasklessCrewmate() && !target.GetCustomRole().IsNeutral() &&
+        !Main.TasklessCrewmate.Contains(target.PlayerId) && !CopyCat.playerIdList.Contains(target.PlayerId) &&
+        !target.Is(CustomRoles.Stubborn);
+
+    public bool UseMeetingAbility(PlayerControl actor, PlayerControl target) =>
+        CanUseMeetingAbility(actor) && CanTargetMeetingAbility(actor, target) && !CheckVote(actor, target);
 
     public override bool CheckVote(PlayerControl player, PlayerControl target)
     {

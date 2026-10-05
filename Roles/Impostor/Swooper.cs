@@ -47,11 +47,11 @@ internal class Swooper : RoleBase
     private void SendRPC(PlayerControl pc)
     {
         if (!pc.IsNonHostModdedClient()) return;
-        MessageWriter writer = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.SyncRoleSkill, SendOption.Reliable, pc.GetClientId());
+        MessageWriter writer = CustomRpcTransport.Start(CustomRPC.SyncRoleSkill, SendOption.Reliable, pc.GetClientId());
         writer.WriteNetObject(_Player);
         writer.Write(InvisCooldown.GetValueOrDefault(pc.PlayerId, -1).ToString());
         writer.Write(InvisDuration.GetValueOrDefault(pc.PlayerId, -1).ToString());
-        AmongUsClient.Instance.FinishRpcImmediately(writer);
+        CustomRpcTransport.Finish(writer);
     }
     public override void ReceiveRPC(MessageReader reader, PlayerControl NaN)
     {

@@ -229,10 +229,10 @@ public class PlayerState(byte playerId)
 
         if (!AmongUsClient.Instance.AmHost) return;
 
-        MessageWriter writer = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.RemoveSubRole, SendOption.Reliable);
+        MessageWriter writer = CustomRpcTransport.Start(CustomRPC.RemoveSubRole, SendOption.Reliable);
         writer.Write(PlayerId);
         writer.WritePacked((int)addOn);
-        AmongUsClient.Instance.FinishRpcImmediately(writer);
+        CustomRpcTransport.Finish(writer);
     }
 
     public void SetDead()

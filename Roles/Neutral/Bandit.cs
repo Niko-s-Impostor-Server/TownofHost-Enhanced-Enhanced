@@ -95,7 +95,7 @@ internal class Bandit : RoleBase
     }
     public void SendRPC(byte targetId, CustomRoles SelectedAddOn, bool removeNow)
     {
-        MessageWriter writer = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.SyncRoleSkill, SendOption.Reliable, -1);
+        MessageWriter writer = CustomRpcTransport.Start(CustomRPC.SyncRoleSkill, SendOption.Reliable, -1);
         writer.WriteNetObject(_Player);
         writer.Write(AbilityLimit);
         writer.Write(removeNow);
@@ -104,7 +104,7 @@ internal class Bandit : RoleBase
             writer.Write(targetId);
             writer.WritePacked((int)SelectedAddOn);
         }
-        AmongUsClient.Instance.FinishRpcImmediately(writer);
+        CustomRpcTransport.Finish(writer);
     }
     public override void ReceiveRPC(MessageReader reader, PlayerControl pc)
     {

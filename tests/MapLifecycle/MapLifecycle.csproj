@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>12.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <NoWarn>CS0649</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../Patches/MovingPlatformBehaviourPatch.cs" Link="Production/MovingPlatformBehaviourPatch.cs" />
+  </ItemGroup>
+  <Target Name="ExtractMapMethods" BeforeTargets="CoreCompile">
+    <Exec Command="python &quot;$(MSBuildProjectDirectory)/generate.py&quot; &quot;$(IntermediateOutputPath)GeneratedMap.cs&quot;" WorkingDirectory="$(MSBuildProjectDirectory)" />
+    <ItemGroup><Compile Include="$(IntermediateOutputPath)GeneratedMap.cs" /></ItemGroup>
+  </Target>
+</Project>

@@ -67,23 +67,31 @@ public class LobbyStartPatch
     }
 }
 // https://github.com/SuperNewRoles/SuperNewRoles/blob/master/SuperNewRoles/Patches/LobbyBehaviourPatch.cs
-[HarmonyPatch(typeof(LobbyBehaviour))]
 public class LobbyBehaviourPatch
 {
-    [HarmonyPatch(nameof(LobbyBehaviour.Update)), HarmonyPostfix]
-    public static void Update_Postfix(LobbyBehaviour __instance)
+    // Called from the existing substantive GameStartManager.Update entry.
+    // LobbyBehaviour.Update is only a friends-cache forwarding wrapper in source.
+    public static void UpdateMusic(LobbyBehaviour lobby)
     {
-        System.Func<ISoundPlayer, bool> lobbybgm = x => x.Name.Equals("MapTheme");
-        ISoundPlayer MapThemeSound = SoundManager.Instance.soundPlayers.Find(lobbybgm);
+        if (lobby == null || lobby != LobbyBehaviour.Instance || !lobby.gameObject.activeInHierarchy ||
+            !GameStates.IsLobby || SoundManager.Instance == null) return;
+        var soundManager = SoundManager.Instance;
+        bool playing = false;
+        // Index the native list; no delegate/conversion is rebuilt on each frame.
+        for (int i = 0; i < soundManager.soundPlayers.Count; i++)
+        {
+            var player = soundManager.soundPlayers[i];
+            if (player != null && player.Name == "MapTheme") { playing = true; break; }
+        }
         if (Main.DisableLobbyMusic.Value)
         {
-            if (MapThemeSound == null) return;
-            SoundManager.Instance.StopNamedSound("MapTheme");
+            if (!playing) return;
+            soundManager.StopNamedSound("MapTheme");
         }
         else
         {
-            if (MapThemeSound != null) return;
-            SoundManager.Instance.CrossFadeSound("MapTheme", __instance.MapTheme, 0.5f);
+            if (playing) return;
+            soundManager.CrossFadeSound("MapTheme", lobby.MapTheme, 0.5f);
         }
     }
 }

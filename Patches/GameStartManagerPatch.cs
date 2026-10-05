@@ -100,15 +100,7 @@ public class GameStartManagerPatch
                 Main.NormalOptions.ConfirmImpostor = false;
                 Main.NormalOptions.SetBool(BoolOptionNames.ConfirmImpostor, false);
 
-                if (Main.NormalOptions.KillCooldown == 0f)
-                    Main.NormalOptions.KillCooldown = Main.LastKillCooldown.Value;
-
                 AURoleOptions.SetOpt(Main.NormalOptions.Cast<IGameOptions>());
-                if (AURoleOptions.ShapeshifterCooldown == 0f)
-                    AURoleOptions.ShapeshifterCooldown = Main.LastShapeshifterCooldown.Value;
-
-                if (AURoleOptions.GuardianAngelCooldown == 0f)
-                    AURoleOptions.GuardianAngelCooldown = Main.LastGuardianAngelCooldown.Value;
             }
         }
     }
@@ -125,6 +117,7 @@ public class GameStartManagerPatch
         public static void Prefix(GameStartManager __instance)
         {
             if (__instance == null || LobbyBehaviour.Instance == null) return;
+            LobbyBehaviourPatch.UpdateMusic(LobbyBehaviour.Instance);
             minWait = Options.MinWaitAutoStart.GetFloat();
             maxWait = Options.MaxWaitAutoStart.GetFloat();
             minPlayer = Options.PlayerAutoStart.GetInt();
@@ -355,21 +348,6 @@ public class GameStartManagerBeginGamePatch
             ? Main.NormalOptions.Cast<IGameOptions>()
             : Main.HideNSeekOptions.Cast<IGameOptions>();
 
-        if (GameStates.IsNormalGame)
-        {
-            Options.DefaultKillCooldown = Main.NormalOptions.KillCooldown;
-            Main.LastKillCooldown.Value = Main.NormalOptions.KillCooldown;
-            Main.NormalOptions.KillCooldown = 0f;
-
-            AURoleOptions.SetOpt(opt);
-            Main.LastShapeshifterCooldown.Value = AURoleOptions.ShapeshifterCooldown;
-            AURoleOptions.ShapeshifterCooldown = 0f;
-            AURoleOptions.ImpostorsCanSeeProtect = false;
-
-            Main.LastGuardianAngelCooldown.Value = Options.DefaultAngelCooldown.GetFloat();
-            AURoleOptions.GuardianAngelCooldown = 0f;
-        }
-
         PlayerControl.LocalPlayer.RpcSyncSettings(GameOptionsManager.Instance.gameOptionsFactory.ToBytes(opt, AprilFoolsMode.IsAprilFoolsModeToggledOn));
         RPC.RpcVersionCheck();
     }
@@ -440,9 +418,6 @@ class ResetStartStatePatch
             GameStartManagerPatch.GameStartManagerUpdatePatch.AlredyBegin = false;
 
             SoundManager.Instance.StopSound(__instance.gameStartSound);
-
-            if (GameStates.IsNormalGame)
-                Main.NormalOptions.KillCooldown = Options.DefaultKillCooldown;
 
             PlayerControl.LocalPlayer.RpcSyncSettings(GameOptionsManager.Instance.gameOptionsFactory.ToBytes(GameOptionsManager.Instance.CurrentGameOptions, AprilFoolsMode.IsAprilFoolsModeToggledOn));
         }

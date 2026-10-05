@@ -5,31 +5,30 @@
 [HarmonyPatch(typeof(MovingPlatformBehaviour))]
 public static class MovingPlatformBehaviourPatch
 {
-    private static bool isDisabled = false;
+    // Initial-state deserialization can run before Unity Start, including after
+    // a previous lobby used a different value. Never cache this across ships.
+    private static bool isDisabled => Options.DisableAirshipMovingPlatform.GetBool();
 
     [HarmonyPatch(nameof(MovingPlatformBehaviour.Start)), HarmonyPrefix]
     public static void Start_Prefix(MovingPlatformBehaviour __instance)
     {
-        isDisabled = Options.DisableAirshipMovingPlatform.GetBool();
-
         if (isDisabled)
         {
             __instance.transform.localPosition = __instance.DisabledPosition;
             ShipStatus.Instance.Cast<AirshipStatus>().outOfOrderPlat.SetActive(true);
+            __instance.MarkClean();
         }
     }
-    [HarmonyPatch(nameof(MovingPlatformBehaviour.IsDirty), MethodType.Getter), HarmonyPrefix]
-    public static bool GetIsDirty_Prefix(ref bool __result)
+    // IsDirty is a field accessor which native callers may inline. Prevent the
+    // state mutations instead, including initial-state deserialization's SetTarget.
+    [HarmonyPatch(nameof(MovingPlatformBehaviour.SetTarget)), HarmonyPrefix]
+    public static bool SetTarget_Prefix() => !isDisabled;
+    [HarmonyPatch(nameof(MovingPlatformBehaviour.SetSide)), HarmonyPrefix]
+    public static bool SetSide_Prefix(MovingPlatformBehaviour __instance)
     {
-        if (isDisabled)
-        {
-            __result = false;
-            return false;
-        }
-        return true;
+        if (isDisabled) __instance.MarkClean();
+        return !isDisabled;
     }
     [HarmonyPatch(nameof(MovingPlatformBehaviour.Use), typeof(PlayerControl)), HarmonyPrefix]
     public static bool Use_Prefix() => !isDisabled;
-    [HarmonyPatch(nameof(MovingPlatformBehaviour.SetSide)), HarmonyPrefix]
-    public static bool SetSide_Prefix() => !isDisabled;
 }

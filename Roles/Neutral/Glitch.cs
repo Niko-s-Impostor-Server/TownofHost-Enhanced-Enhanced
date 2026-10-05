@@ -285,13 +285,13 @@ internal class Glitch : RoleBase
 
     private void SendRPC()
     {
-        var writer = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.SyncRoleSkill, SendOption.None, -1);
+        var writer = CustomRpcTransport.Start(CustomRPC.SyncRoleSkill, SendOption.None, -1);
         writer.WriteNetObject(_Player);
         writer.Write(HackCDTimer);
         writer.Write(KCDTimer);
         writer.Write(MimicCDTimer);
         writer.Write(MimicDurTimer);
-        AmongUsClient.Instance.FinishRpcImmediately(writer);
+        CustomRpcTransport.Finish(writer);
     }
 
     public override void ReceiveRPC(MessageReader reader, PlayerControl NaN)

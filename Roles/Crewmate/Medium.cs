@@ -47,13 +47,13 @@ internal class Medium : RoleBase
     }
     public void SendRPC(byte playerId, byte targetId = 0xff, bool isUsed = false)
     {
-        MessageWriter writer = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.SyncRoleSkill, SendOption.Reliable, -1);
+        MessageWriter writer = CustomRpcTransport.Start(CustomRPC.SyncRoleSkill, SendOption.Reliable, -1);
         writer.WriteNetObject(_Player);
         writer.Write(playerId);
         writer.Write(AbilityLimit);
         writer.Write(isUsed);
         if (isUsed) writer.Write(targetId);
-        AmongUsClient.Instance.FinishRpcImmediately(writer);
+        CustomRpcTransport.Finish(writer);
     }
     public override void ReceiveRPC(MessageReader reader, PlayerControl NaN)
     {

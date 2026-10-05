@@ -77,9 +77,9 @@ public static class Utils
         else
         {
             if (PlayerControl.LocalPlayer == null) return;
-            MessageWriter writer = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.AntiBlackout, SendOption.Reliable);
+            MessageWriter writer = CustomRpcTransport.Start(CustomRPC.AntiBlackout, SendOption.Reliable);
             writer.Write(text);
-            AmongUsClient.Instance.FinishRpcImmediately(writer);
+            CustomRpcTransport.Finish(writer);
 
             Logger.Fatal($"Error: {text} - I'm triggering critical error", "Anti-black");
 
@@ -325,9 +325,9 @@ public static class Utils
         }
         else if (player.IsNonHostModdedClient())
         {
-            MessageWriter writer = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.KillFlash, SendOption.Reliable, player.GetClientId());
+            MessageWriter writer = CustomRpcTransport.Start(CustomRPC.KillFlash, SendOption.Reliable, player.GetClientId());
             writer.Write(playKillSound);
-            AmongUsClient.Instance.FinishRpcImmediately(writer);
+            CustomRpcTransport.Finish(writer);
         }
         else if (!ReactorCheck) player.ReactorFlash(0f); //Reactor flash for vanilla
         player.MarkDirtySettings();
@@ -429,7 +429,7 @@ public static class Utils
     {
         if (!AmongUsClient.Instance.AmHost || !GameStates.IsInGame) return;
 
-        MessageWriter writer = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.SyncGeneralOptions, SendOption.Reliable);
+        MessageWriter writer = CustomRpcTransport.Start(CustomRPC.SyncGeneralOptions, SendOption.Reliable);
         writer.Write(player.PlayerId);
         writer.WritePacked((int)player.GetCustomRole());
         writer.Write(Main.PlayerStates[player.PlayerId].IsDead);
@@ -437,16 +437,16 @@ public static class Utils
         writer.WritePacked((int)Main.PlayerStates[player.PlayerId].deathReason);
         writer.Write(Main.AllPlayerKillCooldown[player.PlayerId]);
         writer.Write(Main.AllPlayerSpeed[player.PlayerId]);
-        AmongUsClient.Instance.FinishRpcImmediately(writer);
+        CustomRpcTransport.Finish(writer);
     }
     public static void SyncSpeed(this PlayerControl player)
     {
         if (!AmongUsClient.Instance.AmHost || !GameStates.IsInGame) return;
 
-        MessageWriter writer = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.SyncSpeedPlayer, SendOption.Reliable);
+        MessageWriter writer = CustomRpcTransport.Start(CustomRPC.SyncSpeedPlayer, SendOption.Reliable);
         writer.Write(player.PlayerId);
         writer.Write(Main.AllPlayerSpeed[player.PlayerId]);
-        AmongUsClient.Instance.FinishRpcImmediately(writer);
+        CustomRpcTransport.Finish(writer);
     }
     public static float GetDistance(Vector2 pos1, Vector2 pos2) => Vector2.Distance(pos1, pos2);
     public static Color GetRoleColor(CustomRoles role)
@@ -2653,10 +2653,10 @@ public static class Utils
 
         if (player.IsModded())
         {
-            var modsend = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.ShowChat, SendOption.Reliable, player.OwnerId);
+            var modsend = CustomRpcTransport.Start(CustomRPC.ShowChat, SendOption.Reliable, player.OwnerId);
             modsend.WritePacked(player.OwnerId);
             modsend.Write(true);
-            AmongUsClient.Instance.FinishRpcImmediately(modsend);
+            CustomRpcTransport.Finish(modsend);
             return;
         }
 

@@ -5,7 +5,7 @@ using static TOHE.Translator;
 
 namespace TOHE.Roles.Crewmate;
 
-internal class Cleanser : RoleBase
+internal class Cleanser : RoleBase, IMeetingTargetAbility
 {
     //===========================SETUP================================\\
     private const int Id = 6600;
@@ -45,6 +45,16 @@ internal class Cleanser : RoleBase
         else x = Color.gray;
         return (Utils.ColorString(x, $"({AbilityLimit})"));
     }
+    public bool CanUseMeetingAbility(PlayerControl actor) => actor && actor.Is(CustomRoles.Cleanser) &&
+        !DidVote && AbilityLimit >= 1 && CleanserTarget.TryGetValue(actor.PlayerId, out byte target) &&
+        target == byte.MaxValue;
+
+    public bool CanTargetMeetingAbility(PlayerControl actor, PlayerControl target) => actor && target &&
+        actor != target && target.IsAlive() && !target.Is(CustomRoles.Stubborn);
+
+    public bool UseMeetingAbility(PlayerControl actor, PlayerControl target) =>
+        CanUseMeetingAbility(actor) && CanTargetMeetingAbility(actor, target) && !CheckVote(actor, target);
+
     public override bool CheckVote(PlayerControl voter, PlayerControl target)
     {
         if (!voter.Is(CustomRoles.Cleanser)) return true;

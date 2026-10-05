@@ -80,10 +80,10 @@ internal class Vulture : RoleBase
 
     private static void SendBodyRPC(byte playerId)
     {
-        MessageWriter writer = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.SyncVultureBodyAmount, SendOption.Reliable, -1);
+        MessageWriter writer = CustomRpcTransport.Start(CustomRPC.SyncVultureBodyAmount, SendOption.Reliable, -1);
         writer.Write(playerId);
         writer.Write(BodyReportCount[playerId]);
-        AmongUsClient.Instance.FinishRpcImmediately(writer);
+        CustomRpcTransport.Finish(writer);
     }
     public static void ReceiveBodyRPC(MessageReader reader)
     {

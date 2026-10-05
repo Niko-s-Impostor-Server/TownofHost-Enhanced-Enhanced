@@ -39,10 +39,10 @@ class EndGamePatch
 
                     Main.PlayerStates[pvc].MainRole = prevrole;
 
-                    MessageWriter writer = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.SyncPlayerSetting, SendOption.Reliable, -1);
+                    MessageWriter writer = CustomRpcTransport.Start(CustomRPC.SyncPlayerSetting, SendOption.Reliable, -1);
                     writer.Write(pvc);
                     writer.WritePacked((int)prevrole);
-                    AmongUsClient.Instance.FinishRpcImmediately(writer);
+                    CustomRpcTransport.Finish(writer);
                 }
 
                 if (GhostRoleAssign.GhostGetPreviousRole.Any()) Logger.Info(string.Join(", ", GhostRoleAssign.GhostGetPreviousRole.Select(x => $"{Utils.GetPlayerById(x.Key).GetRealName()}/{x.Value}")), "OutroPatch.GhostGetPreviousRole");

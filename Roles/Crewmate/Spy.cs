@@ -54,18 +54,18 @@ internal class Spy : RoleBase
     }
     public static void SendRPC(byte susId)
     {
-        MessageWriter writer = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.SpyRedNameSync, SendOption.Reliable, -1);
+        MessageWriter writer = CustomRpcTransport.Start(CustomRPC.SpyRedNameSync, SendOption.Reliable, -1);
         writer.Write(susId);
         writer.Write(SpyRedNameList[susId].ToString());
-        AmongUsClient.Instance.FinishRpcImmediately(writer);
+        CustomRpcTransport.Finish(writer);
     }
     public static void SendRPC(byte susId, bool changeColor)
     {
-        MessageWriter writer = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.SpyRedNameRemove, SendOption.Reliable, -1);
+        MessageWriter writer = CustomRpcTransport.Start(CustomRPC.SpyRedNameRemove, SendOption.Reliable, -1);
         writer.Write(susId);
         writer.Write(changeColor);
         Logger.Info($"RPC to remove player {susId} from red name list and change `change` to {changeColor}", "Spy");
-        AmongUsClient.Instance.FinishRpcImmediately(writer);
+        CustomRpcTransport.Finish(writer);
     }
     public static void ReceiveRPC(MessageReader reader, bool isRemove = false)
     {

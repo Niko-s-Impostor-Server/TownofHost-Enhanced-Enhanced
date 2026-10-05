@@ -50,16 +50,24 @@ public static class GameOptionsMenuPatch
         ModGameOptionsMenu.CategoryHeaderList = new();
     }
 
-    [HarmonyPatch(nameof(GameOptionsMenu.OnDisable)), HarmonyPostfix]
-    private static void OnDisablePostfix(GameOptionsMenu __instance)
+    // Invoke before the owning GameSettingMenu hides a custom tab. Do not patch
+    // OnDisable: its forwarding/empty native entry may be shared with other types.
+    public static void HideModMenu(GameOptionsMenu menu)
     {
-        if (!TryGetTab(__instance, out _)) return;
-        var id = __instance.GetInstanceID();
+        if (menu == null) return;
+        CancelBuild(menu);
+        menu.gameObject.SetActive(false);
+    }
+
+    public static void CancelBuild(GameOptionsMenu menu)
+    {
+        if (!TryGetTab(menu, out _)) return;
+        var id = menu.GetInstanceID();
         if (!Builds.TryGetValue(id, out var coroutine)) return;
-        __instance.StopCoroutine(coroutine);
+        menu.StopCoroutine(coroutine);
         Builds.Remove(id);
         BuildVersions.Remove(id);
-        ClearPartialBuild(__instance);
+        ClearPartialBuild(menu);
     }
 
     private static void ClearPartialBuild(GameOptionsMenu menu)

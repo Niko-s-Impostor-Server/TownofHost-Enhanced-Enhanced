@@ -17,6 +17,8 @@ public abstract class RoleBase
     public float AbilityLimit { get; set; } = -100;
     public virtual bool IsEnable { get; set; } = false;
     public bool HasVoted = false;
+    internal float PhantomAbilityReadyAt;
+    internal bool PhantomAbilityExecuting;
     public virtual bool IsExperimental => false;
     public virtual bool IsDesyncRole => false;
     public virtual bool IsSideKick => false;
@@ -29,6 +31,8 @@ public abstract class RoleBase
 
     public void OnAdd(byte playerid) // The player with the class executes this
     {
+        PhantomAbilityReadyAt = 0f;
+        PhantomAbilityExecuting = false;
         _state = Main.PlayerStates.Values.FirstOrDefault(state => state.PlayerId == playerid);
         try {
             CustomRoleManager.RoleClass.FirstOrDefault(r => r.Key == _state.MainRole).Value.IsEnable = true;
@@ -263,6 +267,19 @@ public abstract class RoleBase
     public virtual void UnShapeShiftButton(PlayerControl shapeshifter) { }
 
     /// <summary>
+    /// Opt in to a visible, animation-free Phantom button for compatible modded owners.
+    /// Assignment must give that owner the real Phantom role; vanilla owners keep the role's fallback base.
+    /// </summary>
+    public virtual bool UsesPhantomAbility => false;
+    public virtual float PhantomAbilityCooldown => 0f;
+
+    /// <summary>
+    /// Runs only after host, current owner/role, task phase and cooldown validation.
+    /// Return true only when the ability was consumed. Limited-use roles update their own AbilityLimit here.
+    /// </summary>
+    public virtual bool OnPhantomAbility(PlayerControl player) => false;
+
+    /// <summary>
     /// Check start meeting by press meeting button
     /// </summary>
     public virtual bool OnCheckStartMeeting(PlayerControl reporter) => reporter.IsAlive();
@@ -449,10 +466,10 @@ public abstract class RoleBase
     }
     public void SendSkillRPC()
     {
-        MessageWriter writer = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.SyncRoleSkill, SendOption.Reliable, -1);
+        MessageWriter writer = CustomRpcTransport.Start(CustomRPC.SyncRoleSkill, SendOption.Reliable, -1);
         writer.WriteNetObject(_Player);
         writer.Write(AbilityLimit);
-        AmongUsClient.Instance.FinishRpcImmediately(writer);
+        CustomRpcTransport.Finish(writer);
     }
     public virtual void ReceiveRPC(MessageReader reader, PlayerControl pc)
     {

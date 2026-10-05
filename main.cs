@@ -113,9 +113,6 @@ public class Main : BasePlugin
     //Other Configs
     public static ConfigEntry<string> WebhookURL { get; private set; }
     public static ConfigEntry<string> BetaBuildURL { get; private set; }
-    public static ConfigEntry<float> LastKillCooldown { get; private set; }
-    public static ConfigEntry<float> LastShapeshifterCooldown { get; private set; }
-    public static ConfigEntry<float> LastGuardianAngelCooldown { get; private set; }
     public static ConfigEntry<float> PlayerSpawnTimeOutCooldown { get; private set; }
 
     public static OptionBackupData RealOptionsData;
@@ -553,9 +550,6 @@ public class Main : BasePlugin
         WebhookURL = Config.Bind("Other", "WebhookURL", "none");
         BetaBuildURL = Config.Bind("Other", "BetaBuildURL", "");
         MessageWait = Config.Bind("Other", "MessageWait", 1);
-        LastKillCooldown = Config.Bind("Other", "LastKillCooldown", (float)30);
-        LastShapeshifterCooldown = Config.Bind("Other", "LastShapeshifterCooldown", (float)30);
-        LastGuardianAngelCooldown = Config.Bind("Other", "LastGuardianAngelCooldown", (float)35);
         PlayerSpawnTimeOutCooldown = Config.Bind("Other", "PlayerSpawnTimeOutCooldown", (float)3);
 
         hasArgumentException = false;
@@ -585,11 +579,11 @@ public class Main : BasePlugin
         handler.Info($"{nameof(ThisAssembly.Git.Tag)}: {ThisAssembly.Git.Tag}");
 
         ClassInjector.RegisterTypeInIl2Cpp<ErrorText>();
+        CustomRpcTransport.Register();
 
         Harmony.PatchAll();
 
-        if (!DebugModeManager.AmDebugger) ConsoleManager.DetachConsole();
-        else ConsoleManager.CreateConsole();
+        if (DebugModeManager.AmDebugger) ConsoleManager.CreateConsole();
 
         TOHE.Logger.Msg("========= TOHE loaded! =========", "Plugin Load");
     }

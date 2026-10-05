@@ -16,16 +16,16 @@ public static class CustomSoundsManager
             Play(sound);
             return;
         }
-        MessageWriter writer = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.PlayCustomSound, SendOption.Reliable, pc.GetClientId());
+        MessageWriter writer = CustomRpcTransport.Start(CustomRPC.PlayCustomSound, SendOption.Reliable, pc.GetClientId());
         writer.Write(sound);
-        AmongUsClient.Instance.FinishRpcImmediately(writer);
+        CustomRpcTransport.Finish(writer);
     }
     public static void RPCPlayCustomSoundAll(string sound)
     {
         if (!AmongUsClient.Instance.AmHost) return;
-        MessageWriter writer = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.PlayCustomSound, SendOption.Reliable, -1);
+        MessageWriter writer = CustomRpcTransport.Start(CustomRPC.PlayCustomSound, SendOption.Reliable, -1);
         writer.Write(sound);
-        AmongUsClient.Instance.FinishRpcImmediately(writer);
+        CustomRpcTransport.Finish(writer);
         Play(sound);
     }
     public static void ReceiveRPC(MessageReader reader) => Play(reader.ReadString());

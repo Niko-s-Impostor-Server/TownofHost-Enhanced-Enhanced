@@ -72,11 +72,11 @@ internal class Fireworker : RoleBase
     {
         if (!AmongUsClient.Instance.AmHost) return;
         Logger.Info($"Player{playerId}:SendRPC", "Fireworker");
-        MessageWriter writer = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.SendFireworkerState, SendOption.Reliable, -1);
+        MessageWriter writer = CustomRpcTransport.Start(CustomRPC.SendFireworkerState, SendOption.Reliable, -1);
         writer.Write(playerId);
         writer.Write(nowFireworkerCount[playerId]);
         writer.Write((int)state[playerId]);
-        AmongUsClient.Instance.FinishRpcImmediately(writer);
+        CustomRpcTransport.Finish(writer);
     }
 
     public static void ReceiveRPC(MessageReader msg)

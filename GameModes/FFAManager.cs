@@ -113,10 +113,10 @@ internal static class FFAManager
     }
     private static void SendRPCSyncFFAPlayer(byte playerId)
     {
-        MessageWriter writer = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.SyncFFAPlayer, SendOption.Reliable, -1);
+        MessageWriter writer = CustomRpcTransport.Start(CustomRPC.SyncFFAPlayer, SendOption.Reliable, -1);
         writer.Write(playerId);
         writer.Write(KBScore[playerId]);
-        AmongUsClient.Instance.FinishRpcImmediately(writer);
+        CustomRpcTransport.Finish(writer);
     }
     public static void ReceiveRPCSyncFFAPlayer(MessageReader reader)
     {
@@ -126,11 +126,11 @@ internal static class FFAManager
     public static void SendRPCSyncNameNotify(PlayerControl pc)
     {
         if (!pc.IsNonHostModdedClient()) return;
-        MessageWriter writer = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.SyncFFANameNotify, SendOption.Reliable, pc.GetClientId());
+        MessageWriter writer = CustomRpcTransport.Start(CustomRPC.SyncFFANameNotify, SendOption.Reliable, pc.GetClientId());
         if (NameNotify.ContainsKey(pc.PlayerId))
             writer.Write(NameNotify[pc.PlayerId].TEXT);
         else writer.Write(string.Empty);
-        AmongUsClient.Instance.FinishRpcImmediately(writer);
+        CustomRpcTransport.Finish(writer);
     }
     public static void ReceiveRPCSyncNameNotify(MessageReader reader)
     {

@@ -99,16 +99,7 @@ class OnGameJoinedPatch
                 case GameModes.Normal:
                     Logger.Info(" Is Normal Game", "Game Mode");
 
-                    if (Main.NormalOptions.KillCooldown == 0f)
-                        Main.NormalOptions.KillCooldown = Main.LastKillCooldown.Value;
-
                     AURoleOptions.SetOpt(Main.NormalOptions.Cast<IGameOptions>());
-
-                    if (AURoleOptions.ShapeshifterCooldown == 0f)
-                        AURoleOptions.ShapeshifterCooldown = Main.LastShapeshifterCooldown.Value;
-
-                    if (AURoleOptions.GuardianAngelCooldown == 0f)
-                        AURoleOptions.GuardianAngelCooldown = Main.LastGuardianAngelCooldown.Value;
 
                     // if custom game mode is HideNSeekTOHE in normal game, set standart
                     if (Options.CurrentGameMode == CustomGameMode.HidenSeekTOHE)
@@ -261,8 +252,8 @@ public static class OnPlayerJoinedPatch
 
                 if (AmongUsClient.Instance.AmHost && !Main.playerVersion.TryGetValue(client.Id, out _))
                 {
-                    var retry = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.RequestRetryVersionCheck, SendOption.None, client.Id);
-                    AmongUsClient.Instance.FinishRpcImmediately(retry);
+                    var retry = CustomRpcTransport.Start(CustomRPC.RequestRetryVersionCheck, SendOption.None, client.Id);
+                    CustomRpcTransport.Finish(retry);
                 }
             }
             catch { }
@@ -619,8 +610,8 @@ class InnerNetClientSpawnPatch
                     return;
                 }
 
-                var sender = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.RequestRetryVersionCheck, SendOption.Reliable, client.Character.OwnerId);
-                AmongUsClient.Instance.FinishRpcImmediately(sender);
+                var sender = CustomRpcTransport.Start(CustomRPC.RequestRetryVersionCheck, SendOption.Reliable, client.Character.OwnerId);
+                CustomRpcTransport.Finish(sender);
             }, 3f, "RPC Request Retry Version Check");
 
             if (GameStates.IsOnlineGame)
@@ -640,9 +631,9 @@ class InnerNetClientSpawnPatch
                         // Non-host modded client
                         else if (client.Character.IsNonHostModdedClient())
                         {
-                            MessageWriter writer = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.SyncLobbyTimer, SendOption.Reliable, client.Id);
+                            MessageWriter writer = CustomRpcTransport.Start(CustomRPC.SyncLobbyTimer, SendOption.Reliable, client.Id);
                             writer.WritePacked((int)GameStartManagerPatch.timer);
-                            AmongUsClient.Instance.FinishRpcImmediately(writer);
+                            CustomRpcTransport.Finish(writer);
                         }
                     }
                 }, 3.1f, "Send RPC or Sync Lobby Timer");

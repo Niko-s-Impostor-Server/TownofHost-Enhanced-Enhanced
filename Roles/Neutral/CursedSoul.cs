@@ -50,10 +50,10 @@ internal class CursedSoul : RoleBase
 
     private void SendRPC()
     {
-        MessageWriter writer = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.SetCursedSoulCurseLimit, SendOption.Reliable, -1);
+        MessageWriter writer = CustomRpcTransport.Start(CustomRPC.SetCursedSoulCurseLimit, SendOption.Reliable, -1);
         writer.Write(_state.PlayerId);
         writer.Write(CurseLimit);
-        AmongUsClient.Instance.FinishRpcImmediately(writer);
+        CustomRpcTransport.Finish(writer);
     }
     public static void ReceiveRPC(MessageReader reader)
     {

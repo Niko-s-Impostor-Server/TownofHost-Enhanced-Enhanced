@@ -283,12 +283,12 @@ internal class DoubleAgent : RoleBase
     // Send bomb timer to Modded Clients when active.
     private void SendRPC(bool addData = false, byte targetId = byte.MaxValue)
     {
-        var writer = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.SyncRoleSkill, SendOption.None, -1);
+        var writer = CustomRpcTransport.Start(CustomRPC.SyncRoleSkill, SendOption.None, -1);
         writer.WriteNetObject(_Player);
         writer.Write(addData);
         writer.Write(targetId);
         writer.WritePacked((int)CurrentBombedTime);
-        AmongUsClient.Instance.FinishRpcImmediately(writer);
+        CustomRpcTransport.Finish(writer);
     }
 
     // Receive and set bomb timer from Host when active.

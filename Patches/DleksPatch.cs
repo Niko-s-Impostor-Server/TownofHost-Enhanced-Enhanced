@@ -1,21 +1,36 @@
 ﻿using UnityEngine;
+using BepInEx.Unity.IL2CPP.Utils.Collections;
 
 namespace TOHE.Patches;
 
-// Keep the selected Hide & Seek map without depending on a generated coroutine type.
-[HarmonyPatch(typeof(AprilFoolsMode), nameof(AprilFoolsMode.ShouldFlipSkeld))]
+// ShouldFlipSkeld returns a constant in this build. Native callers can inline
+// that value, so load the selected HnS ship before the vanilla routine.
+[HarmonyPatch(typeof(AmongUsClient), nameof(AmongUsClient.CoStartGameHost))]
 public static class DleksPatch
 {
-    private static void Postfix(ref bool __result)
+    private static void Postfix(AmongUsClient __instance, ref Il2CppSystem.Collections.IEnumerator __result)
     {
-        // The game calls this while constructing GameOptionsManager as well.
-        // Use the cached field so the lazy CurrentGameOptions getter cannot recurse.
-        var manager = GameOptionsManager.Instance;
-        var options = manager?.currentGameOptions;
-        if (options == null) return;
+        if (!__instance.AmHost || !GameStates.IsModHost || !GameStates.IsHideNSeek ||
+            GameStates.IsFreePlay || GameOptionsManager.Instance.CurrentGameOptions.MapId != 3) return;
+        __result = LoadSelectedShip(__instance, __result).WrapToIl2Cpp();
+    }
 
-        if (options.GameMode is AmongUs.GameOptions.GameModes.HideNSeek or AmongUs.GameOptions.GameModes.SeekFools)
-            __result = options.MapId == 3;
+    private static System.Collections.IEnumerator LoadSelectedShip(AmongUsClient client, Il2CppSystem.Collections.IEnumerator original)
+    {
+        var generation = OnGameJoinedPatch.Generation;
+        if (!ShipStatus.Instance)
+        {
+            client.ShipLoadingAsyncHandle = client.ShipPrefabs[3].InstantiateAsync(null, false);
+            yield return client.ShipLoadingAsyncHandle;
+            if (!OnGameJoinedPatch.IsCurrentSession(generation) || !client.AmHost) yield break;
+            var result = client.ShipLoadingAsyncHandle.Result;
+            client.ShipLoadingAsyncHandle = default;
+            ShipStatus.Instance = result.GetComponent<ShipStatus>();
+            client.Spawn(ShipStatus.Instance, -2, InnerNet.SpawnFlags.None);
+        }
+        // Preserve vanilla HnS readiness, role selection and Begin behavior.
+        while (OnGameJoinedPatch.IsCurrentSession(generation) && original.MoveNext())
+            yield return original.Current;
     }
 }
 [HarmonyPatch(typeof(GameStartManager))]
@@ -44,24 +59,37 @@ class AllMapIconsPatch
                 CreateOptionsPickerPatch.SetDleks = true;
         }
 
-        MapIconByName DleksIncon = Object.Instantiate(__instance, __instance.gameObject.transform).AllMapIcons[0];
-        DleksIncon.Name = MapNames.Dleks;
-        DleksIncon.MapImage = Utils.LoadSprite($"TOHE.Resources.Images.DleksBanner.png", 100f);
-        DleksIncon.NameImage = Utils.LoadSprite($"TOHE.Resources.Images.DleksBanner-Wordart.png", 100f);
-
-        __instance.AllMapIcons.Add(DleksIncon);
+        foreach (var icon in __instance.AllMapIcons)
+            if (icon.Name == MapNames.Dleks) return;
+        // Clone only data: cloning GameStartManager also duplicates Start,
+        // lobby controls and network handlers.
+        __instance.AllMapIcons.Add(new MapIconByName
+        {
+            Name = MapNames.Dleks,
+            MapIcon = __instance.AllMapIcons[0].MapIcon,
+            MapImage = Utils.LoadSprite("TOHE.Resources.Images.DleksBanner.png", 100f),
+            NameImage = Utils.LoadSprite("TOHE.Resources.Images.DleksBanner-Wordart.png", 100f)
+        });
     }
 }
-[HarmonyPatch(typeof(StringOption), nameof(StringOption.Start))]
+[HarmonyPatch(typeof(StringOption), nameof(StringOption.Initialize))]
 class AutoSelectDleksPatch
 {
     private static void Postfix(StringOption __instance)
     {
-        if (__instance.Title == StringNames.GameMapName)
-        {
-            // vanilla clamps this to not auto select dleks
-            __instance.Value = GameOptionsManager.Instance.CurrentGameOptions.MapId;
-        }
+        // Start is only a forwarding wrapper on the source build and can be
+        // stripped/inlined. Initialize also runs when the native menu refreshes.
+        if (__instance == null || __instance.Title != StringNames.GameMapName ||
+            ModGameOptionsMenu.OptionList.ContainsKey(__instance)) return;
+        var options = GameOptionsManager.Instance?.CurrentGameOptions;
+        if (options == null || __instance.Values == null || options.MapId >= __instance.Values.Length) return;
+
+        // Restore the displayed selection without UpdateValue's settings write
+        // or an OnValueChanged callback. Keep its label/buttons in the same state.
+        __instance.Value = options.MapId;
+        __instance.oldValue = __instance.Value;
+        __instance.ValueText.text = DestroyableSingleton<TranslationController>.Instance.GetString(__instance.Values[__instance.Value]);
+        __instance.AdjustButtonsActiveState();
     }
 }
 [HarmonyPatch(typeof(Vent), nameof(Vent.SetButtons))]

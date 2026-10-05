@@ -457,9 +457,9 @@ class GameEndCheckerForNormal
     public static void StartEndGame(GameOverReason reason)
     {
         // Sync of CustomWinnerHolder info
-        var winnerWriter = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.EndGame, SendOption.Reliable);
+        var winnerWriter = CustomRpcTransport.Start(CustomRPC.EndGame, SendOption.Reliable);
         WriteTo(winnerWriter);
-        AmongUsClient.Instance.FinishRpcImmediately(winnerWriter);
+        CustomRpcTransport.Finish(winnerWriter);
 
         AmongUsClient.Instance.StartCoroutine(CoEndGame(AmongUsClient.Instance, reason).WrapToIl2Cpp());
     }

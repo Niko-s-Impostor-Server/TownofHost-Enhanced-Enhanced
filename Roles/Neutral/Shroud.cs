@@ -58,9 +58,9 @@ internal class Shroud : RoleBase
     private static void SendOwnerClear(byte ownerId)
     {
         if (!AmongUsClient.Instance.AmHost || PlayerControl.LocalPlayer == null) return;
-        var writer = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.ClearShroudOwner, SendOption.Reliable, -1);
+        var writer = CustomRpcTransport.Start(CustomRPC.ClearShroudOwner, SendOption.Reliable, -1);
         writer.Write(ownerId);
-        AmongUsClient.Instance.FinishRpcImmediately(writer);
+        CustomRpcTransport.Finish(writer);
     }
     public static void ReceiveOwnerClear(MessageReader reader, PlayerControl sender)
     {
@@ -72,12 +72,12 @@ internal class Shroud : RoleBase
     private void SendRPC(byte shroudId, byte targetId, byte typeId)
     {
         if (!AmongUsClient.Instance.AmHost || _Player == null) return;
-        MessageWriter writer = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.SyncRoleSkill, SendOption.Reliable, -1);
+        MessageWriter writer = CustomRpcTransport.Start(CustomRPC.SyncRoleSkill, SendOption.Reliable, -1);
         writer.WriteNetObject(_Player); // syncShroud
         writer.Write(typeId);
         writer.Write(shroudId);
         writer.Write(targetId);
-        AmongUsClient.Instance.FinishRpcImmediately(writer);
+        CustomRpcTransport.Finish(writer);
     }
     public override void ReceiveRPC(MessageReader reader, PlayerControl NaN)
     {

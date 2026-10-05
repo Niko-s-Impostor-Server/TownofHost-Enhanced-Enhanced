@@ -109,6 +109,15 @@ sealed class MessageWriter
     public void Write(bool value) => Values.Add(value);
 }
 
+// Lifecycle-only adapter to the existing recording writer. CallId stores the
+// logical inner CustomRPC ID; this fixture does not serialize the outer envelope.
+static class CustomRpcTransport
+{
+    public static MessageWriter Start(CustomRPC rpc, SendOption option, int target = -1)
+        => AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)rpc, option, target);
+    public static void Finish(MessageWriter writer) => AmongUsClient.Instance.FinishRpcImmediately(writer);
+}
+
 sealed class AmongUsClient
 {
     public static AmongUsClient Instance;

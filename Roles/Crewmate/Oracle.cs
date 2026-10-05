@@ -10,7 +10,7 @@ using InnerNet;
 
 namespace TOHE.Roles.Crewmate;
 
-internal class Oracle : RoleBase
+internal class Oracle : RoleBase, IMeetingTargetAbility
 {
     //===========================SETUP================================\\
     private const int Id = 9100;
@@ -53,13 +53,13 @@ internal class Oracle : RoleBase
     }
     public void SendRPC(byte playerId, bool isTemp = false)
     {
-        MessageWriter writer = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.SyncRoleSkill, SendOption.Reliable, -1);
+        MessageWriter writer = CustomRpcTransport.Start(CustomRPC.SyncRoleSkill, SendOption.Reliable, -1);
         writer.WriteNetObject(_Player);
         writer.Write(playerId);
         writer.Write(isTemp);
         if (!isTemp) writer.Write(AbilityLimit);
         else writer.Write(TempCheckLimit[playerId]);
-        AmongUsClient.Instance.FinishRpcImmediately(writer);
+        CustomRpcTransport.Finish(writer);
     }
     public override void ReceiveRPC(MessageReader reader, PlayerControl NaN)
     {
@@ -76,6 +76,15 @@ internal class Oracle : RoleBase
             TempCheckLimit[pid] = tempLimit;
         }
     }
+    public bool CanUseMeetingAbility(PlayerControl actor) => actor && actor.Is(CustomRoles.Oracle) &&
+        AbilityLimit >= 1 && !DidVote.Contains(actor.PlayerId);
+
+    public bool CanTargetMeetingAbility(PlayerControl actor, PlayerControl target) => actor && target &&
+        actor != target && target.IsAlive();
+
+    public bool UseMeetingAbility(PlayerControl actor, PlayerControl target) =>
+        CanUseMeetingAbility(actor) && CanTargetMeetingAbility(actor, target) && !CheckVote(actor, target);
+
     public override bool CheckVote(PlayerControl player, PlayerControl target)
     {
         if (player == null || target == null) return true;
@@ -144,7 +153,8 @@ internal class Oracle : RoleBase
             }
 
             SendMessage(GetString("OracleCheck") + "\n" + msg + "\n\n" + string.Format(GetString("OracleCheckLimit"), AbilityLimit), player.PlayerId, ColorString(GetRoleColor(CustomRoles.Oracle), GetString("OracleCheckMsgTitle")));
-            SendMessage(GetString("VoteHasReturned"), player.PlayerId, title: ColorString(GetRoleColor(CustomRoles.Oracle), string.Format(GetString("VoteAbilityUsed"), GetString("Oracle"))));
+            if (!MeetingAbilities.UsesJudgeButton(player))
+                SendMessage(GetString("VoteHasReturned"), player.PlayerId, title: ColorString(GetRoleColor(CustomRoles.Oracle), string.Format(GetString("VoteAbilityUsed"), GetString("Oracle"))));
             return false;
         }
     }

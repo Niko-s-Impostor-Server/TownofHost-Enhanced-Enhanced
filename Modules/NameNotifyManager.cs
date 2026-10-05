@@ -48,7 +48,7 @@ public static class NameNotifyManager
         var player = playerId.GetPlayer();
         if (player == null || !AmongUsClient.Instance.AmHost || !player.IsNonHostModdedClient()) return;
 
-        MessageWriter writer = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.SyncNameNotify, SendOption.Reliable, player.GetClientId());
+        MessageWriter writer = CustomRpcTransport.Start(CustomRPC.SyncNameNotify, SendOption.Reliable, player.GetClientId());
         writer.Write(playerId);
         if (Notice.ContainsKey(playerId))
         {
@@ -57,7 +57,7 @@ public static class NameNotifyManager
             writer.Write(Notice[playerId].TimeStamp - Utils.GetTimeStamp());
         }
         else writer.Write(false);
-        AmongUsClient.Instance.FinishRpcImmediately(writer);
+        CustomRpcTransport.Finish(writer);
     }
     public static void ReceiveRPC(MessageReader reader)
     {

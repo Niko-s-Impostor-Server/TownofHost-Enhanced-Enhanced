@@ -82,18 +82,18 @@ internal class Jailer : RoleBase
         MessageWriter writer;
         if (!setTarget)
         {
-            writer = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.SetJailerExeLimit, SendOption.Reliable, -1);
+            writer = CustomRpcTransport.Start(CustomRPC.SetJailerExeLimit, SendOption.Reliable, -1);
             writer.Write(jailerId);
             writer.Write(JailerExeLimit[jailerId]);
             writer.Write(JailerHasExe[jailerId]);
             writer.Write(JailerDidVote[jailerId]);
-            AmongUsClient.Instance.FinishRpcImmediately(writer);
+            CustomRpcTransport.Finish(writer);
             return;
         }
-        writer = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.SetJailerTarget, SendOption.Reliable, -1);
+        writer = CustomRpcTransport.Start(CustomRPC.SetJailerTarget, SendOption.Reliable, -1);
         writer.Write(jailerId);
         writer.Write(targetId);
-        AmongUsClient.Instance.FinishRpcImmediately(writer);
+        CustomRpcTransport.Finish(writer);
     }
 
     public static void ReceiveRPC(MessageReader reader, bool setTarget = true)

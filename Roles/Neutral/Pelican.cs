@@ -62,7 +62,7 @@ internal class Pelican : RoleBase
     private void SendRPC(byte playerId)
     {
         if (!AmongUsClient.Instance.AmHost || _Player == null) return;
-        MessageWriter writer = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.SyncRoleSkill, SendOption.Reliable, -1);
+        MessageWriter writer = CustomRpcTransport.Start(CustomRPC.SyncRoleSkill, SendOption.Reliable, -1);
         writer.WriteNetObject(_Player); // SetPelicanEatenNum
         writer.Write(playerId);
         if (playerId != byte.MaxValue)
@@ -71,14 +71,14 @@ internal class Pelican : RoleBase
             foreach (var el in eatenList[playerId])
                 writer.Write(el);
         }
-        AmongUsClient.Instance.FinishRpcImmediately(writer);
+        CustomRpcTransport.Finish(writer);
     }
     private static void SendOwnerClear(byte ownerId)
     {
         if (!AmongUsClient.Instance.AmHost || PlayerControl.LocalPlayer == null) return;
-        var writer = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.ClearPelicanOwner, SendOption.Reliable, -1);
+        var writer = CustomRpcTransport.Start(CustomRPC.ClearPelicanOwner, SendOption.Reliable, -1);
         writer.Write(ownerId);
-        AmongUsClient.Instance.FinishRpcImmediately(writer);
+        CustomRpcTransport.Finish(writer);
     }
     public static void ReceiveOwnerClear(MessageReader reader, PlayerControl sender)
     {

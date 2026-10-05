@@ -187,15 +187,6 @@ class StartPatch
             if (!BepInEx.ConsoleManager.ConsoleActive && BepInEx.ConsoleManager.ConsoleEnabled)
                 BepInEx.ConsoleManager.CreateConsole();
         }
-        else
-        {
-            if (BepInEx.ConsoleManager.ConsoleActive && !DebugModeManager.AmDebugger)
-            {
-                BepInEx.ConsoleManager.DetachConsole();
-                Logger.SendInGame(GetString("Warning.CanNotUseBepInExConsole"));
-            }
-        }
-
         switch (Utils.GetActiveMapName())
         {
             case MapNames.Skeld:

@@ -57,13 +57,13 @@ internal class Undertaker : RoleBase
 
     private static void SendRPC(byte playerId)
     {
-        MessageWriter writer = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.UndertakerLocationSync, SendOption.Reliable, -1);
+        MessageWriter writer = CustomRpcTransport.Start(CustomRPC.UndertakerLocationSync, SendOption.Reliable, -1);
         writer.Write(playerId);
         var xLoc = MarkedLocation[playerId].x;
         writer.Write(xLoc);
         var yLoc = MarkedLocation[playerId].y;
         writer.Write(yLoc);
-        AmongUsClient.Instance.FinishRpcImmediately(writer);
+        CustomRpcTransport.Finish(writer);
     }
     public static void ReceiveRPC(MessageReader reader)
     {

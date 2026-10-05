@@ -468,10 +468,10 @@ class MurderPlayerPatch
             // Sync protected player from being killed first info for modded clients
             if (PlayerControl.LocalPlayer.IsHost())
             {
-                var writer = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.SyncShieldPersonDiedFirst, SendOption.None, -1);
+                var writer = CustomRpcTransport.Start(CustomRPC.SyncShieldPersonDiedFirst, SendOption.None, -1);
                 writer.Write(Main.FirstDied);
                 writer.Write(Main.FirstDiedPrevious);
-                AmongUsClient.Instance.FinishRpcImmediately(writer);
+                CustomRpcTransport.Finish(writer);
             }
         }
 
@@ -1692,8 +1692,8 @@ class PlayerControlCheckNamePatch
         {
             if (__instance != null && !__instance.Data.Disconnected && !__instance.IsModded())
             {
-                var sender = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.RequestRetryVersionCheck, SendOption.Reliable, __instance.OwnerId);
-                AmongUsClient.Instance.FinishRpcImmediately(sender);
+                var sender = CustomRpcTransport.Start(CustomRPC.RequestRetryVersionCheck, SendOption.Reliable, __instance.OwnerId);
+                CustomRpcTransport.Finish(sender);
             }
         }, 0.6f, "Retry Version Check", false);
     }

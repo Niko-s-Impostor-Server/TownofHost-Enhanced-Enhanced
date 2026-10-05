@@ -66,9 +66,9 @@ internal class NotificationPopperPatch
         if (!AmongUsClient.Instance.AmHost || Options.HideGameSettings.GetBool()) return;
         if (!Main.AllPlayerControls.Any(pc => pc.IsNonHostModdedClient())) return;
 
-        MessageWriter writer = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.NotificationPopper, SendOption.Reliable);
+        MessageWriter writer = CustomRpcTransport.Start(CustomRPC.NotificationPopper, SendOption.Reliable);
         writer.WritePacked(index);
         writer.Write(playSound);
-        AmongUsClient.Instance.FinishRpcImmediately(writer);
+        CustomRpcTransport.Finish(writer);
     }
 }

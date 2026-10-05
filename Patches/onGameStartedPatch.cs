@@ -28,21 +28,13 @@ internal class ChangeRoleSettings
 
         try
         {
-            // Note: No positions are set at this time.
+            // Capture lobby values before applying any round-only role settings.
+            Main.RealOptionsData = new OptionBackupData(GameOptionsManager.Instance.CurrentGameOptions);
             if (GameStates.IsNormalGame)
-            {
-                Main.NormalOptions.roleOptions.SetRoleRate(RoleTypes.GuardianAngel, 0, 0);
-                if (Options.DisableVanillaRoles.GetBool())
-                {
-                    Main.NormalOptions.roleOptions.SetRoleRate(RoleTypes.Scientist, 0, 0);
-                    Main.NormalOptions.roleOptions.SetRoleRate(RoleTypes.Engineer, 0, 0);
-                    Main.NormalOptions.roleOptions.SetRoleRate(RoleTypes.Shapeshifter, 0, 0);
-                    Main.NormalOptions.roleOptions.SetRoleRate(RoleTypes.Noisemaker, 0, 0);
-                    Main.NormalOptions.roleOptions.SetRoleRate(RoleTypes.Phantom, 0, 0);
-                    Main.NormalOptions.roleOptions.SetRoleRate(RoleTypes.Tracker, 0, 0);
-                }
-            }
-            else if (GameStates.IsHideNSeek)
+                Options.DefaultKillCooldown = Main.RealOptionsData.GetFloat(FloatOptionNames.KillCooldown);
+
+            // Note: No positions are set at this time.
+            if (GameStates.IsHideNSeek)
             {
                 Main.HideNSeekOptions.NumImpostors = Options.NumImpostorsHnS.GetInt();
                 Main.AliveImpostorCount = Main.HideNSeekOptions.NumImpostors;
@@ -94,8 +86,6 @@ internal class ChangeRoleSettings
             ChatManager.ResetHistory();
             ReportDeadBodyPatch.CanReport.Clear();
             Options.UsedButtonCount = 0;
-
-            Main.RealOptionsData = new OptionBackupData(GameOptionsManager.Instance.CurrentGameOptions);
 
             if (GameStates.IsNormalGame)
             {
@@ -270,7 +260,7 @@ internal class StartGameHostPatch
     [HarmonyPrefix]
     public static bool CoStartGameHost_Prefix(AmongUsClient __instance, ref Il2CppSystem.Collections.IEnumerator __result)
     {
-        if (GameStates.IsHideNSeek)
+        if (!__instance.AmHost || !GameStates.IsModHost || !GameStates.IsNormalGame || GameStates.IsFreePlay)
         {
             return true;
         }
@@ -282,6 +272,7 @@ internal class StartGameHostPatch
 
     public static System.Collections.IEnumerator StartGameHost()
     {
+        var generation = OnGameJoinedPatch.Generation;
         if (LobbyBehaviour.Instance)
         {
             LobbyBehaviour.Instance.Despawn();
@@ -350,9 +341,44 @@ internal class StartGameHostPatch
         }
         thiz.SendClientReady();
         yield return new WaitForSeconds(2f);
+        if (!OnGameJoinedPatch.IsCurrentSession(generation) || !SyncInitialGameOptions()) yield break;
         yield return AssignRoles();
         //ShipStatus.Instance.Begin(); // Tasks sets in IntroPatch
         yield break;
+    }
+
+    internal static bool SyncInitialGameOptions()
+    {
+        var client = AmongUsClient.Instance;
+        if (client == null || !client.AmHost || client.GameState != InnerNetClient.GameStates.Started ||
+            !GameStates.IsModHost || !GameStates.IsNormalGame || GameStates.IsFreePlay ||
+            Main.RealOptionsData == null || GameManager.Instance == null) return false;
+
+        // SetRole initializes native ability timers from current game options.
+        // Send the temporary values only after Started, on an independent clone.
+        var opt = Main.RealOptionsData.Restore(new NormalGameOptionsV11(new UnityLogger().Cast<Hazel.ILogger>()).Cast<IGameOptions>());
+        opt.SetFloat(FloatOptionNames.KillCooldown, 0f);
+        opt.SetFloat(FloatOptionNames.ShapeshifterCooldown, 0f);
+        opt.SetFloat(FloatOptionNames.GuardianAngelCooldown, 0f);
+        opt.SetBool(BoolOptionNames.ImpostorsCanSeeProtect, false);
+        opt.RoleOptions.SetRoleRate(RoleTypes.GuardianAngel, 0, 0);
+        if (Options.DisableVanillaRoles.GetBool())
+        {
+            foreach (var role in new[] { RoleTypes.Scientist, RoleTypes.Engineer, RoleTypes.Shapeshifter,
+                                        RoleTypes.Noisemaker, RoleTypes.Phantom, RoleTypes.Tracker })
+                opt.RoleOptions.SetRoleRate(role, 0, 0);
+        }
+        foreach (var pc in PlayerControl.AllPlayerControls.GetFastEnumerator())
+        {
+            if (pc == null || pc.Data == null || pc.Data.Disconnected) continue;
+            new InitialGameOptionsSender(pc, opt).SendGameOptions();
+        }
+        return true;
+    }
+
+    private sealed class InitialGameOptionsSender(PlayerControl player, IGameOptions options) : PlayerGameOptionsSender(player)
+    {
+        public override IGameOptions BuildGameOptions() => options;
     }
 
     public static System.Collections.IEnumerator AssignRoles()
@@ -754,6 +780,8 @@ public static class RpcSetRoleReplacer
             if (player == null || role.IsDesyncRole()) continue;
 
             var roleType = role.GetRoleTypes();
+            if (role.GetStaticRoleClass().UsesPhantomAbility && RpcCompatibility.IsCurrentClient(player))
+                roleType = RoleTypes.Phantom;
 
             StoragedData.Add(playerId, roleType);
 
@@ -770,7 +798,7 @@ public static class RpcSetRoleReplacer
                 player.SetRole(roleType, false);
             }
 
-            Logger.Info($"Set original role type => {player.GetRealName()}: {role} => {role.GetRoleTypes()}", "AssignNormalRoles");
+            Logger.Info($"Set original role type => {player.GetRealName()}: {role} => {roleType}", "AssignNormalRoles");
         }
     }
     public static void SendRpcForNormal()

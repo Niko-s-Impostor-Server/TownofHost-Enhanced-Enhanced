@@ -19,6 +19,11 @@ public static class PhantomRolePatch
     [HarmonyPatch(nameof(PlayerControl.CmdCheckVanish)), HarmonyPrefix]
     private static bool CmdCheckVanish_Prefix(PlayerControl __instance, float maxDuration)
     {
+        if (PhantomAbility.IsEnabled(__instance))
+        {
+            PhantomAbility.Request(__instance, maxDuration);
+            return false;
+        }
         if (AmongUsClient.Instance.AmHost)
         {
             __instance.CheckVanish();
@@ -46,9 +51,20 @@ public static class PhantomRolePatch
     }
     // Called when Phantom press vanish button when visible
     [HarmonyPatch(nameof(PlayerControl.CheckVanish)), HarmonyPrefix]
-    private static void CheckVanish_Prefix(PlayerControl __instance)
+    private static bool CheckVanish_Prefix(PlayerControl __instance)
     {
-        if (!AmongUsClient.Instance.AmHost) return;
+        if (PhantomAbility.IsEnabled(__instance))
+        {
+            if (PhantomAbility.CanHandle(__instance))
+            {
+                PhantomAbility.TryActivate(__instance);
+                PhantomAbility.RestoreVisibleButton(__instance);
+                // StartAppear is a host broadcast; it confirms a visible button without a vanish animation.
+                __instance.RpcAppear(false);
+            }
+            return false;
+        }
+        if (!AmongUsClient.Instance.AmHost) return true;
 
         var phantom = __instance;
         Logger.Info($"Player: {phantom.GetRealName()}", "CheckVanish");
@@ -76,6 +92,15 @@ public static class PhantomRolePatch
             }, 1.2f, $"Set Phantom invisible {target.PlayerId}", shoudLog: false);
         }
         InvisibilityList.Add(phantom);
+        return true;
+    }
+
+    [HarmonyPatch(nameof(PlayerControl.HandleServerAppear)), HarmonyPrefix]
+    private static bool HandleServerAppear_Prefix(PlayerControl __instance)
+    {
+        if (!PhantomAbility.IsEnabled(__instance)) return true;
+        PhantomAbility.RestoreVisibleButton(__instance);
+        return false;
     }
     // Called when Phantom press appear button when is invisible
     [HarmonyPatch(nameof(PlayerControl.CheckAppear)), HarmonyPrefix]
@@ -188,6 +213,11 @@ public static class PhantomRolePatch
     {
         InvisibilityList.Clear();
         PetsList.Clear();
+        foreach (var player in Main.AllPlayerControls)
+        {
+            var role = player.GetRoleClass();
+            if (role?.UsesPhantomAbility == true) role.PhantomAbilityReadyAt = 0f;
+        }
     }
 }
 // Fixed vanilla bug for host (from TOH-Y)
@@ -196,6 +226,15 @@ public static class PhantomRoleUseAbilityPatch
 {
     public static bool Prefix(PhantomRole __instance)
     {
+        if (PhantomAbility.IsEnabled(__instance.Player))
+        {
+            if (PhantomAbility.CanRequest(__instance.Player) && !__instance.IsCoolingDown && !__instance.fading)
+            {
+                __instance.SetCooldown();
+                __instance.Player.CmdCheckVanish(0f);
+            }
+            return false;
+        }
         if (!AmongUsClient.Instance.AmHost) return true;
 
         if (__instance.Player.AmOwner && !__instance.Player.Data.IsDead && __instance.Player.moveable && !Minigame.Instance && !__instance.IsCoolingDown && !__instance.fading)

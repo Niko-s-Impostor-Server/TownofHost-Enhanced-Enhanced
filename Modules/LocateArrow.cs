@@ -32,12 +32,12 @@ static class LocateArrow
 
         var seer = seerId.GetPlayer();
         if (!seer.IsNonHostModdedClient()) return;
-        var writer = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.Arrow, SendOption.Reliable, seer.GetClientId());
+        var writer = CustomRpcTransport.Start(CustomRPC.Arrow, SendOption.Reliable, seer.GetClientId());
         writer.Write(false);
         writer.WritePacked(index);
         writer.Write(seer);
         writer.Write(vector3);
-        AmongUsClient.Instance.FinishRpcImmediately(writer);
+        CustomRpcTransport.Finish(writer);
     }
     public static void ReceiveRPC(MessageReader reader)
     {

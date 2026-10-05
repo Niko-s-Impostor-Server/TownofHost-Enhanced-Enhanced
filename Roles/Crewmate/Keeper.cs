@@ -8,7 +8,7 @@ using static TOHE.Options;
 
 namespace TOHE.Roles.Crewmate;
 
-internal class Keeper : RoleBase
+internal class Keeper : RoleBase, IMeetingTargetAbility
 {
     //===========================SETUP================================\\
     private const int Id = 26500;
@@ -77,7 +77,7 @@ internal class Keeper : RoleBase
 
     private static void SendRPC(int type, byte keeperId = 0xff, byte targetId = 0xff)
     {
-        MessageWriter writer = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.KeeperRPC, SendOption.Reliable, -1);
+        MessageWriter writer = CustomRpcTransport.Start(CustomRPC.KeeperRPC, SendOption.Reliable, -1);
         writer.Write(type);
         if (type == 0)
         {
@@ -85,7 +85,7 @@ internal class Keeper : RoleBase
             writer.Write(keeperUses[keeperId]);
             writer.Write(targetId);
         }
-        AmongUsClient.Instance.FinishRpcImmediately(writer);
+        CustomRpcTransport.Finish(writer);
     }
 
     public static void ReceiveRPC(MessageReader reader)
@@ -113,6 +113,16 @@ internal class Keeper : RoleBase
         }
     }
 
+
+    public bool CanUseMeetingAbility(PlayerControl actor) => actor && actor.Is(CustomRoles.Keeper) &&
+        DidVote.TryGetValue(actor.PlayerId, out bool used) && !used &&
+        keeperUses.TryGetValue(actor.PlayerId, out int uses) && uses < KeeperUsesOpt.GetInt();
+
+    public bool CanTargetMeetingAbility(PlayerControl actor, PlayerControl target) => actor && target &&
+        actor != target && target.IsAlive() && !keeperTarget.Contains(target.PlayerId);
+
+    public bool UseMeetingAbility(PlayerControl actor, PlayerControl target) =>
+        CanUseMeetingAbility(actor) && CanTargetMeetingAbility(actor, target) && !CheckVote(actor, target);
 
     public override bool CheckVote(PlayerControl voter, PlayerControl target)
     {

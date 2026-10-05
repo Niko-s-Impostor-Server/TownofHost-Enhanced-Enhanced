@@ -25,7 +25,7 @@ public sealed class SmokePlugin : BasePlugin
         Session = new SmokeSession(Paths.GameRootPath, Log);
         BepInEx.Logging.Logger.Listeners.Add(new SmokeErrorCounter());
         AddComponent<SmokeDriver>();
-        Log.LogInfo("Test-only fixed commands: snapshot, capture, freeplay, locallobby, gui_local, gui_tasks, gui_roles, leave, local_join, local_start, local_leave, local_task, local_meeting, local_meeting_request, local_skip, nikocn_host, nikocn_join, online_leave, online_start. No command arguments.");
+        Log.LogInfo("Test-only fixed commands: snapshot, capture, freeplay, locallobby, gui_local, gui_tasks, gui_roles, leave, local_join, local_start, local_leave, local_task, local_meeting, local_meeting_request, local_skip, local_prepare_abilities, local_phantom, local_ability_meeting, local_judge, nikocn_host, nikocn_join, online_leave, online_start. No command arguments.");
     }
 }
 
@@ -55,6 +55,7 @@ internal sealed class SmokeSession
     private readonly LocalPlaySmoke local;
     private readonly MeetingSmoke meeting;
     private readonly TaskCompletionSmoke taskCompletion;
+    private readonly AbilitySmoke abilities;
 
     internal SmokeSession(string gameRoot, ManualLogSource log)
     {
@@ -64,6 +65,7 @@ internal sealed class SmokeSession
         local = new LocalPlaySmoke(directory, () => ownsLocalLobby);
         meeting = new MeetingSmoke(() => local.OwnsSession);
         taskCompletion = new TaskCompletionSmoke(() => local.OwnsSession);
+        abilities = new AbilitySmoke(() => local.OwnsSession);
     }
 
     internal void Tick()
@@ -71,6 +73,8 @@ internal sealed class SmokeSession
         double now = Time.realtimeSinceStartup;
         CheckWrites(now);
         online.ObserveOwnership(now);
+        try { abilities.Observe(); }
+        catch (Exception ex) { Report("local_ability_restore", "failed", ex.GetType().Name, now); }
         if (pending != null) PollPending(now);
 
         if (readTask != null)
@@ -120,7 +124,7 @@ internal sealed class SmokeSession
 
     private void RunCommand(string command, double now)
     {
-        if (command is not ("snapshot" or "capture" or "freeplay" or "locallobby" or "gui_local" or "gui_tasks" or "gui_roles" or "leave") && !OnlineSmoke.IsCommand(command) && !LocalPlaySmoke.IsCommand(command) && !MeetingSmoke.IsCommand(command) && !TaskCompletionSmoke.IsCommand(command))
+        if (command is not ("snapshot" or "capture" or "freeplay" or "locallobby" or "gui_local" or "gui_tasks" or "gui_roles" or "leave") && !OnlineSmoke.IsCommand(command) && !LocalPlaySmoke.IsCommand(command) && !MeetingSmoke.IsCommand(command) && !TaskCompletionSmoke.IsCommand(command) && !AbilitySmoke.IsCommand(command))
         {
             Report("invalid", "rejected", "Only fixed documented commands are accepted", now);
             return;
@@ -140,7 +144,17 @@ internal sealed class SmokeSession
             }
 
             var client = AmongUsClient.Instance;
-            if (TaskCompletionSmoke.IsCommand(command))
+            if (AbilitySmoke.IsCommand(command))
+            {
+                if (!abilities.Begin(command, now, out string rejection))
+                {
+                    Report(command, "rejected", rejection, now);
+                    return;
+                }
+                pending = new Pending(command, now) { Abilities = abilities };
+                Report(command, "started", "Fixed owned two-player loopback native ability scenario; 8 second stages and 30 second total limit", now);
+            }
+            else if (TaskCompletionSmoke.IsCommand(command))
             {
                 if (!taskCompletion.Begin(now, out string rejection))
                 {
@@ -162,6 +176,12 @@ internal sealed class SmokeSession
             }
             else if (LocalPlaySmoke.IsCommand(command))
             {
+                if (command == "local_leave") abilities.RestorePrepared();
+                if (command == "local_start" && !abilities.BeforeStart(out string preparationRejection))
+                {
+                    Report(command, "rejected", preparationRejection, now);
+                    return;
+                }
                 if (!local.Begin(command, now, out string rejection))
                 {
                     Report(command, "rejected", rejection, now);
@@ -300,6 +320,7 @@ internal sealed class SmokeSession
                 }
                 pending = new Pending(command, now);
                 Report(command, "started", "Vanilla AmongUsClient.ExitGame", now);
+                abilities.RestorePrepared();
                 client.ExitGame(DisconnectReasons.ExitGame);
                 StopOwnedServer();
             }
@@ -322,6 +343,7 @@ internal sealed class SmokeSession
             pending?.Local?.Stop("failed", ex.GetType().Name);
             pending?.Meeting?.Stop("failed", ex.GetType().Name);
             pending?.TaskCompletion?.Stop("failed", ex.GetType().Name);
+            pending?.Abilities?.Stop("failed", ex.GetType().Name);
             if (pending?.Roles != null)
             {
                 pending.Roles.Stop("failed");
@@ -347,6 +369,16 @@ internal sealed class SmokeSession
         var operation = pending!;
         try
         {
+            if (operation.Abilities != null)
+            {
+                if (operation.Abilities.Tick(now))
+                {
+                    pending = null;
+                    QueueWrite("snapshot.json", JsonSerializer.Serialize(Snapshot()), now);
+                    Report(operation.Command, operation.Abilities.Outcome, operation.Abilities.Detail, now);
+                }
+                return;
+            }
             if (operation.TaskCompletion != null)
             {
                 if (operation.TaskCompletion.Tick(now))
@@ -361,9 +393,13 @@ internal sealed class SmokeSession
             {
                 if (operation.Meeting.Tick(now))
                 {
+                    string outcome = operation.Meeting.Outcome;
+                    string detail = operation.Meeting.Detail;
+                    if (outcome == "succeeded" && operation.Command == "local_skip" && !abilities.VerifyAfterSkip(out string failure))
+                    { outcome = "failed"; detail = failure; }
                     pending = null;
                     QueueWrite("snapshot.json", JsonSerializer.Serialize(Snapshot()), now);
-                    Report(operation.Command, operation.Meeting.Outcome, operation.Meeting.Detail, now);
+                    Report(operation.Command, outcome, detail, now);
                 }
                 return;
             }
@@ -372,11 +408,14 @@ internal sealed class SmokeSession
                 if (operation.Local.Tick(now))
                 {
                     string outcome = operation.Local.Outcome;
+                    string detail = operation.Local.Detail;
+                    if (outcome == "succeeded" && operation.Command == "local_start" && !abilities.VerifyStart(out string failure))
+                    { outcome = "failed"; detail = failure; }
                     if (outcome == "stop_owned_server") { StopOwnedServer(); outcome = "succeeded"; }
                     else if (outcome == "passed") outcome = "succeeded";
                     pending = null;
                     QueueWrite("snapshot.json", JsonSerializer.Serialize(Snapshot()), now);
-                    Report(operation.Command, outcome, operation.Local.Detail, now);
+                    Report(operation.Command, outcome, detail, now);
                 }
                 return;
             }
@@ -529,6 +568,7 @@ internal sealed class SmokeSession
             operation.Local?.Stop("failed", ex.GetType().Name);
             operation.Meeting?.Stop("failed", ex.GetType().Name);
             operation.TaskCompletion?.Stop("failed", ex.GetType().Name);
+            operation.Abilities?.Stop("failed", ex.GetType().Name);
             if (operation.Roles != null)
             {
                 operation.Roles.Stop("failed");
@@ -551,6 +591,7 @@ internal sealed class SmokeSession
 
     private void StopOwnedServer()
     {
+        abilities.RestorePrepared();
         if (ownsLocalLobby && DestroyableSingleton<InnerNetServer>.InstanceExists)
             DestroyableSingleton<InnerNetServer>.Instance.StopServer();
         ownsLocalLobby = false;
@@ -590,6 +631,7 @@ internal sealed class SmokeSession
             local = local.Snapshot(),
             meeting = meeting.Snapshot(),
             task_completion = taskCompletion.Snapshot(),
+            abilities = abilities.Snapshot(),
             credentials_layout = CredentialsLayout(),
             gui_objects = ui
         };
@@ -685,6 +727,7 @@ internal sealed class SmokeSession
         internal LocalPlaySmoke? Local;
         internal MeetingSmoke? Meeting;
         internal TaskCompletionSmoke? TaskCompletion;
+        internal AbilitySmoke? Abilities;
     }
 
     private sealed record WriteWork(Task Task, double Started, string Name);

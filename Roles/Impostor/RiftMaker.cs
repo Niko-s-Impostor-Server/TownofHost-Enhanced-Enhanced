@@ -60,11 +60,11 @@ internal class RiftMaker : RoleBase
 
     private static void SendRPC(byte riftID, int operate)
     {
-        MessageWriter writer = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.RiftMakerSyncData, SendOption.Reliable, -1);
+        MessageWriter writer = CustomRpcTransport.Start(CustomRPC.RiftMakerSyncData, SendOption.Reliable, -1);
         writer.Write(operate);
         if (operate == 3)
         {
-            AmongUsClient.Instance.FinishRpcImmediately(writer);
+            CustomRpcTransport.Finish(writer);
             return;
         }
         writer.Write(riftID);
