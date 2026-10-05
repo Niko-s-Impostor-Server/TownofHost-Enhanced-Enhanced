@@ -1,5 +1,5 @@
 {
-  "generated_utc": "2026-10-05T03:48:49.144071+00:00",
+  "generated_utc": "2026-10-05T05:11:13.335923+00:00",
   "target": {
     "version": "2026.8.18",
     "platform": "Itch Windows x86",
@@ -28,15 +28,15 @@
     "retrieved_utc": "2026-10-05T03:12:39.389633+00:00",
     "fetch_mode": "offline-cache"
   },
-  "source_attribute_count": 289,
-  "target_count": 267,
-  "unique_target_count": 228,
+  "source_attribute_count": 290,
+  "target_count": 268,
+  "unique_target_count": 229,
   "matching_counts": {
-    "exact-signature": 266,
+    "exact-signature": 267,
     "not-in-dataset": 1
   },
   "risk_counts": {
-    "no-site-warning": 243,
+    "no-site-warning": 244,
     "potential-inline-comparison-only": 23,
     "uncovered-review": 1
   },
@@ -44,7 +44,7 @@
     "GameModes/FFAManager.cs": "9b99e010923ae3901e1cec11218d05ab2092cabdcf2fc47293fa773d2c57e85d",
     "Modules/BanManager.cs": "8cb20f3f36d51432419658515a225758fd06fb2235228e7c3548eaf59ec525cc",
     "Modules/DisableDevice.cs": "1cc8c67f84dca9a8c5a4a0ef2a55a448ad7bfe251ffe97389de45c9a91f68a21",
-    "Modules/GuessManager.cs": "729bc331f41eb31bab1944b39af01f44bf6868dbcd7ff9735ad842dd3b81542f",
+    "Modules/GuessManager.cs": "97330c17e6f759013ae1ea449a1b4326b0e754109be084ae63aa0a4e3c1c3a7d",
     "Modules/ModUpdater.cs": "af7b7cc11021f2d378a4dabe8bd9fc0a38bdbde9f1941e468a6e428c9319e3cd",
     "Modules/OptionHolder.cs": "cabf4d9d4eba94ab2731fbb658f20b98d8544bafdfdf3649df9859ebe74e5ee9",
     "Modules/RPC.cs": "b08f64bc1e3205ef8d9ca2ec4c34dd6000e887f2940f4e7c80db2e368770f8da",
@@ -54,7 +54,7 @@
     "Patches/AnnouncementPatch.cs": "16af734cff112d6bdc4216839dc52bcb038615e708de0372e79bd6841d7a3a45",
     "Patches/AprilFoolsModePatch.cs": "641fe1af34f62507f943bdab2a61210795cee7c0bdb043d7d802f2ca5e0fd306",
     "Patches/ChatBubblePatch.cs": "ab119fb14ae4acd199ece4590ae98b6bf0836adb95b31c960ff9477a912cb51d",
-    "Patches/ChatCommandPatch.cs": "bbce22d83070b0a6cf712f957da40236de47c6881eb1e23a552143c84a2b21af",
+    "Patches/ChatCommandPatch.cs": "0af29df59e8f7e3bf64a6331b9cee75bc39e61a896228345c819eb274553aad6",
     "Patches/ChatControlPatch.cs": "0bf8d38c030c64a4189c98f323f041a643d8e0443ceeb1fc20a3f3321e043d76",
     "Patches/CheckGameEndPatch.cs": "153b1a45defd8a49cedc02982a2f6c3533bce7024c685d59ae0f333fb2f8b641",
     "Patches/ClientOptionsPatch.cs": "2bd49e5a8d9520f6d55829ee8e5a30837e96ad3459dd0da74b397c807a28d675",
@@ -92,6 +92,7 @@
     "Patches/MapPickerMenuPatch.cs": "23ca7748dcb89f967901fc726373ea5e004ff48c38f0e76a73e1d450cc9824a4",
     "Patches/MeetingAbilityPatch.cs": "2bc291b8412dec5c4015ab4295af9aef7d4b5faab7af79e6c11b3c98046f6a3a",
     "Patches/MeetingHudPatch.cs": "c7acec221a9e4d79fff7988ebc2bad040ec2e69065217ac6ffc1ad3e4545899c",
+    "Patches/ModRegistrationPatch.cs": "f8684ad82d27a84184e6d4463161973bebc18191794e8cf2816e3b55c0d642b0",
     "Patches/MovingPlatformBehaviourPatch.cs": "253cc5e166aa93759ba711ea9f7ab2a3924514607c253636e641f573c54cac31",
     "Patches/NoBlackoutPatch.cs": "2351ef781097eff897d79fee861820bc1934ce554a3c1a771fce4218b67f734f",
     "Patches/NotificationPopperPatch.cs": "51db3e40936287910747f8b3d5fd86fad4cc5f80af9664cc4d72a0264e051845",
@@ -116,10 +117,10 @@
     "Patches/VentSystemPatch.cs": "2984e4597de4a31462cee3cf92bf0218951be95d7a36ea7270588f940fb25fc1",
     "Patches/VoteBanSystemPatch.cs": "eb6e221a17347b1f7e9d3022486b43cf8f157b28c2b8132c8caaf3f19c0cdef7",
     "Patches/onGameStartedPatch.cs": "86fe743f2e4afa2cbc15d990cfec4f646de8e8b531662160036323798c97f86a",
-    "Roles/Crewmate/Judge.cs": "48aabd2743969d534b9da31b9231f5178d0d4efb1f5fef24e24c28ce5e7466bb",
+    "Roles/Crewmate/Judge.cs": "08ce7c56ba935323e1680d95b4723341b635a0013be300964dfeb99ae9f75b97",
     "Roles/Crewmate/Retributionist.cs": "f8ef3e574c4ea1f78b9e1efdfdeff1730ea6da7599e14088915e8548b361675a",
-    "Roles/Crewmate/Swapper.cs": "4588f6653518302b8b4a34d3a273b546648399fb1a75e850ab6aa60bde400abf",
-    "Roles/Impostor/Councillor.cs": "a8d06f16967a464c8ff2a3344baaba42f39032e69f81ab5618b40c473af236bb",
+    "Roles/Crewmate/Swapper.cs": "60b22cb04fd9cf959244fd5ba8e6a90a904990ee2d3f69ae9fa1e506b7201923",
+    "Roles/Impostor/Councillor.cs": "dc7b7cadc4c230b5b11c2911b0d29f5ea03d463e1c3d233d6e560cd3a8a050a9",
     "Roles/Impostor/DoubleAgent.cs": "8a9e9ca1494334bc2dc3d7b03cb1d5df669f8fd239db9718c6868eff924daab1",
     "Roles/Impostor/Nemesis.cs": "e25517ea7733994d94d555946c22891aae5e9d7c442b3e0a7ebd206953e8710c"
   },
@@ -306,7 +307,7 @@
     },
     {
       "file": "Modules/GuessManager.cs",
-      "line": 592,
+      "line": 593,
       "patch_class": "StartMeetingPatch",
       "target_type": "MeetingHud",
       "target_method": "Start",
@@ -349,7 +350,7 @@
     },
     {
       "file": "Modules/GuessManager.cs",
-      "line": 1070,
+      "line": 1071,
       "patch_class": "MeetingHudOnDestroyGuesserUIClose",
       "target_type": "MeetingHud",
       "target_method": "OnDestroy",
@@ -1520,7 +1521,7 @@
     },
     {
       "file": "Patches/ChatCommandPatch.cs",
-      "line": 3273,
+      "line": 3300,
       "patch_class": "ChatUpdatePatch",
       "target_type": "ChatController",
       "target_method": "Update",
@@ -1563,7 +1564,7 @@
     },
     {
       "file": "Patches/ChatCommandPatch.cs",
-      "line": 3356,
+      "line": 3383,
       "patch_class": "UpdateCharCountPatch",
       "target_type": "FreeChatInputField",
       "target_method": "UpdateCharCount",
@@ -1610,7 +1611,7 @@
     },
     {
       "file": "Patches/ChatCommandPatch.cs",
-      "line": 3371,
+      "line": 3398,
       "patch_class": "RpcSendChatPatch",
       "target_type": "PlayerControl",
       "target_method": "RpcSendChat",
@@ -7759,6 +7760,59 @@
           ],
           "MonoUsages": [],
           "XrefUsages": []
+        }
+      ],
+      "matching": "exact-signature",
+      "tags": [
+        "matched"
+      ],
+      "empty_body": false,
+      "coroutine_factory": false,
+      "risk": "no-site-warning"
+    },
+    {
+      "file": "Patches/ModRegistrationPatch.cs",
+      "line": 8,
+      "patch_class": "LocalHostModRegistrationPatch",
+      "target_type": "InnerNetClient",
+      "target_method": "HostGame",
+      "argument_types": null,
+      "attribute": "[HarmonyPatch(typeof(InnerNetClient), nameof(InnerNetClient.HostGame))]",
+      "source_candidates": [
+        {
+          "signature": "InnerNetClient::HostGame(IGameOptions, GameFilterOptions)",
+          "parameter_types": [
+            "IGameOptions",
+            "GameFilterOptions"
+          ],
+          "file": "D:\\SharedUserFiles\\TestDesktop\\opencode-chat\\assembly-compare\\src-2026.8.18\\InnerNet\\InnerNetClient.cs",
+          "line": 732,
+          "return_type": "void",
+          "empty_body": false,
+          "coroutine_factory": false
+        }
+      ],
+      "website_candidates": [
+        {
+          "signature": "InnerNet::InnerNetClient::HostGame(AmongUs::GameOptions::IGameOptions,InnerNet::GameFilterOptions)",
+          "parameter_types": [
+            "IGameOptions",
+            "GameFilterOptions"
+          ],
+          "ReturnType": "System::Void",
+          "MonoCount": 1,
+          "XrefCount": 1,
+          "ThisCount": 3,
+          "Type": "Method",
+          "Tags": [
+            "matched"
+          ],
+          "MonoUsages": [
+            "InnerNet::InnerNetClient::_CoConnect_d__71::MoveNext(void)"
+          ],
+          "XrefUsages": [
+            "InnerNet::InnerNetClient::_CoConnect_d__71::MoveNext(void)"
+          ]
         }
       ],
       "matching": "exact-signature",

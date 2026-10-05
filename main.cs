@@ -476,6 +476,13 @@ public class Main : BasePlugin
         File.WriteAllText(@$"./{LANGUAGE_FOLDER_NAME}/export_RoleColor.dat", sb.ToString());
     }
 
+    public override bool Unload()
+    {
+        Harmony.UnpatchSelf();
+        ModRegistration.Unregister();
+        return true;
+    }
+
     public override void Load()
     {
         Instance = this;
@@ -506,6 +513,7 @@ public class Main : BasePlugin
         AutoRehost = Config.Bind("Client Options", "AutoRehost", false);
 
         Logger = BepInEx.Logging.Logger.CreateLogSource("TOHE");
+        Logger.LogInfo($"AU MCI GUID: {ModRegistration.Register(PluginVersion)}");
         coroutines = AddComponent<Coroutines>();
         TOHE.Logger.Enable();
         //TOHE.Logger.Disable("NotifyRoles");

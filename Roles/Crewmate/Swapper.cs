@@ -103,7 +103,7 @@ internal class Swapper : RoleBase
                 GuessManager.TryHideMsg();
                 ChatManager.SendPreviousMessagesToAll();
             }
-            else if (pc.AmOwner && !isUI) Utils.SendMessage(originMsg, 255, pc.GetRealName());
+            else if (!HostOnlyChatCommand.IsActive && pc.AmOwner && !isUI) Utils.SendMessage(originMsg, 255, pc.GetRealName());
 
             if (!MsgToPlayerAndRole(msg, out byte targetId, out string error) && targetId != 253)
             {

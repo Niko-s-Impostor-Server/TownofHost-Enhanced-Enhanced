@@ -206,7 +206,7 @@ internal class Pirate : RoleBase
                 TryHideMsgForDuel();
                 ChatManager.SendPreviousMessagesToAll();
             }
-            else if (pc.AmOwner) SendMessage(originMsg, 255, pc.GetRealName());
+            else if (!HostOnlyChatCommand.IsActive && pc.AmOwner) SendMessage(originMsg, 255, pc.GetRealName());
 
             if (!MsgToPlayerAndRole(msg, out int rpsOption, out string error))
             {
@@ -307,6 +307,7 @@ internal class Pirate : RoleBase
 
     public static void TryHideMsgForDuel()
     {
+        if (HostOnlyChatCommand.IsActive) return;
         ChatUpdatePatch.DoBlockChat = true;
         List<CustomRoles> roles = CustomRolesHelper.AllRoles.Where(x => x is not CustomRoles.NotAssigned).ToList();
         var rd = IRandom.Instance;

@@ -93,6 +93,7 @@ namespace TOHE.Modules.ChatManager
         }
         public static void SendMessage(PlayerControl player, string message)
         {
+            if (HostOnlyChatCommand.IsActive || HostOnlyChatCommand.IsEnvelope(message)) return;
             int operate = 0; // 1:ID 2:猜测
             string msg = message;
             string playername = player.GetNameWithRole();
@@ -157,6 +158,7 @@ namespace TOHE.Modules.ChatManager
 
         public static void SendPreviousMessagesToAll()
         {
+            if (HostOnlyChatCommand.IsActive) return;
             if (!AmongUsClient.Instance.AmHost || !GameStates.IsModHost) return;
             //This should never function for non host
             if (GameStates.IsExilling && chatHistory.Count < 20)

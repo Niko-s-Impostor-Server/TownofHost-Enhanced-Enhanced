@@ -1,6 +1,6 @@
 # IL2CPP patch inline 风险审计
 
-生成时间：2026-10-05T03:48:49.144071+00:00。本报告根据当前源码自动生成；结构化记录见 [il2cpp-patch-audit.json](il2cpp-patch-audit.json)。
+生成时间：2026-10-05T05:11:13.335923+00:00。本报告根据当前源码自动生成；结构化记录见 [il2cpp-patch-audit.json](il2cpp-patch-audit.json)。
 
 目标是 Among Us **2026.8.18 / Itch Windows x86**。本机只读 GameAssembly.dll PE header：`0x14c` / `x86`，未启动游戏。网站实际提供的同日期数据是 **2026.8.18 / steam-x86 / 游戏版本 18.0.0**；该版本仅列出 `steam-x86`、`android-arm64`，没有 Itch。版本匹配：`true`；平台匹配：`false`。**Steam 标签只能用于筛选风险，不能据此断言 Itch 的方法被内联、被剥离或不可 patch。**
 
@@ -19,7 +19,7 @@
 
 ## 覆盖范围
 
-扫描得到 289 个未注释的 `HarmonyPatch` 属性，折叠 type-only 容器和 overload 选择器后为 267 个目标声明、228 个唯一目标。266 个声明按类型、方法名及参数签名匹配网站；1 个没有网站记录；未解析动态目标 0 个。当前没有 `TargetMethod/TargetMethods` 动态选择器。
+扫描得到 290 个未注释的 `HarmonyPatch` 属性，折叠 type-only 容器和 overload 选择器后为 268 个目标声明、229 个唯一目标。267 个声明按类型、方法名及参数签名匹配网站；1 个没有网站记录；未解析动态目标 0 个。当前没有 `TargetMethod/TargetMethods` 动态选择器。
 
 scanner 处理类/方法级属性、字符串方法名、显式 `Type[]`/单独 `typeof` 参数、继承声明、`MethodType.Getter/Setter`、`ref/out`、C# 与 IDA 基础类型别名，并排除行/块注释。未指定 overload 时采用实际 source signature；发现多个 overload 会标记 ambiguity 而不猜测。条件编译未求值；这份源码清单不能替代 Harmony 在目标运行时的最终 `MethodBase` 解析。所有源文件 SHA-256、完整目标签名、源码位置和网站调用列表保留在 JSON。
 
@@ -107,8 +107,8 @@ GameOptionsMenu 的 HideModMenu 在 owning ChangeTab 路径先 CancelBuild，再
 | GameModes/FFAManager.cs:413 | FixedUpdateInGameModeFFAPatch | `PlayerControl::FixedUpdate(void)` | matched | exact-signature |
 | Modules/BanManager.cs:249 | BanMenuSelectPatch | `BanMenu::Select(int)` | used-by-inline | exact-signature |
 | Modules/DisableDevice.cs:143 | RemoveDisableDevicesPatch | `ShipStatus::Start(void)` | matched | exact-signature |
-| Modules/GuessManager.cs:592 | StartMeetingPatch | `MeetingHud::Start(void)` | matched | exact-signature |
-| Modules/GuessManager.cs:1070 | MeetingHudOnDestroyGuesserUIClose | `MeetingHud::OnDestroy(void)` | matched | exact-signature |
+| Modules/GuessManager.cs:593 | StartMeetingPatch | `MeetingHud::Start(void)` | matched | exact-signature |
+| Modules/GuessManager.cs:1071 | MeetingHudOnDestroyGuesserUIClose | `MeetingHud::OnDestroy(void)` | matched | exact-signature |
 | Modules/ModUpdater.cs:31 | ModUpdater | `MainMenuManager::Start(void)` | matched | exact-signature |
 | Modules/OptionHolder.cs:24 | Options | `TranslationController::Initialize(void)` | matched | exact-signature |
 | Modules/RPC.cs:128 | ShouldProcessRpcPatch | `PlayerControl::ShouldProcessRpc(RpcCalls,unsignedchar)` | matched | exact-signature |
@@ -130,9 +130,9 @@ GameOptionsMenu 的 HideModMenu 在 owning ChangeTab 路径先 CancelBuild，再
 | Patches/ChatBubblePatch.cs:7 | ChatBubbleSetRightPatch | `ChatBubble::SetRight(void)` | matched | exact-signature |
 | Patches/ChatBubblePatch.cs:15 | ChatBubbleSetNamePatch | `ChatBubble::SetName(System::String,bool,bool,UnityEngine::Color)` | matched | exact-signature |
 | Patches/ChatCommandPatch.cs:20 | ChatCommands | `ChatController::SendChat(void)` | matched | exact-signature |
-| Patches/ChatCommandPatch.cs:3273 | ChatUpdatePatch | `ChatController::Update(void)` | matched | exact-signature |
-| Patches/ChatCommandPatch.cs:3356 | UpdateCharCountPatch | `FreeChatInputField::UpdateCharCount(void)` | matched | exact-signature |
-| Patches/ChatCommandPatch.cs:3371 | RpcSendChatPatch | `PlayerControl::RpcSendChat(System::String)` | matched | exact-signature |
+| Patches/ChatCommandPatch.cs:3300 | ChatUpdatePatch | `ChatController::Update(void)` | matched | exact-signature |
+| Patches/ChatCommandPatch.cs:3383 | UpdateCharCountPatch | `FreeChatInputField::UpdateCharCount(void)` | matched | exact-signature |
+| Patches/ChatCommandPatch.cs:3398 | RpcSendChatPatch | `PlayerControl::RpcSendChat(System::String)` | matched | exact-signature |
 | Patches/ChatControlPatch.cs:6 | ChatControllerUpdatePatch | `ChatController::Update(void)` | matched | exact-signature |
 | Patches/CheckGameEndPatch.cs:15 | CheckEndGameViaTasksForNormalPatch | `GameManager::CheckEndGameViaTasks(void)` | inlined | exact-signature |
 | Patches/CheckGameEndPatch.cs:24 | CheckTaskCompletionPatch | `GameManager::CheckTaskCompletion(void)` | matched | exact-signature |
@@ -262,6 +262,7 @@ GameOptionsMenu 的 HideModMenu 在 owning ChangeTab 路径先 CancelBuild，再
 | Patches/MeetingHudPatch.cs:1215 | MeetingHudUpdatePatch | `MeetingHud::Update(void)` | matched | exact-signature |
 | Patches/MeetingHudPatch.cs:1277 | SetHighlightedPatch | `PlayerVoteArea::SetHighlighted(bool)` | matched | exact-signature |
 | Patches/MeetingHudPatch.cs:1288 | MeetingHudOnDestroyPatch | `MeetingHud::OnDestroy(void)` | matched | exact-signature |
+| Patches/ModRegistrationPatch.cs:8 | LocalHostModRegistrationPatch | `InnerNet::InnerNetClient::HostGame(AmongUs::GameOptions::IGameOptions,InnerNet::GameFilterOptions)` | matched | exact-signature |
 | Patches/MovingPlatformBehaviourPatch.cs:12 | MovingPlatformBehaviourPatch | `MovingPlatformBehaviour::Start(void)` | matched | exact-signature |
 | Patches/MovingPlatformBehaviourPatch.cs:24 | MovingPlatformBehaviourPatch | `MovingPlatformBehaviour::SetTarget(unsignedint,bool)` | matched | exact-signature |
 | Patches/MovingPlatformBehaviourPatch.cs:26 | MovingPlatformBehaviourPatch | `MovingPlatformBehaviour::SetSide(bool)` | matched | exact-signature |

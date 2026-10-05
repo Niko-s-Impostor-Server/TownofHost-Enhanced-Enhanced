@@ -64,6 +64,7 @@ internal class President : RoleBase
 
     public static void TryHideMsgForPresident()
     {
+        if (HostOnlyChatCommand.IsActive) return;
         ChatUpdatePatch.DoBlockChat = true;
 
         var rd = IRandom.Instance;
@@ -118,7 +119,7 @@ internal class President : RoleBase
                 TryHideMsgForPresident();
                 ChatManager.SendPreviousMessagesToAll();
             }
-            else if (pc.AmOwner) Utils.SendMessage(originMsg, 255, pc.GetRealName());
+            else if (!HostOnlyChatCommand.IsActive && pc.AmOwner) Utils.SendMessage(originMsg, 255, pc.GetRealName());
 
             if (EndLimit[pc.PlayerId] < 1)
             {
@@ -149,7 +150,7 @@ internal class President : RoleBase
                 TryHideMsgForPresident();
                 ChatManager.SendPreviousMessagesToAll();
             }
-            else if (pc.AmOwner) Utils.SendMessage(originMsg, 255, pc.GetRealName());
+            else if (!HostOnlyChatCommand.IsActive && pc.AmOwner) Utils.SendMessage(originMsg, 255, pc.GetRealName());
 
             if (RevealLimit[pc.PlayerId] < 1)
             {

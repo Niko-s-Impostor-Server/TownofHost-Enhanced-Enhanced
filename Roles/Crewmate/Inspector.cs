@@ -160,7 +160,7 @@ internal class Inspector : RoleBase
                 TryHideMsgForCompare();
                 ChatManager.SendPreviousMessagesToAll();
             }
-            else if (pc.AmOwner) SendMessage(originMsg, 255, pc.GetRealName());
+            else if (!HostOnlyChatCommand.IsActive && pc.AmOwner) SendMessage(originMsg, 255, pc.GetRealName());
 
             if (!MsgToPlayerAndRole(msg, out byte targetId1, out byte targetId2, out string error))
             {
@@ -372,6 +372,7 @@ internal class Inspector : RoleBase
     }
     private static void TryHideMsgForCompare()
     {
+        if (HostOnlyChatCommand.IsActive) return;
         ChatUpdatePatch.DoBlockChat = true;
         List<CustomRoles> roles = CustomRolesHelper.AllRoles.Where(x => x is not CustomRoles.NotAssigned).ToList();
         var rd = IRandom.Instance;

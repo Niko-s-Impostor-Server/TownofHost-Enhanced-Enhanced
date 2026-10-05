@@ -172,7 +172,7 @@ public static class GuessManager
                 TryHideMsg();
                 ChatManager.SendPreviousMessagesToAll();
             }
-            else if (pc.AmOwner && !isUI) Utils.SendMessage(originMsg, 255, pc.GetRealName());
+            else if (!HostOnlyChatCommand.IsActive && pc.AmOwner && !isUI) Utils.SendMessage(originMsg, 255, pc.GetRealName());
 
             if (!MsgToPlayerAndRole(msg, out byte targetId, out CustomRoles role, out string error))
             {
@@ -554,6 +554,7 @@ public static class GuessManager
 
     public static void TryHideMsg()
     {
+        if (HostOnlyChatCommand.IsActive) return;
         ChatUpdatePatch.DoBlockChat = true;
         var roles = CustomRolesHelper.AllRoles.Where(x => x is not CustomRoles.NotAssigned).ToArray();
         var rd = IRandom.Instance;

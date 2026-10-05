@@ -40,14 +40,25 @@ internal class ChatCommands
     {
         if (__instance.quickChatField.visible == false && __instance.freeChatField.textArea.text == "") return false;
         if (!GameStates.IsModHost && !AmongUsClient.Instance.AmHost) return true;
-        __instance.timeSinceLastMessage = 3f;
         var text = __instance.freeChatField.textArea.text;
-        if (ChatHistory.Count == 0 || ChatHistory[^1] != text) ChatHistory.Add(text);
+        var historyText = text;
+        bool privateCommand = !__instance.quickChatField.visible && HostOnlyChatCommand.IsEnvelope(text);
+        // Non-hosts must send the envelope once, not execute a local role handler
+        // which may use a second custom RPC and discard the original input.
+        if (privateCommand && !AmongUsClient.Instance.AmHost) return true;
+        if (privateCommand && !HostOnlyChatCommand.TryGetCommand(text, out text))
+        {
+            __instance.freeChatField.Clear();
+            return false;
+        }
+        using var commandScope = privateCommand ? HostOnlyChatCommand.Enter() : null;
+        __instance.timeSinceLastMessage = 3f;
+        if (ChatHistory.Count == 0 || ChatHistory[^1] != historyText) ChatHistory.Add(historyText);
         ChatControllerUpdatePatch.CurrentHistorySelection = ChatHistory.Count;
         string[] args = text.Split(' ');
         string subArgs = "";
         string subArgs2 = "";
-        var canceled = false;
+        var canceled = privateCommand;
         var cancelVal = "";
         Main.isChatCommand = true;
         Logger.Info(text, "SendChat");
@@ -1536,6 +1547,7 @@ internal class ChatCommands
         Main.isChatCommand = false;
         canceled = true;
     Skip:
+        canceled |= privateCommand;
         if (canceled)
         {
             Logger.Info("Command Canceled", "ChatCommand");
@@ -2004,6 +2016,21 @@ internal class ChatCommands
         return;
     }
     public static void OnReceiveChat(PlayerControl player, string text, out bool canceled)
+    {
+        // Always consume the envelope, including unknown/malformed commands and
+        // accidental receipt by another mod client. It is never public chat.
+        if (HostOnlyChatCommand.IsEnvelope(text))
+        {
+            canceled = true;
+            if (!AmongUsClient.Instance.AmHost || !HostOnlyChatCommand.TryGetCommand(text, out var command)) return;
+            using var commandScope = HostOnlyChatCommand.Enter();
+            OnReceiveChatCore(player, command, out _);
+            return;
+        }
+        OnReceiveChatCore(player, text, out canceled);
+    }
+
+    private static void OnReceiveChatCore(PlayerControl player, string text, out bool canceled)
     {
         canceled = false;
         if (!AmongUsClient.Instance.AmHost) return;
@@ -3265,7 +3292,7 @@ internal class ChatCommands
 
 
             default:
-                if (SpamManager.CheckSpam(player, text)) return;
+                if (!HostOnlyChatCommand.IsActive && SpamManager.CheckSpam(player, text)) return;
                 break;
         }
     }
@@ -3382,6 +3409,28 @@ class RpcSendChatPatch
         {
             __result = false;
             return true;
+        }
+        if (HostOnlyChatCommand.IsEnvelope(chatText))
+        {
+            // Keep /cmd at byte zero: name-formatting newlines would defeat the
+            // server's prefix routing. Only send on the caller's owned object.
+            if (!__instance.AmOwner || !AmongUsClient.Instance.AmConnected)
+            {
+                __result = false;
+                return false;
+            }
+            chatText = Regex.Replace(chatText, "<.*?>", string.Empty);
+            if (AmongUsClient.Instance.AmHost)
+                ChatCommands.OnReceiveChat(__instance, chatText, out _);
+            else
+            {
+                var commandWriter = AmongUsClient.Instance.StartRpcImmediately(__instance.NetId,
+                    (byte)RpcCalls.SendChat, SendOption.Reliable, AmongUsClient.Instance.HostId);
+                commandWriter.Write(chatText);
+                AmongUsClient.Instance.FinishRpcImmediately(commandWriter);
+            }
+            __result = true;
+            return false;
         }
         int return_count = PlayerControl.LocalPlayer.name.Count(x => x == '\n');
         chatText = new StringBuilder(chatText).Insert(0, "\n", return_count).ToString();
