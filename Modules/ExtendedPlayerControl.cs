@@ -477,7 +477,7 @@ static class ExtendedPlayerControl
 
         if (!player.HasImpKillButton(considerVanillaShift: true)) return;
         if (player.HasImpKillButton(false) && !player.CanUseKillButton()) return;
-        
+
         player.SetKillTimer(CD: time);
         if (target == null) target = player;
         if (time >= 0f) Main.AllPlayerKillCooldown[player.PlayerId] = time * 2;
@@ -594,7 +594,7 @@ static class ExtendedPlayerControl
         var pos = player.GetCustomPosition();
         return ShipStatus.Instance.AllVents.Where(x => x != null).MinBy(x => Vector2.Distance(pos, x.transform.position));
     }
-    
+
     public static List<Vent> GetVentsFromClosest(this PlayerControl player)
     {
         Vector2 playerpos = player.transform.position;
@@ -951,7 +951,7 @@ static class ExtendedPlayerControl
         return sb.ToString();
     }
     public static string GetAllRoleName(this PlayerControl player, bool forUser = true)
-    {   
+    {
         if (!player) return null;
         var text = Utils.GetRoleName(player.GetCustomRole(), forUser);
         text += player.GetSubRoleName(forUser);
@@ -1049,14 +1049,14 @@ static class ExtendedPlayerControl
     {
         if (pc == null) return false;
         if (!pc.IsAlive() || pc.Data.Role.Role == RoleTypes.GuardianAngel || Pelican.IsEaten(pc.PlayerId)) return false;
-        
+
         var role = pc.GetCustomRole();
         if (!role.IsImpostor())
         {
             return role.GetDYRole() is RoleTypes.Impostor or RoleTypes.Shapeshifter;
         }
         return role.GetVNRole() switch
-        { 
+        {
             CustomRoles.Impostor => true,
             CustomRoles.Shapeshifter => true,
             CustomRoles.Phantom => true,
@@ -1153,7 +1153,7 @@ static class ExtendedPlayerControl
     }
     public static bool ShouldBeDisplayed(this CustomRoles subRole)
     {
-        return subRole is not 
+        return subRole is not
             CustomRoles.LastImpostor and not
             CustomRoles.Madmate and not
             CustomRoles.Charmed and not
@@ -1189,7 +1189,7 @@ static class ExtendedPlayerControl
     }
     public static bool CheckForInvalidMurdering(this PlayerControl killer, PlayerControl target, bool checkCanUseKillButton = false) => CheckMurderPatch.CheckForInvalidMurdering(killer, target, checkCanUseKillButton);
     public static void NoCheckStartMeeting(this PlayerControl reporter, NetworkedPlayerInfo target, bool force = false)
-    { 
+    {
         //Method that can cause a meeting to occur regardless of whether it is in sabotage.
         //If target is null, it becomes a button.
         if (Options.DisableMeeting.GetBool() && !force) return;
@@ -1299,17 +1299,17 @@ static class ExtendedPlayerControl
                 or CustomRoles.Charmed
                 or CustomRoles.Infected
                 or CustomRoles.Contagious
-                or CustomRoles.Egoist) 
+                or CustomRoles.Egoist)
             && KnowSubRoleTarget(seer, target))
             return true;
 
-        
+
         return false;
     }
     public static bool KnowSubRoleTarget(PlayerControl seer, PlayerControl target)
     {
         //if (seer.GetRoleClass().KnowRoleTarget(seer, target)) return true;
-        
+
         if (seer.Is(Custom_Team.Impostor))
         {
             // Imp know Madmate
@@ -1388,7 +1388,7 @@ static class ExtendedPlayerControl
         var Prefix = "";
         if (!InfoLong && role == CustomRoles.Nemesis)
             Prefix = Nemesis.CheckCanUseKillButton() ? "After" : "Before";
-            
+
         var Info = (role.IsVanilla() ? "Blurb" : "Info");
         return !InfoLong ? GetString($"{Prefix}{text}{Info}") : role.GetInfoLong();
     }

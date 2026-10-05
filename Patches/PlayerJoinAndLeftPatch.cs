@@ -6,8 +6,8 @@ using System;
 using System.Text.RegularExpressions;
 using TOHE.Modules;
 using TOHE.Patches;
-using TOHE.Roles.Crewmate;
 using TOHE.Roles.Core.AssignManager;
+using TOHE.Roles.Crewmate;
 using static TOHE.Translator;
 
 namespace TOHE;
@@ -171,7 +171,8 @@ class OnGameJoinedPatch
                         Logger.Info($"{client.PlayerName.RemoveHtmlTags()}(ClientID:{client.Id}/FriendCode:{client.FriendCode}/HashPuid:{client.GetHashedPuid()}/Platform:{client.PlatformData.Platform}) finished join room", "Session: OnGameJoined Retry");
                         Logger.Info($"{host.PlayerName.RemoveHtmlTags()}(ClientID:{host.Id}/FriendCode:{host.FriendCode}/HashPuid:{host.GetHashedPuid()}/Platform:{host.PlatformData.Platform}) is the host", "Session: OnGameJoined Retry");
                     }
-                    catch { };
+                    catch { }
+                    ;
                 }, 1.5f, "Retry Log Local Client");
             }
         }, 0.7f, "OnGameJoinedPatch");
@@ -527,7 +528,7 @@ class OnPlayerLeftPatch
             {
                 Main.SayStartTimes.Remove(__instance.ClientId);
                 Main.SayBanwordsTimes.Remove(__instance.ClientId);
-                
+
                 if (GameStates.IsLobby && !GameStates.IsLocalGame)
                 {
                     if (data?.GetHashedPuid() != "" && Options.TempBanPlayersWhoKeepQuitting.GetBool()

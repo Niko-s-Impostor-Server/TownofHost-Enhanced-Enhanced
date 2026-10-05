@@ -1,6 +1,7 @@
 ﻿using static TOHE.Options;
 
 namespace TOHE.Roles.AddOns.Impostor;
+
 public class Mimic : IAddon
 {
     private const int Id = 23100;

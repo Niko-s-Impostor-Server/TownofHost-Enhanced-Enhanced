@@ -1,5 +1,5 @@
-using TOHE.Roles.Crewmate;
 using TOHE.Roles.Core;
+using TOHE.Roles.Crewmate;
 using static TOHE.Options;
 using static TOHE.Translator;
 using static TOHE.Utils;
@@ -13,7 +13,7 @@ internal class Mastermind : RoleBase
 
     private static readonly HashSet<byte> playerIdList = [];
     public static bool HasEnabled => playerIdList.Any();
-    
+
     public override CustomRoles ThisRoleBase => CustomRoles.Impostor;
     public override Custom_RoleType ThisRoleType => Custom_RoleType.ImpostorConcealing;
     //==================================================================\\

@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-
 namespace TOHE;
 
 internal readonly record struct HudStatusRect(float Left, float Bottom, float Right, float Top)

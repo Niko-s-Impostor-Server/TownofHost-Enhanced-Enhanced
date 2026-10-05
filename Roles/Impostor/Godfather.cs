@@ -1,6 +1,6 @@
 ﻿using TOHE.Roles.Core;
-using static TOHE.Utils;
 using static TOHE.Translator;
+using static TOHE.Utils;
 
 namespace TOHE.Roles.Impostor;
 
@@ -10,7 +10,7 @@ internal class Godfather : RoleBase
     private const int Id = 3400;
     private static readonly HashSet<byte> PlayerIds = [];
     public static bool HasEnabled => PlayerIds.Any();
-    
+
     public override CustomRoles ThisRoleBase => CustomRoles.Impostor;
     public override Custom_RoleType ThisRoleType => Custom_RoleType.ImpostorSupport;
     //==================================================================\\

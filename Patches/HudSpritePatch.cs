@@ -61,7 +61,7 @@ public static class HudSpritePatch
 
         // CustomButton.Get("Paranoid"); for Paranoid
 
-        EndOfSelectImg:
+    EndOfSelectImg:
 
         // Set custom icon for kill button
         __instance.KillButton.graphic.sprite = newKillButton;

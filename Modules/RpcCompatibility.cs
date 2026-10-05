@@ -1,5 +1,3 @@
-using System;
-
 namespace TOHE;
 
 internal static class RpcCompatibility

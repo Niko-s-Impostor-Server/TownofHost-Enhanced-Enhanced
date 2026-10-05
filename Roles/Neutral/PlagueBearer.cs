@@ -67,7 +67,7 @@ internal class PlagueBearer : RoleBase
     public override void SetKillCooldown(byte id) => Main.AllPlayerKillCooldown[id] = PlagueBearerCooldownOpt.GetFloat();
     public override bool CanUseKillButton(PlayerControl pc) => true;
     private static bool IsPlagued(byte pc, byte target) => PlaguedList.TryGetValue(pc, out var Targets) && Targets.Contains(target);
-    
+
     public static void SendRPC(PlayerControl player, PlayerControl target)
     {
         MessageWriter writer = CustomRpcTransport.Start(CustomRPC.SyncRoleSkill, SendOption.Reliable);
@@ -213,7 +213,7 @@ internal class PlagueBearer : RoleBase
         var (plagued, all) = PlaguedPlayerCount(playerId);
         return ColorString(GetRoleColor(CustomRoles.PlagueBearer).ShadeColor(0.25f), $"({plagued}/{all})");
     }
-    
+
     public override void SetAbilityButtonText(HudManager hud, byte playerId)
     {
         hud.KillButton.OverrideText(GetString("InfectiousKillButtonText"));

@@ -127,7 +127,7 @@ internal class ControllerManagerUpdatePatch
                     {
                         if (Options.CustomRoleSpawnChances.TryGetValue(subRole, out var soi))
                             Utils.ShowChildrenSettings(soi, ref sb, command: false);
-                        
+
                         addSett.Add(sb.ToString());
                     }
 
@@ -180,7 +180,7 @@ internal class ControllerManagerUpdatePatch
             {
                 HudManager.Instance.Chat.SetVisible(true);
             }
-            
+
             if (GetKeysDown(KeyCode.E, KeyCode.F, KeyCode.LeftControl))
             {
                 Utils.ErrorEnd("Test AntiBlackout");

@@ -130,7 +130,7 @@ internal class Mini : RoleBase
 
             if (player.Is(CustomRoles.NiceMini))
                 player.RpcGuardAndKill();
-            
+
             /*Dont show guard animation for evil mini,
             this would simply stop them from murdering.
             Imagine reseting kill cool down every 20 seconds

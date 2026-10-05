@@ -1,11 +1,12 @@
 ﻿using AmongUs.GameOptions;
 using Hazel;
+using InnerNet;
+using TOHE.Roles.Core;
 using UnityEngine;
 using static TOHE.Translator;
-using TOHE.Roles.Core;
-using InnerNet;
 
 namespace TOHE.Roles.Neutral;
+
 internal class Agitater : RoleBase
 {
     //===========================SETUP================================\\
@@ -103,7 +104,7 @@ internal class Agitater : RoleBase
         var bombGeneration = ++BombGeneration;
         killer.ResetKillCooldown();
         killer.SetKillCooldown();
-        
+
         _ = new LateTask(() =>
         {
             if (bombGeneration != BombGeneration || !AgitaterHasBombed) return;

@@ -131,8 +131,8 @@ class SetUpRoleTextPatch
                 __instance.RoleBlurbText.color = color;
                 __instance.RoleBlurbText.text = "KILL EVERYONE TO WIN";
             }
-            else 
-            { 
+            else
+            {
                 if (!role.IsVanilla())
                 {
                     __instance.YouAreText.color = Utils.GetRoleColor(role);
@@ -354,7 +354,7 @@ class BeginCrewmatePatch
 
             teamToDisplay = lawyerTeam;
         }
-       
+
         return true;
     }
     public static void Postfix(IntroCutscene __instance)
@@ -537,7 +537,7 @@ class BeginImpostorPatch
     public static bool Prefix(IntroCutscene __instance, ref Il2CppSystem.Collections.Generic.List<PlayerControl> yourTeam)
     {
         var role = PlayerControl.LocalPlayer.GetCustomRole();
-        
+
         if (role.IsMadmate() || PlayerControl.LocalPlayer.Is(CustomRoles.Madmate))
         {
             yourTeam = new();

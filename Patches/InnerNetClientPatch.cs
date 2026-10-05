@@ -1,6 +1,6 @@
-﻿using Hazel;
+﻿using BepInEx.Unity.IL2CPP.Utils.Collections;
+using Hazel;
 using InnerNet;
-using BepInEx.Unity.IL2CPP.Utils.Collections;
 
 namespace TOHE.Patches;
 

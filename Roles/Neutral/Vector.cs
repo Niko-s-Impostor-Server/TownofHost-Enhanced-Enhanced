@@ -1,10 +1,10 @@
-﻿using static TOHE.Options;
-using static TOHE.Utils;
-using static TOHE.Translator;
-using UnityEngine;
-using AmongUs.GameOptions;
+﻿using AmongUs.GameOptions;
 using Hazel;
 using InnerNet;
+using UnityEngine;
+using static TOHE.Options;
+using static TOHE.Translator;
+using static TOHE.Utils;
 
 namespace TOHE.Roles.Neutral;
 
@@ -14,7 +14,7 @@ internal class Vector : RoleBase
     private const int Id = 15500;
     private static readonly HashSet<byte> PlayerIds = [];
     public static bool HasEnabled => PlayerIds.Any();
-    
+
     public override CustomRoles ThisRoleBase => CustomRoles.Engineer;
     public override Custom_RoleType ThisRoleType => Custom_RoleType.NeutralChaos;
     //==================================================================\\
@@ -49,7 +49,7 @@ internal class Vector : RoleBase
         if (!_Player.IsNonHostModdedClient()) return;
         MessageWriter writer = CustomRpcTransport.Start(CustomRPC.SyncRoleSkill, SendOption.Reliable, _Player.GetClientId());
         writer.WriteNetObject(_Player);
-        writer.WritePacked(VectorVentCount[_Player.PlayerId]); 
+        writer.WritePacked(VectorVentCount[_Player.PlayerId]);
         CustomRpcTransport.Finish(writer);
     }
     public override void ReceiveRPC(MessageReader reader, PlayerControl pc)
@@ -71,9 +71,9 @@ internal class Vector : RoleBase
         VectorVentCount[pc.PlayerId]++;
         SendRPC();
         NotifyRoles(SpecifySeer: pc);
-        
+
         Logger.Info($"Vent count {VectorVentCount[pc.PlayerId]}", "Vector");
-        
+
         if (VectorVentCount[pc.PlayerId] >= VectorVentNumWin.GetInt())
         {
             if (!CustomWinnerHolder.CheckForConvertedWinner(pc.PlayerId))

@@ -41,9 +41,13 @@ public static class PresetSharing
             var entries = options.Select(CreateEntry).ToArray();
             var data = new
             {
-                format = "TOHEE-preset", version = FormatVersion, optionVersion = OptionSaver.Version,
-                gameVersion = CompatibleGameVersion, modVersion = Main.PluginVersion,
-                sourcePreset = OptionItem.CurrentPreset + 1, options = entries
+                format = "TOHEE-preset",
+                version = FormatVersion,
+                optionVersion = OptionSaver.Version,
+                gameVersion = CompatibleGameVersion,
+                modVersion = Main.PluginVersion,
+                sourcePreset = OptionItem.CurrentPreset + 1,
+                options = entries
             };
             var json = JsonSerializer.SerializeToUtf8Bytes(data, JsonOptions);
             if (json.Length > MaximumFileBytes) return new(Error.TooLarge);
@@ -135,8 +139,10 @@ public static class PresetSharing
         if (!IsValidIndex(option, index)) throw new InvalidOperationException("Invalid current option value");
         var entry = new Dictionary<string, object>
         {
-            ["id"] = option.Id, ["name"] = option.Name,
-            ["scope"] = option.IsSingleValue ? "global" : "preset", ["index"] = index
+            ["id"] = option.Id,
+            ["name"] = option.Name,
+            ["scope"] = option.IsSingleValue ? "global" : "preset",
+            ["index"] = index
         };
         switch (option)
         {

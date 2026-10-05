@@ -297,9 +297,9 @@ internal class Pelican : RoleBase
         if (lowLoad) return;
 
         Count--;
-        
-        if (Count > 0) return; 
-        
+
+        if (Count > 0) return;
+
         Count = 4;
 
         if (eatenList.TryGetValue(player.PlayerId, out var playerList))

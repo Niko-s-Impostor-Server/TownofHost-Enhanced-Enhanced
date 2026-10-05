@@ -293,7 +293,7 @@ internal class RPCHandlerPatch
                         }
                     }
                 }
-                else if (GameStartManager.Instance != null) 
+                else if (GameStartManager.Instance != null)
                 {
                     // We imagine rpc is received when starting game in lobby, not fucked yet
                     if (AmongUsClient.Instance.AmHost)
@@ -1018,7 +1018,7 @@ internal static class RPC
         {
             ShipStatus.Instance.enabled = false;
             Utils.NotifyGameEnding();
-            
+
             try { GameManager.Instance.LogicFlow.CheckEndCriteria(); }
             catch { }
             try { GameManager.Instance.RpcEndGame(GameOverReason.ImpostorDisconnect, false); }

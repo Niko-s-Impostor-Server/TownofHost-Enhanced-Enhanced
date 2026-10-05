@@ -1,7 +1,5 @@
 using System;
 using TOHE.Modules;
-using TOHE.Patches;
-using UnityEngine;
 using static TOHE.Translator;
 
 namespace TOHE;

@@ -1,6 +1,3 @@
-using AmongUs.GameOptions;
-using InnerNet;
-
 namespace TOHE;
 
 [HarmonyPatch(typeof(MeetingHud), nameof(MeetingHud.Start))]

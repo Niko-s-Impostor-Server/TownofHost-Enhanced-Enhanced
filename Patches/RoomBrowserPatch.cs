@@ -83,13 +83,13 @@ public static class RoomBrowserPatch
                 // Collider.bounds is empty for inactive/disabled prefab rows.
                 // Serialized box geometry is available before native Start.
                 foreach (float x in new[] { -0.5f, 0.5f })
-                foreach (float y in new[] { -0.5f, 0.5f })
-                {
-                    var point = box.transform.TransformPoint(new Vector3(box.offset.x + box.size.x * x, box.offset.y + box.size.y * y, 0f));
-                    point = parent.InverseTransformPoint(point);
-                    lower = Vector3.Min(lower, point);
-                    upper = Vector3.Max(upper, point);
-                }
+                    foreach (float y in new[] { -0.5f, 0.5f })
+                    {
+                        var point = box.transform.TransformPoint(new Vector3(box.offset.x + box.size.x * x, box.offset.y + box.size.y * y, 0f));
+                        point = parent.InverseTransformPoint(point);
+                        lower = Vector3.Min(lower, point);
+                        upper = Vector3.Max(upper, point);
+                    }
             }
             else if (collider.bounds.size.x > 0f)
             {

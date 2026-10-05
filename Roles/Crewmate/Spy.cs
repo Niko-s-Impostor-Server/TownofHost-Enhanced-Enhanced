@@ -12,7 +12,7 @@ internal class Spy : RoleBase
     private const int Id = 9700;
     private static readonly HashSet<byte> playerIdList = [];
     public static bool HasEnabled => playerIdList.Any();
-    
+
     public override CustomRoles ThisRoleBase => CustomRoles.Crewmate;
     public override Custom_RoleType ThisRoleType => Custom_RoleType.CrewmateSupport;
     //==================================================================\\
@@ -89,8 +89,8 @@ internal class Spy : RoleBase
             AbilityLimit -= 1;
             SendSkillRPC();
             SpyRedNameList.TryAdd(killer.PlayerId, GetTimeStamp());
-            SendRPC(killer.PlayerId);                
-            if (SpyInteractionBlocked.GetBool()) 
+            SendRPC(killer.PlayerId);
+            if (SpyInteractionBlocked.GetBool())
                 killer.SetKillCooldown(time: 10f);
             NotifyRoles(SpecifySeer: target, ForceLoop: true);
             return false;
@@ -103,7 +103,7 @@ internal class Spy : RoleBase
     public override void OnFixedUpdate(PlayerControl player, bool lowLoad, long nowTime)
     {
         if (lowLoad || !SpyRedNameList.Any()) return;
-        
+
         change = false;
         foreach (var x in SpyRedNameList)
         {

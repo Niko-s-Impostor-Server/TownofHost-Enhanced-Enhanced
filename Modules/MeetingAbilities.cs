@@ -1,4 +1,3 @@
-using System;
 using AmongUs.GameOptions;
 using Hazel;
 using InnerNet;

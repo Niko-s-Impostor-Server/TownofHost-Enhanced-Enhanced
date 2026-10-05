@@ -1,5 +1,4 @@
-﻿using UnityEngine;
-using BepInEx.Unity.IL2CPP.Utils.Collections;
+﻿using BepInEx.Unity.IL2CPP.Utils.Collections;
 
 namespace TOHE.Patches;
 
@@ -103,7 +102,7 @@ public static class VentSetButtonsPatch
         if (GameStates.DleksIsActive && Main.IntroDestroyed)
         {
             enabled = false;
-            if (GameStates.IsMeeting) 
+            if (GameStates.IsMeeting)
                 ShowButtons = false;
         }
         return true;

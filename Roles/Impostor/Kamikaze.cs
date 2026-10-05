@@ -37,9 +37,9 @@ internal class Kamikaze : RoleBase
         var pc = Utils.GetPlayerById(playerId);
         pc.AddDoubleTrigger();
     }
-    
+
     public override void SetKillCooldown(byte id) => Main.AllPlayerKillCooldown[id] = KillCooldown.GetFloat();
-    
+
     public override string GetMark(PlayerControl seer, PlayerControl seen, bool isForMeeting = false)
         => KamikazedList.Contains(seen.PlayerId) ? Utils.ColorString(Utils.GetRoleColor(CustomRoles.Kamikaze), "∇") : string.Empty;
 
@@ -47,14 +47,14 @@ internal class Kamikaze : RoleBase
     {
         if (target.Is(CustomRoles.NiceMini) && Mini.Age < 18)
         {
-            killer.Notify(Utils.ColorString(Utils.GetRoleColor(CustomRoles.Kamikaze), GetString("KamikazeHostage"))); 
+            killer.Notify(Utils.ColorString(Utils.GetRoleColor(CustomRoles.Kamikaze), GetString("KamikazeHostage")));
             return false;
         }
 
         return killer.CheckDoubleTrigger(target, () =>
         {
 
-            if (AbilityLimit >= 1 && !KamikazedList.Contains(target.PlayerId)) 
+            if (AbilityLimit >= 1 && !KamikazedList.Contains(target.PlayerId))
             {
                 KamikazedList.Add(target.PlayerId);
                 killer.RpcGuardAndKill(killer);
@@ -62,13 +62,13 @@ internal class Kamikaze : RoleBase
                 Utils.NotifyRoles(SpecifySeer: killer);
                 AbilityLimit--;
                 SendSkillRPC();
-            } 
+            }
             else
             {
                 killer.RpcMurderPlayer(target);
             }
         });
-        
+
     }
 
     public override void OnMurderPlayerAsTarget(PlayerControl killer, PlayerControl target, bool inMeeting, bool isSuicide)

@@ -1,7 +1,7 @@
-using System;
 using AmongUs.InnerNet.GameDataMessages;
 using Hazel;
 using Il2CppInterop.Runtime.Injection;
+using System;
 
 namespace TOHE;
 

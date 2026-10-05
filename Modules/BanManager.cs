@@ -81,7 +81,7 @@ public static class BanManager
         if (player == null) return "";
         string puid = player.ProductUserId;
         using SHA256 sha256 = SHA256.Create();
-        
+
         // get sha-256 hash
         byte[] sha256Bytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(puid));
         string sha256Hash = BitConverter.ToString(sha256Bytes).Replace("-", "").ToLower();
@@ -104,7 +104,7 @@ public static class BanManager
             else Logger.Info($"Failed to add player {player?.PlayerName.RemoveHtmlTags()}/{player?.FriendCode}/{player?.GetHashedPuid()} to ban list!", "AddBanPlayer");
         }
     }
-    
+
     public static bool CheckDenyNamePlayer(PlayerControl player, string name)
     {
         if (!AmongUsClient.Instance.AmHost || !Options.ApplyDenyNameList.GetBool()) return false;

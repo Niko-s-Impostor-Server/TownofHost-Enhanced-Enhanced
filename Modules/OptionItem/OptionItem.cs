@@ -200,11 +200,11 @@ public abstract class OptionItem
         {
             if (IsVanillaText == true)
             {
-            opt.TitleText.text = GetNameVanilla();
+                opt.TitleText.text = GetNameVanilla();
             }
             else
             {
-            opt.TitleText.text = GetName();
+                opt.TitleText.text = GetName();
             }
             opt.ValueText.text = GetString();
             opt.oldValue = opt.Value = CurrentValue;

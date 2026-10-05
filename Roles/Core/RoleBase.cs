@@ -34,10 +34,12 @@ public abstract class RoleBase
         PhantomAbilityReadyAt = 0f;
         PhantomAbilityExecuting = false;
         _state = Main.PlayerStates.Values.FirstOrDefault(state => state.PlayerId == playerid);
-        try {
+        try
+        {
             CustomRoleManager.RoleClass.FirstOrDefault(r => r.Key == _state.MainRole).Value.IsEnable = true;
             this.IsEnable = true; // Not supposed to be used, but some methods may have still implemented that check.
-        } catch { } // temporary try catch
+        }
+        catch { } // temporary try catch
 
 
         Add(playerid);
@@ -260,7 +262,7 @@ public abstract class RoleBase
     // NOTE: when using UnShapeshift button, it will not be possible to revert to normal state because of complications.
     // So OnCheckShapeShift and OnShapeshift are pointless when using it.
     // Last thing, while the button may say "shift" after resetability, the game still thinks you're shapeshifted and will work instantly as intended.
-    
+
     /// <summary>
     /// A method which when implemented automatically makes the players always shapeshifted (as themselves). Inside you can put functions to happen when "Un-Shapeshift" button is pressed.
     /// </summary>
@@ -450,7 +452,7 @@ public abstract class RoleBase
     public virtual string GetMarkOthers(PlayerControl seer, PlayerControl seen, bool isForMeeting = false) => string.Empty;
     public virtual string GetLowerTextOthers(PlayerControl seer, PlayerControl seen = null, bool isForMeeting = false, bool isForHud = false) => string.Empty;
     public virtual string GetSuffixOthers(PlayerControl seer, PlayerControl seen, bool isForMeeting = false) => string.Empty;
-    
+
 
 
     // Player know role target, color role target
@@ -459,7 +461,7 @@ public abstract class RoleBase
     public virtual bool OthersKnowTargetRoleColor(PlayerControl seer, PlayerControl target) => false;
 
 
-    public void OnReceiveRPC(MessageReader reader) 
+    public void OnReceiveRPC(MessageReader reader)
     {
         float Limit = reader.ReadSingle();
         AbilityLimit = Limit;
