@@ -101,7 +101,7 @@ sealed class LateTask
 sealed class MessageWriter
 {
     public uint NetId;
-    public byte CallId;
+    public uint CallId;
     public int TargetId;
     public SendOption SendOption;
     public readonly List<object> Values = [];
@@ -114,7 +114,11 @@ sealed class MessageWriter
 static class CustomRpcTransport
 {
     public static MessageWriter Start(CustomRPC rpc, SendOption option, int target = -1)
-        => AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)rpc, option, target);
+    {
+        var writer = new MessageWriter { NetId = PlayerControl.LocalPlayer.NetId, CallId = (uint)rpc, TargetId = target, SendOption = option };
+        AmongUsClient.Instance.Started.Add(writer);
+        return writer;
+    }
     public static void Finish(MessageWriter writer) => AmongUsClient.Instance.FinishRpcImmediately(writer);
 }
 

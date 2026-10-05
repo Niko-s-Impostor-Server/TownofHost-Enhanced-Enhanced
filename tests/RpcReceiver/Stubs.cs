@@ -32,11 +32,20 @@ namespace Hazel
             if (BytesRemaining < 1) throw new EndOfStreamException();
             return Bytes[Position++];
         }
+        internal uint ReadUInt32()
+        {
+            if (ThrowOnRead) throw new InvalidDataException("fixture read failure");
+            if (BytesRemaining < 4) throw new EndOfStreamException();
+            var value = BitConverter.ToUInt32(Bytes, Position);
+            Position += 4;
+            return value;
+        }
         internal void Recycle() => Recycles++;
     }
 }
 namespace TOHE
 {
+    internal enum RpcCalls : byte { NativeFixtureCall = 1, SendChat = 13, SetRole = 44 }
     internal sealed class PlayerData { internal bool Disconnected; }
     internal sealed class PlayerControl
     {
@@ -68,12 +77,12 @@ namespace TOHE
     }
     internal static partial class RPCHandlerPatch
     {
-        internal sealed record Dispatch(PlayerControl Sender, byte Id, bool Recipient, byte Payload);
+        internal sealed record Dispatch(PlayerControl Sender, uint Id, bool Recipient, byte Payload);
         internal static readonly List<Dispatch> Calls = [];
         internal static bool ThrowOnDispatch;
         internal static int NativeValidations;
         private static bool ValidateRpc(PlayerControl player, byte id, Hazel.MessageReader reader) { NativeValidations++; return true; }
-        internal static void DispatchCustomRpc(PlayerControl sender, byte id, Hazel.MessageReader reader, bool recipient)
+        internal static void DispatchCustomRpc(PlayerControl sender, uint id, Hazel.MessageReader reader, bool recipient)
         {
             if (ThrowOnDispatch) throw new InvalidDataException("fixture dispatch failure");
             Calls.Add(new(sender, id, recipient, reader.ReadByte()));

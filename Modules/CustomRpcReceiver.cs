@@ -18,9 +18,9 @@ internal static class CustomRpcReceiver
         var reader = MessageReader.Get(original);
         try
         {
-            if (reader.BytesRemaining < 5) return;
+            if (reader.BytesRemaining < 8) return;
             var target = reader.ReadInt32();
-            var rpc = reader.ReadByte();
+            var rpc = reader.ReadUInt32();
             if (target < -1 || !CustomRpcTransport.IsValidRpcId(rpc)) return;
             var recipient = target == -1 || target == client.ClientId;
             if (!recipient && !client.AmHost) return;

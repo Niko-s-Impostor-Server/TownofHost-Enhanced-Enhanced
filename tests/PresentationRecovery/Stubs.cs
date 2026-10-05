@@ -26,7 +26,7 @@ namespace UnityEngine
 
 namespace TOHE
 {
-    enum CustomRPC { RecoverPresentation }
+    enum CustomRPC : uint { RecoverPresentation }
     static class CustomRpcTransport
     {
         public static readonly List<(CustomRPC Rpc, int Recipient)> Requests = [];

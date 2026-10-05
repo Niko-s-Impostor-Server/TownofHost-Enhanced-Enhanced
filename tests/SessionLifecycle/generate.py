@@ -32,7 +32,7 @@ joined = (root / "Patches/PlayerJoinAndLeftPatch.cs").read_text(encoding="utf-8-
 joined = joined[joined.index("class OnGameJoinedPatch"):]
 generation = re.search(r"^    internal static uint Generation[^\n]*", joined, re.M)[0]
 pending = re.search(r"^    private static readonly HashSet<[^\n]*PendingVersionRequests[^\n]*", rpc, re.M)[0]
-enum = re.search(r"enum CustomRPC : byte[^\n]*\n\{.*?\n\}", rpc, re.S)[0]
+enum = re.search(r"enum CustomRPC : uint[^\n]*\n\{.*?\n\}", rpc, re.S)[0]
 output = "using System; using System.Collections.Generic; using System.Linq; using System.Reflection; using UnityEngine;\n" + enum + "\n"
 output += "static class RPC {\n" + pending + "\n"
 output += "\n".join(member(rpc, name) for name in ["RpcVersionCheck", "RpcRequestRetryVersionCheck", "WaitAndSendVersion"])

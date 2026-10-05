@@ -24,7 +24,7 @@ static class Program
         Utils.Clients[owner] = new() { Character = player };
         return player;
     }
-    private static MessageReader Packet(int target, byte id, bool payload = true)
+    private static MessageReader Packet(int target, uint id, bool payload = true)
     {
         using var stream = new MemoryStream();
         using var writer = new BinaryWriter(stream);
@@ -44,22 +44,22 @@ static class Program
         foreach (int target in new[] { -1, 0, 65536, int.MaxValue })
         {
             var sender = Reset(localId: target == -1 ? 65536 : target);
-            Receive(sender, Packet(target, (byte)CustomRPC.SyncCustomSettings));
+            Receive(sender, Packet(target, (uint)CustomRPC.SyncCustomSettings));
             var call = RPCHandlerPatch.Calls.Single();
-            Check(call.Recipient && call.Id == (byte)CustomRPC.SyncCustomSettings && call.Payload == 73,
+            Check(call.Recipient && call.Id == (uint)CustomRPC.SyncCustomSettings && call.Payload == 73,
                 "broadcast and full int32 target deliver correct inner ID and payload");
         }
         var hostSender = Reset(host: true, localId: 42);
-        Receive(hostSender, Packet(65536, (byte)CustomRPC.PlaySound));
+        Receive(hostSender, Packet(65536, (uint)CustomRPC.PlaySound));
         Check(RPCHandlerPatch.Calls.Single().Recipient == false, "host receives other target with recipient=false");
         hostSender = Reset();
-        Receive(hostSender, Packet(7, (byte)CustomRPC.PlaySound));
+        Receive(hostSender, Packet(7, (uint)CustomRPC.PlaySound));
         Check(RPCHandlerPatch.Calls.Count == 0, "ordinary non-target client skips inner dispatch");
         var remote = Reset(host: true, localId: 42, owner: 7);
-        Receive(remote, Packet(-1, (byte)CustomRPC.SyncCustomSettings));
+        Receive(remote, Packet(-1, (uint)CustomRPC.SyncCustomSettings));
         Check(RPCHandlerPatch.Calls.Count == 0 && Logger.Warnings == 1, "non-host addressed object cannot send host-only inner message");
         remote = Reset(host: true, localId: 42, owner: 7);
-        Receive(remote, Packet(42, (byte)CustomRPC.MeetingAbilityRequest));
+        Receive(remote, Packet(42, (uint)CustomRPC.MeetingAbilityRequest));
         Check(RPCHandlerPatch.Calls.Single().Recipient, "TrustedRpc request from non-host object reaches host dispatch");
         foreach (Action<PlayerControl> change in new Action<PlayerControl>[] {
             p => Utils.Clients.Clear(), p => Utils.Clients[p.OwnerId].Character = null,
@@ -67,35 +67,46 @@ static class Program
             p => p.OwnerId = -1, p => p.Data = null, p => p.Data.Disconnected = true })
         {
             var sender = Reset(); change(sender);
-            Receive(sender, Packet(-1, (byte)CustomRPC.VersionCheck));
+            Receive(sender, Packet(-1, (uint)CustomRPC.VersionCheck));
             Check(RPCHandlerPatch.Calls.Count == 0 && MessageReader.Rentals.Count == 0,
                 "owner/character inconsistency or invalid player skips before rental");
         }
         // IL2CPP wrappers can differ while naming the same native character pointer.
         hostSender = Reset();
         Utils.Clients[42].Character = new() { OwnerId = 42, Pointer = hostSender.Pointer };
-        Receive(hostSender, Packet(-1, (byte)CustomRPC.VersionCheck));
+        Receive(hostSender, Packet(-1, (uint)CustomRPC.VersionCheck));
         Check(RPCHandlerPatch.Calls.Count == 1, "same native pointer accepts different wrapper");
-        foreach (var packet in new[] { new MessageReader([]), new MessageReader([0, 0, 0, 0]),
-            Packet(-2, (byte)CustomRPC.VersionCheck), Packet(-1, 255) })
+        var valid = Packet(-1, (uint)CustomRPC.VersionCheck).Bytes;
+        for (int length = 0; length < 8; length++)
+        {
+            var sender = Reset(); Receive(sender, new MessageReader(valid.Take(length).ToArray()));
+            Check(RPCHandlerPatch.Calls.Count == 0 && MessageReader.Rentals.Count == 1,
+                "each 0..7-byte short header is rejected without fallback");
+        }
+        uint highUnknown = 0x01000000u | (uint)CustomRPC.VersionCheck;
+        Check(!CustomRpcTransport.IsValidRpcId(highUnknown), "full-width unknown ID cannot validate as its low byte");
+        foreach (var packet in new[] { Packet(-2, (uint)CustomRPC.VersionCheck), Packet(-1, 255u), Packet(-1, highUnknown) })
         {
             var sender = Reset(); Receive(sender, packet);
-            Check(RPCHandlerPatch.Calls.Count == 0 && MessageReader.Rentals.Count == 1, "short packet invalid target and unknown inner ID fail closed");
+            Check(RPCHandlerPatch.Calls.Count == 0 && MessageReader.Rentals.Count == 1, "invalid target and unknown full-width ID fail closed");
         }
         hostSender = Reset();
-        var failedRead = Packet(-1, (byte)CustomRPC.VersionCheck); failedRead.ThrowOnRead = true;
+        Receive(hostSender, new MessageReader([255, 255, 255, 255, (byte)CustomRPC.VersionCheck, 73, 0, 0, 0]));
+        Check(RPCHandlerPatch.Calls.Count == 0, "old byte-ID envelope with sufficient length has no alternate decoder");
+        hostSender = Reset();
+        var failedRead = Packet(-1, (uint)CustomRPC.VersionCheck); failedRead.ThrowOnRead = true;
         Receive(hostSender, failedRead);
         Check(Logger.Warnings == 1 && RPCHandlerPatch.Calls.Count == 0, "read exception contained and reader recycled");
         hostSender = Reset(); RPCHandlerPatch.ThrowOnDispatch = true;
-        Receive(hostSender, Packet(-1, (byte)CustomRPC.VersionCheck));
+        Receive(hostSender, Packet(-1, (uint)CustomRPC.VersionCheck));
         Check(Logger.Warnings == 1, "dispatch exception contained and reader recycled");
         hostSender = Reset();
-        Receive(hostSender, Packet(-1, (byte)CustomRPC.VersionCheck, payload: false));
+        Receive(hostSender, Packet(-1, (uint)CustomRPC.VersionCheck, payload: false));
         Check(Logger.Warnings == 1, "truncated inner payload exception contained");
         hostSender = Reset();
-        Check((byte)CustomRPC.SetFriendCode == RpcPayloadSnapshot.OuterCallId, "legacy SetFriendCode shares outer 123");
-        Check(!RPCHandlerPatch.Prefix(hostSender, 123, Packet(-1, (byte)CustomRPC.VersionCheck)), "outer 123 consumed by production prefix");
-        Check(RPCHandlerPatch.Calls.Single().Id == (byte)CustomRPC.VersionCheck && EAC.Calls == 0 && RPCHandlerPatch.NativeValidations == 0,
+        Check((uint)CustomRPC.SetFriendCode == RpcPayloadSnapshot.OuterCallId, "inner SetFriendCode ID preserves numeric 123 while outer remains byte");
+        Check(!RPCHandlerPatch.Prefix(hostSender, 123, Packet(-1, (uint)CustomRPC.VersionCheck)), "outer 123 consumed by production prefix");
+        Check(RPCHandlerPatch.Calls.Single().Id == (uint)CustomRPC.VersionCheck && EAC.Calls == 0 && RPCHandlerPatch.NativeValidations == 0,
             "outer123 unwrap precedes legacy ID handling and cannot become SetFriendCode");
         Check(MessageReader.Rentals.Single().Recycles == 1, "prefix envelope path recycles clone");
         hostSender = Reset();

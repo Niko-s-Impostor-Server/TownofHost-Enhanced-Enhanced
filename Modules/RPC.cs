@@ -13,9 +13,11 @@ using static TOHE.Translator;
 
 namespace TOHE;
 
-enum CustomRPC : byte
+enum CustomRPC : uint
 {
-    // Inner message IDs. Every TOHE message uses outer native RPC 123.
+    // 内层编号使用固定 uint32；外层原版 RPC ID 始终为 byte 123。
+    // 新增 CustomRPC 直接在本枚举末尾 Append，不在中间插入或复用编号。
+    // 不提供旧协议兼容分支；同一房间的模组客户端必须更新到相同版本。
     VersionCheck = 80,
     RequestRetryVersionCheck = 81,
     SyncCustomSettings = 100, // AUM use 101 rpc
@@ -145,7 +147,7 @@ class ShouldProcessRpcPatch
 [HarmonyPatch(typeof(PlayerControl), nameof(PlayerControl.HandleRpc))]
 internal class RPCHandlerPatch
 {
-    public static bool TrustedRpc(byte id)
+    public static bool TrustedRpc(uint id)
     => (CustomRPC)id is CustomRPC.VersionCheck
         or CustomRPC.RequestRetryVersionCheck
         or CustomRPC.AntiBlackout
@@ -167,8 +169,8 @@ internal class RPCHandlerPatch
             CustomRpcReceiver.Receive(__instance, reader);
             return false;
         }
-        // Never interpret a legacy unwrapped custom ID as the new protocol.
-        if (callId >= (byte)CustomRPC.VersionCheck) return false;
+        // Only the outer envelope enters custom dispatch. Native IDs stay byte.
+        if (!Enum.IsDefined(typeof(RpcCalls), callId)) return false;
         if (EAC.PlayerControlReceiveRpc(__instance, callId, reader)) return false;
         MessageReader subReader = MessageReader.Get(reader);
         try
@@ -213,22 +215,9 @@ internal class RPCHandlerPatch
                 Logger.Info($"{__instance.GetNameWithRole()} => {p?.GetNameWithRole() ?? "null"}", "StartMeeting");
                 break;
         }
-        if (!__instance.IsHost() &&
-            ((Enum.IsDefined(typeof(CustomRPC), callId) && !TrustedRpc(callId)) // Is Custom RPC
-            || (!Enum.IsDefined(typeof(CustomRPC), callId) && !Enum.IsDefined(typeof(RpcCalls), callId)))) //Is not Custom RPC and not Vanilla RPC
-        {
-            Logger.Warn($"{__instance?.Data?.PlayerName}:{callId}({RPC.GetRpcName(callId)}) has been canceled because it was sent by someone other than the host", "CustomRPC");
-            if (AmongUsClient.Instance.AmHost)
-            {
-                AmongUsClient.Instance.KickPlayer(__instance.GetClientId(), false);
-                Logger.Warn($"Received an uncredited RPC from {__instance?.Data?.PlayerName} and kicked it out", "Kick");
-                Logger.SendInGame(string.Format(GetString("Warning.InvalidRpc"), __instance?.Data?.PlayerName));
-            }
-            return false;
-        }
         return true;
     }
-    internal static void DispatchCustomRpc(PlayerControl __instance, byte callId, MessageReader reader, bool isLocalRecipient)
+    internal static void DispatchCustomRpc(PlayerControl __instance, uint callId, MessageReader reader, bool isLocalRecipient)
     {
         var rpcType = (CustomRPC)callId;
         switch (rpcType)
@@ -1136,11 +1125,8 @@ internal static class RPC
     }
     public static string GetRpcName(byte callId)
     {
-        string rpcName;
-        if ((rpcName = Enum.GetName(typeof(RpcCalls), callId)) != null) { }
-        else if ((rpcName = Enum.GetName(typeof(CustomRPC), callId)) != null) { }
-        else rpcName = callId.ToString();
-        return rpcName;
+        if (callId == RpcPayloadSnapshot.OuterCallId) return "TOHE custom envelope";
+        return Enum.GetName(typeof(RpcCalls), callId) ?? callId.ToString();
     }
     public static void SetRealKiller(byte targetId, byte killerId)
     {

@@ -115,7 +115,7 @@ static class Program
         Ready();
         RPC.RpcVersionCheck();
         var writer = client.Finished.Single();
-        Check(writer.CallId == (byte)CustomRPC.VersionCheck && writer.TargetId == -1 && writer.NetId == 42
+        Check(writer.CallId == (uint)CustomRPC.VersionCheck && writer.TargetId == -1 && writer.NetId == 42
             && writer.SendOption == SendOption.Reliable, "ready version requests correct inner RPC, source, destination and reliability in recording fixture");
         Check(writer.Values.SequenceEqual(new object[] { global::Main.PluginVersion, "fixture(fixture)", global::Main.ForkId, false }),
             "normal version writes the four expected fields in order to recording fixture");
@@ -148,7 +148,7 @@ static class Program
         At(0.1f);
         Check(client.Finished.Count == 2 && client.Finished.Select(w => w.CallId).Distinct().Count() == 2,
             "one version and one retry are sent when pending types become ready");
-        Check(client.Finished.Single(w => w.CallId == (byte)CustomRPC.RequestRetryVersionCheck).Values.Count == 0,
+        Check(client.Finished.Single(w => w.CallId == (uint)CustomRPC.RequestRetryVersionCheck).Values.Count == 0,
             "retry payload has no version fields");
         Check(global::Main.Instance.Count == 0 && RPC.PendingCountForTest == 0, "completion releases both keys");
         RPC.RpcVersionCheck();

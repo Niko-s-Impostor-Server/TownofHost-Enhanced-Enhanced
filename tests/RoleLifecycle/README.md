@@ -13,3 +13,6 @@ dotnet run --project tests/RoleLifecycle/RoleLifecycle.csproj
 Pelican 的 `SyncEatenList` 在测试中仅统计调用次数，消息写入器由桩提供；这些断言不验证客户端收到更新。`Modules/RPC.cs` 的 enum、TrustedRpc、Prefix、ValidateRpc，以及 `DispatchCustomRpc` 的签名、入口和 Pelican/Shroud 清理分支从源码抽取；其余 dispatch 分支不参与此测试，替换为计数桩。`CustomRpcReceiver.Receive` 完整方法和 transport 的 ID 判定从源码抽取，outer ID 常量链接生产 `RpcPayloadSnapshot.cs`。玩家、客户端和 Hazel reader 行为由桩提供。`CustomRpcTransport.Start/Finish` 仅转到已有记录 writer，`LastCall` 记录逻辑 inner ID；此测试不验证发送 envelope 的字节编码或实际 transport 约束。协议与完整 receiver 边界分别由 `tests/RpcTransport`、`tests/RpcReceiver` 独立验证。EAC、聊天及 Harmony 参数特性由桩模拟，不运行 Harmony patch 安装或实际网络消息。角色配置的初始数量限制和 Amnesiac 继承链由源码审查确认，测试直接构造多个角色实例以验证共享状态归属。
 
 这些检查验证的是被抽取方法在所述状态转换下的行为。owner/character pointer 判定验证对象一致性，实际 connection ownership 须由 Nmpostor 保证。桩不运行真实 Unity 对象生命周期、IL2CPP、网络 RPC、会议界面、游戏保护机制或多客户端同步，因此通过结果不能替代游戏端验证，也不证明其他职业没有逻辑缺陷。该测试不验证投票 API 和游戏选项的版本适配；该部分依赖实际目标程序集构建和游戏内测试。
+## Inner RPC identifiers
+
+The extracted CustomRPC enum and logical send recorder use uint IDs. Receiver fixtures encode a fixed eight-byte int32 target/uint32 ID header; player IDs in message payloads remain byte. This harness records logical sends rather than testing the native packetizer.

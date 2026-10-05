@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.IO;
 using static Utils;
 using UnityEngine;
 using AmongUs.GameOptions;
@@ -12,7 +13,14 @@ class Program
     static void Invoke(Type type, string name, params object[] args) => type.GetMethod(name, System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!.Invoke(null, args);
     static PlayerControl Player(byte id) => Utils.Players[id] = new() { PlayerId = id, OwnerId = id, Pointer = (IntPtr)(1000 + id) };
     static MessageReader Envelope(CustomRPC rpc, byte owner)
-        => new([255, 255, 255, 255, (byte)rpc, owner]);
+    {
+        using var stream = new MemoryStream();
+        using var writer = new BinaryWriter(stream);
+        writer.Write(-1);
+        writer.Write((uint)rpc);
+        writer.Write(owner); // Payload player IDs remain byte.
+        return new(stream.ToArray());
+    }
     static void Reset() { Utils.Players.Clear(); LateTask.Tasks.Clear(); GameStates.IsInTask = true; global::Main.AllPlayerKillCooldown.Clear(); TargetArrow.Arrows.Clear(); PlayerControl.MurderHook = null; global::Main.AllPlayerSpeed.Clear(); ReportDeadBodyPatch.CanReport.Clear(); GameEndCheckerForNormal.ShouldNotCheck = false; GameStates.IsMeeting = false; }
     static void Main()
     {
@@ -100,11 +108,11 @@ class Program
         Pelican.eatenList[1] = [2]; Pelican.originalSpeed[2] = 1.5f; global::Main.AllPlayerSpeed[2] = .5f; owner.Data.Disconnected = true;
         pelican.OnMurderPlayerAsTarget(owner, owner, true, true);
         Check(!Pelican.eatenList.ContainsKey(1), "Pelican disconnect callback releases targets even during meeting");
-        Check((byte)CustomRPC.SyncRoleSkill == 115 && (byte)CustomRPC.SyncFFANameNotify == 185 && (byte)CustomRPC.ClearPelicanOwner == 186, "Pelican clear preserves existing logical inner IDs and fits byte range");
+        Check((uint)CustomRPC.SyncRoleSkill == 115 && (uint)CustomRPC.SyncFFANameNotify == 185 && (uint)CustomRPC.ClearPelicanOwner == 186, "Pelican clear preserves existing logical IDs with uint backing");
         Pelican.eatenList[1] = [2]; Pelican.lastKnownPosition[1] = new(7, 8); Utils.Players.Remove(1);
         int sendsBefore = AmongUsClient.Instance.Sent; bool detachedAtSend = false;
         AmongUsClient.Instance.StartHook = () => detachedAtSend = !Pelican.eatenList.ContainsKey(1); pelican.Remove(1); AmongUsClient.Instance.StartHook = null;
-        Check(detachedAtSend && AmongUsClient.Instance.Sent == sendsBefore + 1 && AmongUsClient.Instance.LastCall == (byte)CustomRPC.ClearPelicanOwner && AmongUsClient.Instance.LastTarget == -1 && AmongUsClient.Instance.LastWriter.Payload.SequenceEqual(new byte[] { 1 }) && AmongUsClient.Instance.LastWriter.NetObjects == 0, "missing owner release sends independent clear after detaching owner collection");
+        Check(detachedAtSend && AmongUsClient.Instance.Sent == sendsBefore + 1 && AmongUsClient.Instance.LastCall == (uint)CustomRPC.ClearPelicanOwner && AmongUsClient.Instance.LastTarget == -1 && AmongUsClient.Instance.LastWriter.Payload.SequenceEqual(new byte[] { 1 }) && AmongUsClient.Instance.LastWriter.NetObjects == 0, "missing owner release sends independent clear after detaching owner collection");
         AmongUsClient.Instance.AmHost = false; sendsBefore = AmongUsClient.Instance.Sent; Invoke(typeof(Pelican), "SendOwnerClear", (byte)4);
         Check(AmongUsClient.Instance.Sent == sendsBefore, "non-host Pelican clear sender refuses authoritative sync");
         c.IsHostPlayer = true; AmongUsClient.Instance.HostId = c.OwnerId; AmongUsClient.Instance.ClientId = c.OwnerId; Pelican.eatenList[1] = [2]; Pelican.eatenList[4] = [3];
@@ -113,7 +121,7 @@ class Program
         Pelican.ReceiveOwnerClear(new([1]), c);
         Check(Pelican.eatenList[4].SetEquals(new byte[] { 3 }), "repeated Pelican owner clear is idempotent");
         Pelican.eatenList[1] = [2]; var rejectedReader = new MessageReader([1]); Pelican.ReceiveOwnerClear(rejectedReader, a);
-        Check(Pelican.eatenList.ContainsKey(1) && rejectedReader.Reads == 0 && !RPCHandlerPatch.TrustedRpc((byte)CustomRPC.ClearPelicanOwner), "Pelican clear receiver checks host before reading or mutating and remains outside request whitelist");
+        Check(Pelican.eatenList.ContainsKey(1) && rejectedReader.Reads == 0 && !RPCHandlerPatch.TrustedRpc((uint)CustomRPC.ClearPelicanOwner), "Pelican clear receiver checks host before reading or mutating and remains outside request whitelist");
         EAC.Cancel = false; var rpcReader = Envelope(CustomRPC.ClearPelicanOwner, 1);
         int dispatchesBefore = RPCHandlerPatch.Dispatches;
         bool permitted = RPCHandlerPatch.Prefix(c, TOHE.RpcPayloadSnapshot.OuterCallId, rpcReader);
@@ -132,11 +140,11 @@ class Program
         try { RPCHandlerPatch.Prefix(c, (byte)RpcCalls.SendChat, new([])); } catch (InvalidOperationException) { }
         Logger.ThrowOnInfo = false;
         Check(MessageReader.LastClone.Recycled, "reader clone is recycled even when RPC validation throws");
-        Check((byte)CustomRPC.ClearPelicanOwner == 186 && (byte)CustomRPC.ClearShroudOwner == 187, "Shroud clear RPC appends without changing Pelican or previous IDs");
+        Check((uint)CustomRPC.ClearPelicanOwner == 186 && (uint)CustomRPC.ClearShroudOwner == 187, "Shroud clear RPC appends without changing Pelican or previous IDs");
         AmongUsClient.Instance.AmHost = true; Shroud.ShroudList.Clear(); Shroud.ShroudList[2] = 1; Shroud.ShroudList[3] = 4;
         sendsBefore = AmongUsClient.Instance.Sent; detachedAtSend = false;
         AmongUsClient.Instance.StartHook = () => detachedAtSend = Shroud.ShroudList.Values.All(id => id != 1); shroud.Remove(1); AmongUsClient.Instance.StartHook = null;
-        Check(detachedAtSend && AmongUsClient.Instance.Sent == sendsBefore + 1 && AmongUsClient.Instance.LastCall == (byte)CustomRPC.ClearShroudOwner && AmongUsClient.Instance.LastWriter.Payload.SequenceEqual(new byte[] { 1 }) && AmongUsClient.Instance.LastWriter.NetObjects == 0 && Shroud.ShroudList.ContainsKey(3), "missing Shroud owner sends independent clear after removing only own marks");
+        Check(detachedAtSend && AmongUsClient.Instance.Sent == sendsBefore + 1 && AmongUsClient.Instance.LastCall == (uint)CustomRPC.ClearShroudOwner && AmongUsClient.Instance.LastWriter.Payload.SequenceEqual(new byte[] { 1 }) && AmongUsClient.Instance.LastWriter.NetObjects == 0 && Shroud.ShroudList.ContainsKey(3), "missing Shroud owner sends independent clear after removing only own marks");
         AmongUsClient.Instance.AmHost = false; sendsBefore = AmongUsClient.Instance.Sent; Invoke(typeof(Shroud), "SendOwnerClear", (byte)1);
         Check(AmongUsClient.Instance.Sent == sendsBefore, "non-host Shroud clear sender refuses authoritative sync");
         Shroud.ShroudList[2] = 1; Shroud.ReceiveOwnerClear(new([1]), c);
@@ -144,7 +152,7 @@ class Program
         Shroud.ReceiveOwnerClear(new([1]), c);
         Check(Shroud.ShroudList.Count == 1, "repeated Shroud owner clear is idempotent");
         Shroud.ShroudList[2] = 1; rejectedReader = new([1]); Shroud.ReceiveOwnerClear(rejectedReader, a);
-        Check(Shroud.ShroudList.ContainsKey(2) && rejectedReader.Reads == 0 && !RPCHandlerPatch.TrustedRpc((byte)CustomRPC.ClearShroudOwner), "Shroud receiver checks host before reading or changing state and remains outside request whitelist");
+        Check(Shroud.ShroudList.ContainsKey(2) && rejectedReader.Reads == 0 && !RPCHandlerPatch.TrustedRpc((uint)CustomRPC.ClearShroudOwner), "Shroud receiver checks host before reading or changing state and remains outside request whitelist");
         rpcReader = Envelope(CustomRPC.ClearShroudOwner, 1); permitted = RPCHandlerPatch.Prefix(c, TOHE.RpcPayloadSnapshot.OuterCallId, rpcReader);
         Check(!permitted && !Shroud.ShroudList.ContainsKey(2) && Shroud.ShroudList.ContainsKey(3), "accepted host envelope reaches actual Shroud inner dispatch without owner object");
         Console.WriteLine($"{checks} lifecycle checks passed against extracted repository methods.");
@@ -220,14 +228,21 @@ class MeetingHud { public static MeetingHud Instance = new(); public PlayerVoteA
 static class CheckForEndVotingPatch { public static List<byte> Deaths = []; public static void TryAddAfterMeetingDeathPlayers(PlayerState.DeathReason reason, params byte[] ids) => Deaths.AddRange(ids); }
 enum SendOption { Reliable }
 class MessageWriter { public List<byte> Payload = []; public int NetObjects; public void Write(byte n) => Payload.Add(n); public void Write(int n) { } public void WriteNetObject(PlayerControl p) => NetObjects++; }
-class MessageReader(byte[] payload) { private readonly byte[] data = payload; public static MessageReader LastClone; public int Reads; public bool Recycled; public int BytesRemaining => data.Length - Reads; public static MessageReader Get(MessageReader reader) => LastClone = new(reader.data) { Reads = reader.Reads }; public void Recycle() => Recycled = true; public byte ReadByte() => data[Reads++]; public int ReadInt32() { var value = BitConverter.ToInt32(data, Reads); Reads += 4; return value; } public uint ReadUInt32() => 0; public ushort ReadUInt16() => 0; public string ReadString() => "text"; public bool ReadBoolean() => false; }
+class MessageReader(byte[] payload) { private readonly byte[] data = payload; public static MessageReader LastClone; public int Reads; public bool Recycled; public int BytesRemaining => data.Length - Reads; public static MessageReader Get(MessageReader reader) => LastClone = new(reader.data) { Reads = reader.Reads }; public void Recycle() => Recycled = true; public byte ReadByte() => data[Reads++]; public int ReadInt32() { var value = BitConverter.ToInt32(data, Reads); Reads += 4; return value; } public uint ReadUInt32() { var value = BitConverter.ToUInt32(data, Reads); Reads += 4; return value; } public ushort ReadUInt16() => 0; public string ReadString() => "text"; public bool ReadBoolean() => false; }
 class ClientData { public PlayerControl Character; }
-class AmongUsClient { public static AmongUsClient Instance = new(); public bool AmHost; public int ClientId, HostId; public int Sent; public byte LastCall; public int LastTarget; public MessageWriter LastWriter; public Action StartHook; public MessageWriter StartRpcImmediately(uint netId, byte call, SendOption option, int target) { Sent++; LastCall = call; LastTarget = target; StartHook?.Invoke(); return LastWriter = new(); } public void FinishRpcImmediately(MessageWriter writer) { } public void KickPlayer(int id, bool ban) { } }
+class AmongUsClient { public static AmongUsClient Instance = new(); public bool AmHost; public int ClientId, HostId; public int Sent; public uint LastCall; public int LastTarget; public MessageWriter LastWriter; public Action StartHook; public MessageWriter StartRpcImmediately(uint netId, byte call, SendOption option, int target) { Sent++; LastCall = call; LastTarget = target; StartHook?.Invoke(); return LastWriter = new(); } public void FinishRpcImmediately(MessageWriter writer) { } public void KickPlayer(int id, bool ban) { } }
 // Role lifecycle recording adapter. LastCall is logical inner ID; no wire encoding.
 static partial class CustomRpcTransport
 {
     public static MessageWriter Start(CustomRPC rpc, SendOption option, int target = -1)
-        => AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)rpc, option, target);
+    {
+        var client = AmongUsClient.Instance;
+        client.Sent++;
+        client.LastCall = (uint)rpc;
+        client.LastTarget = target;
+        client.StartHook?.Invoke();
+        return client.LastWriter = new();
+    }
     public static void Finish(MessageWriter writer) => AmongUsClient.Instance.FinishRpcImmediately(writer);
 }
 class HarmonyArgument(int index) : Attribute { public int Index = index; }

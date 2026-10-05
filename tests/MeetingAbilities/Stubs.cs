@@ -247,7 +247,7 @@ namespace TOHE
     public static class Logger { public static void Info(string message, string category) { } }
     public static class Swapper { public static void CheckSwapperTarget(byte id) { } }
     public enum CustomRoles { Test, Dictator, Solsticer }
-    public enum CustomRPC : byte { MeetingAbilityRequest = 188 }
+    public enum CustomRPC : uint { MeetingAbilityRequest = 188 }
     public sealed record Packet(CustomRPC Rpc, byte[] Bytes, int Target, SendOption Option);
     public static class CustomRpcTransport
     {

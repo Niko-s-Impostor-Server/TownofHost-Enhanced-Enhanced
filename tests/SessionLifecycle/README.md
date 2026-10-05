@@ -10,7 +10,7 @@ dotnet run --project tests/SessionLifecycle/SessionLifecycle.csproj --configurat
 
 构建时 `generate.py` 从当前生产源码抽取：
 
-- `Modules/RPC.cs` 的 `CustomRPC` enum、`PendingVersionRequests` 字段、两个公开版本请求入口以及完整 `WaitAndSendVersion` 协程。
+- `Modules/RPC.cs` 的 uint `CustomRPC` enum、`PendingVersionRequests` 字段、两个公开版本请求入口以及完整 `WaitAndSendVersion` 协程。
 - `Patches/PlayerJoinAndLeftPatch.cs` 的 `Generation` 属性、`IsCurrentSession`、`IsCurrentClient`、`Postfix` 及完整 `WaitForOptions` 协程。
 - `Patches/IntroPatch.cs` 的完整 `IntroCutsceneDestroyPatch.Prefix`。
 - `Patches/PlayerControlPatch.cs` 的完整 `UnShapeShifter` 判断和循环语句，以及实际包围它的房主、任务阶段、非 low-load、本地主机玩家四层条件；生成器检查这四层嵌套，变化时构建失败。其他 FixedUpdate 工作没有抽取。

@@ -9,14 +9,14 @@ internal sealed class RpcPayloadSnapshot
     internal const byte OuterCallId = 123;
     private readonly byte[] payload;
     internal int Target { get; }
-    internal byte RpcId { get; }
+    internal uint RpcId { get; }
 
     internal static void ValidateTarget(int target)
     {
         if (target < -1) throw new ArgumentOutOfRangeException(nameof(target));
     }
 
-    internal RpcPayloadSnapshot(int target, byte rpcId, byte[] payload, Func<byte, bool> validRpc)
+    internal RpcPayloadSnapshot(int target, uint rpcId, byte[] payload, Func<uint, bool> validRpc)
     {
         ValidateTarget(target);
         if (!validRpc(rpcId)) throw new ArgumentOutOfRangeException(nameof(rpcId));
@@ -25,7 +25,7 @@ internal sealed class RpcPayloadSnapshot
         this.payload = (byte[])payload.Clone();
     }
 
-    internal void Write(Action<int> writeTarget, Action<byte> writeId, Action<byte[]> writePayload)
+    internal void Write(Action<int> writeTarget, Action<uint> writeId, Action<byte[]> writePayload)
     {
         writeTarget(Target);
         writeId(RpcId);

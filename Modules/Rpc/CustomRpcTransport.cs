@@ -23,7 +23,7 @@ internal static class CustomRpcTransport
         registered = true;
     }
 
-    internal static bool IsValidRpcId(byte rpc) => Enum.IsDefined(typeof(CustomRPC), rpc);
+    internal static bool IsValidRpcId(uint rpc) => Enum.IsDefined(typeof(CustomRPC), rpc);
 
     private static void AssertMainThread()
     {
@@ -50,7 +50,7 @@ internal static class CustomRpcTransport
     internal static MessageWriter Start(CustomRPC rpc, SendOption option = SendOption.Reliable, int target = -1)
     {
         RpcPayloadSnapshot.ValidateTarget(target);
-        if (!IsValidRpcId((byte)rpc)) throw new ArgumentOutOfRangeException(nameof(rpc));
+        if (!IsValidRpcId((uint)rpc)) throw new ArgumentOutOfRangeException(nameof(rpc));
         ValidateOption(option);
         var (client, player) = GetContext();
         var writer = MessageWriter.Get(option);

@@ -59,7 +59,7 @@ internal sealed class CustomRpcPayloadMessage : TOHERpcMessage
     internal CustomRpcPayloadMessage(uint netId, int gameId, int ownerId, int playerInstanceId,
         CustomRPC rpc, int target, SendOption option, byte[] payload)
         : base(netId, gameId, ownerId, playerInstanceId, option)
-        => snapshot = new RpcPayloadSnapshot(target, (byte)rpc, payload, CustomRpcTransport.IsValidRpcId);
+        => snapshot = new RpcPayloadSnapshot(target, (uint)rpc, payload, CustomRpcTransport.IsValidRpcId);
 
     [HideFromIl2Cpp]
     protected override void SerializeManagedPayload(MessageWriter writer)

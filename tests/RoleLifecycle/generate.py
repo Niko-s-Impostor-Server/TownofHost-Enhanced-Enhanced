@@ -21,7 +21,7 @@ def wrapper(name,path,fields,methods,scope=None):
 code='''using System; using System.Collections.Generic; using System.Linq; using static Utils; using UnityEngine; using AmongUs.GameOptions; using TOHE;
 '''
 rpc_source=(root/'Modules/RPC.cs').read_text(encoding='utf-8-sig')
-code+=re.search(r'enum CustomRPC : byte[^\n]*\n\{.*?\n\}',rpc_source,re.S)[0]+'\n'
+code+=re.search(r'enum CustomRPC : uint[^\n]*\n\{.*?\n\}',rpc_source,re.S)[0]+'\n'
 code+=wrapper('Agitater','Roles/Neutral/Agitater.cs','''public static HashSet<byte> playerIdList=[1]; public static bool HasEnabled=>playerIdList.Any();
 public static byte CurrentBombedPlayer,LastBombedPlayer; public static bool AgitaterHasBombed; public static long? CurrentBombedPlayerTime,AgitaterBombedTime; static uint BombGeneration;
 static OptionItem AgitaterAutoReportBait=new(0),BombExplodeCooldown=new(10);''',['Init','ResetBomb','OnCheckMurderAsKiller'])
