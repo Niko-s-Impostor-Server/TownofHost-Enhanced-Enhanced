@@ -42,6 +42,8 @@ internal class ChangeRoleSettings
 
             Main.PlayerStates = [];
             RoleAssign.RoleResult = [];
+            Main.LoversPlayers.Clear();
+            Main.isLoversDead = false;
             KillTimerManager.Initializate();
             Main.AllPlayerKillCooldown.Clear();
             Main.AllPlayerSpeed.Clear();
@@ -395,7 +397,6 @@ internal class StartGameHostPatch
             // Select custom roles / add-ons
             EAC.OriginalRoles = [];
             RoleAssign.StartSelect();
-            AddonAssign.StartSelect();
 
             // Set count vanilla roles
             RoleAssign.CalculateVanillaRoleCount();
@@ -461,15 +462,7 @@ internal class StartGameHostPatch
                 AssignCustomRole(kv.Value, Utils.GetPlayerById(kv.Key));
             }
 
-            try
-            {
-                AddonAssign.InitAndStartAssignLovers();
-                AddonAssign.StartSortAndAssign();
-            }
-            catch (Exception error)
-            {
-                Logger.Warn($"Error after addons assign - error: {error}", "AddonAssign");
-            }
+            AddonAssign.Assign();
 
             // Sync for non-host modded clients by RPC
             foreach (var pair in Main.PlayerStates)
@@ -501,6 +494,8 @@ internal class StartGameHostPatch
             }
 
         EndOfSelectRolePatch:
+
+            RoundAssignment.SaveResult();
 
             try
             {
@@ -789,7 +784,8 @@ public static class RpcSetRoleReplacer
 
             foreach (var target in PlayerControl.AllPlayerControls.GetFastEnumerator())
             {
-                if (RoleAssign.RoleResult[target.PlayerId].IsDesyncRole() && !target.IsHost()) continue;
+                if (!RoleAssign.RoleResult.TryGetValue(target.PlayerId, out var targetRole)) continue;
+                if (targetRole.IsDesyncRole() && !target.IsHost()) continue;
 
                 RoleMap[(target.PlayerId, playerId)] = (roleType, role);
             }

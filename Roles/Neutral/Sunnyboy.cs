@@ -27,11 +27,6 @@ internal class Sunnyboy : RoleBase
         AURoleOptions.ScientistCooldown = 0f;
         AURoleOptions.ScientistBatteryCharge = 60f;
     }
-    public static bool CheckSpawn()
-    {
-        var Rand = IRandom.Instance;
-        return Rand.Next(0, 100) < Jester.SunnyboyChance.GetInt();
-    }
     public override bool HasTasks(NetworkedPlayerInfo player, CustomRoles role, bool ForRecompute) => false;
 
     public static bool CheckGameEnd()

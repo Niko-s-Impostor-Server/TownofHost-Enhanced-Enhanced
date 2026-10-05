@@ -1,5 +1,12 @@
 {
   "LanguageID": "0",
+  "AssignmentSeedStatus": "Next round seed: {0}\nCurrent / last round seed: {1}",
+  "AssignmentSeedAutomatic": "Automatic",
+  "RoleAssigningAlgorithm": "Gameplay Random Algorithm (assignment uses /seed)",
+  "AssignmentSeedLobbyOnly": "Set the assignment seed in the lobby.",
+  "AssignmentSeedReset": "The host will generate a new assignment seed at the next game start.",
+  "AssignmentSeedSet": "Next round assignment seed: {0}. The override is consumed when the game starts.",
+  "AssignmentSeedUsage": "/seed [integer | auto] — view the seed, set it for the next round, or restore automatic generation. Replays require the same settings, map, PlayerIds and role presets.",
   "DetectiveVanilla": "Detective (Vanilla)",
   "DetectiveVanillaBlurb": "Investigate clues with the native Detective ability.",
   "DetectiveVanillaInfoLong": "The native Detective, with a configurable suspect limit. This is separate from the custom Detective role.",

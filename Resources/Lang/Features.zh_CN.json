@@ -1,5 +1,12 @@
 {
   "LanguageID": "13",
+  "AssignmentSeedStatus": "下一局分配种子：{0}\n当前／上一局分配种子：{1}",
+  "AssignmentSeedAutomatic": "自动生成",
+  "RoleAssigningAlgorithm": "游戏过程随机算法（职业分配使用 /seed）",
+  "AssignmentSeedLobbyOnly": "请在大厅中设置分配种子。",
+  "AssignmentSeedReset": "下一局开局时由房主自动生成新的分配种子。",
+  "AssignmentSeedSet": "下一局分配种子：{0}。仅对下一局生效。",
+  "AssignmentSeedUsage": "/seed [整数 | auto]：查看种子、指定下一局种子或恢复自动生成。复现需要保持配置、地图、PlayerId 和预设职业相同。",
   "DetectiveVanilla": "侦探（原版）",
   "DetectiveVanillaBlurb": "使用原版侦探技能调查线索。",
   "DetectiveVanillaInfoLong": "原版侦探，可设置嫌疑人数上限。与模组原有的自定义侦探是不同职业。",

@@ -1,5 +1,6 @@
 using System;
 using TOHE.Modules;
+using TOHE.Roles.Core.AssignManager;
 using static TOHE.Translator;
 
 namespace TOHE;
@@ -41,6 +42,28 @@ internal static class FeatureChatCommands
 
         switch (command)
         {
+            case "/seed":
+                if (!host || !sender.AmOwner) { Denied(); return true; }
+                if (args.Length == 1)
+                {
+                    Reply(string.Format(GetString("AssignmentSeedStatus"),
+                        RoundAssignment.NextSeed?.ToString() ?? GetString("AssignmentSeedAutomatic"),
+                        RoundAssignment.CurrentSeed?.ToString() ?? "-"));
+                    return true;
+                }
+                if (!GameStates.IsLobby) { Reply(GetString("AssignmentSeedLobbyOnly")); return true; }
+                if (args.Length == 2 && args[1].Equals("auto", StringComparison.OrdinalIgnoreCase))
+                {
+                    RoundAssignment.SetNextSeed(null);
+                    Reply(GetString("AssignmentSeedReset"));
+                }
+                else if (args.Length == 2 && int.TryParse(args[1], out int seed))
+                {
+                    RoundAssignment.SetNextSeed(seed);
+                    Reply(string.Format(GetString("AssignmentSeedSet"), seed));
+                }
+                else Reply(GetString("AssignmentSeedUsage"));
+                return true;
             case "/save":
             case "/load":
                 // A granted administrator still cannot read/write the host filesystem.

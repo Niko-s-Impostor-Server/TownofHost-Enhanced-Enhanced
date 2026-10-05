@@ -56,12 +56,10 @@ internal class Mini : RoleBase
         misguessed = false;
 
         IsEvilMini = false;
-        if (AmongUsClient.Instance.AmHost && CustomRoles.Mini.IsEnable())
-        {
-            var rand = IRandom.Instance;
-            IsEvilMini = CanBeEvil.GetBool() && (rand.Next(0, 100) < EvilMiniSpawnChances.GetInt());
-        }
     }
+
+    internal static void SelectVariant(TOHE.Roles.Core.AssignManager.AssignmentRandom random)
+        => IsEvilMini = CustomRoles.Mini.IsEnable() && CanBeEvil.GetBool() && random.Roll(EvilMiniSpawnChances.GetInt());
     public override void Add(byte playerId)
     {
         if (AmongUsClient.Instance.AmHost)
@@ -82,8 +80,6 @@ internal class Mini : RoleBase
         Age = reader.ReadInt32();
         IsEvilMini = reader.ReadBoolean();
     }
-
-    public static bool CheckSpawnEvilMini() => IsEvilMini;
 
     public override bool OnCheckMurderAsTarget(PlayerControl killer, PlayerControl target)
     {

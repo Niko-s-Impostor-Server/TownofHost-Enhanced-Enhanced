@@ -88,6 +88,7 @@ class OnGameJoinedPatch
             GameStartManagerPatch.GameStartManagerUpdatePatch.exitTimer = -1;
             Main.DoBlockNameChange = false;
             RoleAssign.SetRoles = [];
+            RoundAssignment.Reset();
             GhostRoleAssign.forceRole = [];
             EAC.DeNum = new();
             Main.AllPlayerNames.Clear();

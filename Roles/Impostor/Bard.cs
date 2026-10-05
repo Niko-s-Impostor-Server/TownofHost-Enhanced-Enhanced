@@ -18,12 +18,6 @@ internal class Bard : RoleBase
         PlayerIds.Add(playerId);
     }
 
-    public static bool CheckSpawn()
-    {
-        var Rand = IRandom.Instance;
-        return Rand.Next(0, 100) < Arrogance.BardChance.GetInt();
-    }
-
     public override void OnPlayerExiled(PlayerControl bard, NetworkedPlayerInfo exiled)
     {
         if (exiled != null) Main.AllPlayerKillCooldown[bard.PlayerId] /= 2;
