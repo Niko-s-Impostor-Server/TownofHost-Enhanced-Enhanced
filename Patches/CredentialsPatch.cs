@@ -12,6 +12,26 @@ class PingTrackerUpdatePatch
     public static PingTracker Instance;
     private static int DelayUpdate = 0;
     private static readonly StringBuilder sb = new();
+    private static readonly List<HudStatusRect> layoutObstacles = [];
+    private static readonly List<HudStatusRect> previousLayoutObstacles = [];
+    private static TextMeshPro measuredText;
+    private static string measuredValue;
+    private static Vector2 preferredSize;
+    private static float measuredFontSize;
+    private static string renderedStatus;
+    private static TextMeshPro styledText;
+    private const float LayoutProbeInterval = 0.1f;
+    private static bool layoutCached;
+    private static float nextLayoutProbe;
+    private static PingTracker layoutTracker;
+    private static HudManager layoutHud;
+    private static Camera layoutCamera;
+    private static PlayerControl layoutOwner;
+    private static int layoutOwnerId, layoutScreenWidth, layoutScreenHeight;
+    private static MeetingHud layoutMeeting;
+    private static Rect layoutScreen, layoutViewport;
+    private static string layoutValue;
+    private static float layoutFontSize;
 
     private static bool Prefix(PingTracker __instance)
     {
@@ -23,15 +43,12 @@ class PingTrackerUpdatePatch
 
             if (DelayUpdate > 0 && sb.Length > 0)
             {
-                ChangeText(__instance);
-                __instance.aspectPosition.DistanceFromEdge = GetPingPosition();
-                __instance.text.text = sb.ToString();
+                ApplyStatusText(__instance);
                 return false;
             }
 
             DelayUpdate = 500;
 
-            ChangeText(__instance);
             sb.Clear();
 
             sb.Append(Main.credentialsText);
@@ -74,8 +91,8 @@ class PingTrackerUpdatePatch
                     sb.Append(sbOverlay);
             }
 
-            __instance.aspectPosition.DistanceFromEdge = GetPingPosition();
-            __instance.text.text = sb.ToString();
+            renderedStatus = sb.ToString();
+            ApplyStatusText(__instance, refreshStyle: true);
 
             return false;
         }
@@ -83,39 +100,158 @@ class PingTrackerUpdatePatch
         {
             DelayUpdate = 0;
             sb.Clear();
+            layoutCached = false;
 
             return false;
         }
     }
-    private static Vector3 GetPingPosition()
+    private static void ApplyStatusText(PingTracker tracker, bool refreshStyle = false)
     {
-        var settingButtonTransformPosition = DestroyableSingleton<HudManager>.Instance.SettingsButton.transform.localPosition;
-        var offset_x = settingButtonTransformPosition.x - 1.58f;
-        var offset_y = settingButtonTransformPosition.y + 3.2f;
-        Vector3 position;
-        if (!Main.ShowTextOverlay.Value)
+        if (!tracker || !tracker.text) return;
+        if (refreshStyle || styledText != tracker.text)
         {
-            offset_y += 0.1f;
+            ChangeText(tracker);
+            styledText = tracker.text;
         }
-        if (AmongUsClient.Instance.IsGameStarted)
-        {
-            if (DestroyableSingleton<HudManager>.Instance && !HudManager.Instance.Chat.isActiveAndEnabled)
-            {
-                offset_x += 0.7f; // Additional offsets for chat button if present
-            }
-            else
-            {
-                offset_x += 0.1f;
-            }
+        // The cached branch neither allocates a new StringBuilder string nor
+        // reapplies TMP properties on every frame. External text changes still repair immediately.
+        if (tracker.text.text != renderedStatus) tracker.text.text = renderedStatus;
+        PositionStatusText(tracker);
+    }
+    private static void PositionStatusText(PingTracker tracker)
+    {
+        if (!tracker || !tracker.text || !HudManager.InstanceExists) return;
+        var hud = HudManager.Instance;
+        var camera = hud.UICamera;
+        if (!camera) camera = tracker.aspectPosition ? tracker.aspectPosition.parentCam : Camera.main;
+        if (!camera) return;
+        var screen = Screen.safeArea;
+        var viewport = camera.pixelRect;
+        var text = tracker.text;
+        var value = text.text;
+        float fontSize = text.fontSize;
+        var owner = PlayerControl.LocalPlayer;
+        int ownerId = owner ? owner.OwnerId : -1;
+        var meeting = MeetingHud.Instance;
+        int screenWidth = Screen.width, screenHeight = Screen.height;
+        bool dirty = !layoutCached || layoutTracker != tracker || layoutHud != hud || layoutCamera != camera ||
+            layoutOwner != owner || layoutOwnerId != ownerId || layoutMeeting != meeting ||
+            layoutScreenWidth != screenWidth || layoutScreenHeight != screenHeight ||
+            layoutScreen != screen || layoutViewport != viewport || layoutValue != value || layoutFontSize != fontSize;
+        float now = Time.realtimeSinceStartup;
+        if (!dirty && now < nextLayoutProbe) return;
 
-            position = new Vector3(offset_x, offset_y, 0f);
-        }
-        else
+        // Resolution/safe-area/text/owner changes bypass the timer. Stable UI
+        // probes dynamic toolbar/task/meeting bounds at most ten times per second.
+        layoutCached = true;
+        nextLayoutProbe = now + LayoutProbeInterval;
+        layoutTracker = tracker;
+        layoutHud = hud;
+        layoutCamera = camera;
+        layoutOwner = owner;
+        layoutOwnerId = ownerId;
+        layoutMeeting = meeting;
+        layoutScreenWidth = screenWidth;
+        layoutScreenHeight = screenHeight;
+        layoutScreen = screen;
+        layoutViewport = viewport;
+        layoutValue = value;
+        layoutFontSize = fontSize;
+        var safe = new HudStatusRect(Mathf.Max(screen.xMin, viewport.xMin), Mathf.Max(screen.yMin, viewport.yMin),
+            Mathf.Min(screen.xMax, viewport.xMax), Mathf.Min(screen.yMax, viewport.yMax));
+        if (safe.Width <= 0 || safe.Height <= 0) return;
+
+        layoutObstacles.Clear();
+        AddStatusObstacles(hud.SettingsButton, camera);
+        if (hud.MatchInfoButton) AddStatusObstacles(hud.MatchInfoButton.gameObject, camera);
+        if (hud.MapButton) AddStatusObstacles(hud.MapButton.gameObject, camera);
+        if (hud.Chat && hud.Chat.chatButton) AddStatusObstacles(hud.Chat.chatButton.gameObject, camera);
+        AddStatusObstacles(hud.TaskStuff, camera);
+        if (hud.TaskPanel) AddStatusObstacles(hud.TaskPanel.gameObject, camera);
+        if (meeting)
         {
-            position = new Vector3(offset_x, offset_y, 0f);
+            if (meeting.TitleText) AddStatusObstacles(meeting.TitleText.gameObject, camera);
+            if (meeting.TimerText) AddStatusObstacles(meeting.TimerText.gameObject, camera);
+            foreach (var area in meeting.playerStates)
+                if (area) AddStatusObstacles(area.gameObject, camera);
         }
 
-        return position;
+        bool moved = layoutObstacles.Count != previousLayoutObstacles.Count;
+        if (!moved)
+        {
+            for (int index = 0; index < layoutObstacles.Count; index++)
+                if (layoutObstacles[index] != previousLayoutObstacles[index]) { moved = true; break; }
+        }
+        if (!dirty && !moved) return;
+        previousLayoutObstacles.Clear();
+        previousLayoutObstacles.AddRange(layoutObstacles);
+
+        bool newText = measuredText != text || measuredValue != text.text || measuredFontSize != text.fontSize;
+        if (newText)
+        {
+            measuredText = text;
+            measuredValue = text.text;
+            measuredFontSize = text.fontSize;
+            preferredSize = text.GetPreferredValues(text.text, float.PositiveInfinity, float.PositiveInfinity);
+        }
+        var preferred = preferredSize;
+        bool changedLayout = newText || text.enableWordWrapping || text.rectTransform.sizeDelta != preferred;
+        text.enableWordWrapping = false;
+        text.rectTransform.sizeDelta = preferred;
+        if (changedLayout) text.ForceMeshUpdate();
+        var renderer = text.GetComponent<Renderer>();
+        if (!renderer) return;
+        var bounds = StatusScreenBounds(renderer.bounds, camera);
+        float lineHeight = bounds.Height / Mathf.Max(1, text.textInfo.lineCount);
+        float gap = Mathf.Max(2f, lineHeight * 0.35f);
+        if (!HudStatusLayout.TryPlace(safe, bounds.Width, bounds.Height, layoutObstacles, gap, out var position))
+        {
+            // A narrow viewport can need wrapping rather than moving over task/vote UI.
+            // Keep the font size; progressively reduce the block width to find a free column.
+            for (int step = 1; step <= 8; step++)
+            {
+                text.enableWordWrapping = true;
+                float width = preferred.x * (1f - step / 10f);
+                var wrapped = text.GetPreferredValues(text.text, width, float.PositiveInfinity);
+                text.rectTransform.sizeDelta = new Vector2(width, wrapped.y);
+                text.ForceMeshUpdate();
+                bounds = StatusScreenBounds(renderer.bounds, camera);
+                if (HudStatusLayout.TryPlace(safe, bounds.Width, bounds.Height, layoutObstacles, gap, out position)) break;
+                if (step == 8) return;
+            }
+        }
+        if (tracker.aspectPosition) tracker.aspectPosition.enabled = false;
+        // Use the rendered glyph bounds, rather than assuming TMP pivot/parent scaling.
+        var origin = camera.WorldToScreenPoint(text.transform.position);
+        text.transform.position = camera.ScreenToWorldPoint(new Vector3(
+            origin.x + position.Right - bounds.Right, origin.y + position.Top - bounds.Top, origin.z));
+    }
+
+    private static void AddStatusObstacles(GameObject gameObject, Camera camera)
+    {
+        if (!gameObject || !gameObject.activeInHierarchy) return;
+        bool found = false;
+        HudStatusRect combined = default;
+        foreach (var renderer in gameObject.GetComponentsInChildren<Renderer>())
+        {
+            if (!renderer || !renderer.enabled || !renderer.gameObject.activeInHierarchy) continue;
+            var bounds = StatusScreenBounds(renderer.bounds, camera);
+            if (bounds.Width <= 0 || bounds.Height <= 0) continue;
+            combined = found ? new HudStatusRect(Mathf.Min(combined.Left, bounds.Left), Mathf.Min(combined.Bottom, bounds.Bottom),
+                Mathf.Max(combined.Right, bounds.Right), Mathf.Max(combined.Top, bounds.Top)) : bounds;
+            found = true;
+        }
+        // Treat each control/panel as one obstacle, rather than packing around
+        // hundreds of individual label/icon meshes during a full meeting.
+        if (found) layoutObstacles.Add(combined);
+    }
+
+    private static HudStatusRect StatusScreenBounds(Bounds bounds, Camera camera)
+    {
+        var lower = camera.WorldToScreenPoint(bounds.min);
+        var upper = camera.WorldToScreenPoint(bounds.max);
+        return new HudStatusRect(Mathf.Min(lower.x, upper.x), Mathf.Min(lower.y, upper.y),
+            Mathf.Max(lower.x, upper.x), Mathf.Max(lower.y, upper.y));
     }
     private static void ChangeText(PingTracker __instance)
     {
