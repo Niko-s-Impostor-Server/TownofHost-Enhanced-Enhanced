@@ -1056,17 +1056,17 @@ public static class Utils
 
     public static string GetRegionName(IRegionInfo region = null)
     {
-        region ??= ServerManager.Instance.CurrentRegion;
+        if (AmongUsClient.Instance.NetworkMode != NetworkModes.OnlineGame)
+        {
+            return "Local Games";
+        }
+
+        region ??= ServerRegion.Current;
+        if (region == null) return "Unknown";
 
         string name = region.Name;
 
-        if (AmongUsClient.Instance.NetworkMode != NetworkModes.OnlineGame)
-        {
-            name = "Local Games";
-            return name;
-        }
-
-        if (region.PingServer.EndsWith("among.us", StringComparison.Ordinal))
+        if (ServerRegion.IsOfficial(region))
         {
             // Official server
             if (name == "North America") name = "NA";

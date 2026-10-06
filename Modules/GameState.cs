@@ -2,6 +2,7 @@ using AmongUs.GameOptions;
 using Hazel;
 using Il2CppInterop.Runtime.InteropTypes.Arrays;
 using System;
+using TOHE.Modules;
 using TOHE.Roles.AddOns.Impostor;
 using TOHE.Roles.Core;
 using TOHE.Roles.Impostor;
@@ -448,12 +449,7 @@ public static class GameStates
         {
             if (!IsOnlineGame) return false;
 
-            const string Domain = "among.us";
-
-            // From Reactor.gg
-            return ServerManager.Instance.CurrentRegion?.TryCast<StaticHttpRegionInfo>() is { } regionInfo &&
-                   regionInfo.PingServer.EndsWith(Domain, StringComparison.Ordinal) &&
-                   regionInfo.Servers.All(serverInfo => serverInfo.Ip.EndsWith(Domain, StringComparison.Ordinal));
+            return ServerRegion.IsOfficial(ServerRegion.Current);
         }
     }
     public static bool IsLocalGame => AmongUsClient.Instance.NetworkMode == NetworkModes.LocalGame;
