@@ -58,29 +58,26 @@ internal class EvilGuesser : RoleBase
         return false;
     }
 
-    public override bool GuessCheck(bool isUI, PlayerControl guesser, PlayerControl target, CustomRoles role, ref bool guesserSuicide)
+    public override string GetGuessRoleError(PlayerControl guesser, PlayerControl target, CustomRoles role)
     {
         // Check limit
         if (GuessManager.GuesserGuessed[guesser.PlayerId] >= EGCanGuessTime.GetInt())
         {
-            guesser.ShowInfoMessage(isUI, Translator.GetString("EGGuessMax"));
-            return true;
+            return "EGGuessMax";
         }
 
         // Evil Guesser Can't Guess Addons
         if (role.IsAdditionRole() && !EGCanGuessAdt.GetBool())
         {
-            guesser.ShowInfoMessage(isUI, Translator.GetString("GuessAdtRole"));
-            return true;
+            return "GuessAdtRole";
         }
 
         // Evil Guesser Can't Guess Impostors
         if (role.IsImpostor() && !EGCanGuessImp.GetBool())
         {
-            guesser.ShowInfoMessage(isUI, Translator.GetString("GuessImpRole"));
-            return true;
+            return "GuessImpRole";
         }
 
-        return false;
+        return null;
     }
 }

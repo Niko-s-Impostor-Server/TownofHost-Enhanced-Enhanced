@@ -55,29 +55,26 @@ internal class NiceGuesser : RoleBase
         return false;
     }
 
-    public override bool GuessCheck(bool isUI, PlayerControl guesser, PlayerControl target, CustomRoles role, ref bool guesserSuicide)
+    public override string GetGuessRoleError(PlayerControl guesser, PlayerControl target, CustomRoles role)
     {
         // Check limit
         if (GuessManager.GuesserGuessed[guesser.PlayerId] >= GGCanGuessTime.GetInt())
         {
-            guesser.ShowInfoMessage(isUI, Translator.GetString("GGGuessMax"));
-            return true;
+            return "GGGuessMax";
         }
 
         // Nice Guesser Can't Guess Addons
         if (role.IsAdditionRole() && !GGCanGuessAdt.GetBool())
         {
-            guesser.ShowInfoMessage(isUI, Translator.GetString("GuessAdtRole"));
-            return true;
+            return "GuessAdtRole";
         }
 
         // Nice Guesser Can't Guess Impostors
         if (target.Is(Custom_Team.Crewmate) && !GGCanGuessCrew.GetBool() && !guesser.Is(CustomRoles.Madmate))
         {
-            guesser.ShowInfoMessage(isUI, Translator.GetString("GuessCrewRole"));
-            return true;
+            return "GuessCrewRole";
         }
 
-        return false;
+        return null;
     }
 }

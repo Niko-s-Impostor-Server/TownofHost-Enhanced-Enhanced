@@ -303,11 +303,23 @@ public abstract class RoleBase
     /// <summary>
     /// When guesser need check guess (Check limit or Cannot guess а role/add-on)
     /// </summary>
-    public virtual bool GuessCheck(bool isUI, PlayerControl guesser, PlayerControl target, CustomRoles role, ref bool guesserSuicide) => target == null;
+    public virtual string GetGuessRoleError(PlayerControl guesser, PlayerControl target, CustomRoles role) => null;
+    public virtual bool GuessCheck(bool isUI, PlayerControl guesser, PlayerControl target, CustomRoles role, ref bool guesserSuicide)
+    {
+        var error = GetGuessRoleError(guesser, target, role);
+        if (error != null) guesser.ShowInfoMessage(isUI, Translator.GetString(error));
+        return target == null || error != null;
+    }
     /// <summary>
     /// When guesser trying guess target a role
     /// </summary>
-    public virtual bool OnRoleGuess(bool isUI, PlayerControl target, PlayerControl guesser, CustomRoles role, ref bool guesserSuicide) => target == null;
+    public virtual string GetGuessedRoleError(PlayerControl guesser, PlayerControl target, CustomRoles role) => null;
+    public virtual bool OnRoleGuess(bool isUI, PlayerControl target, PlayerControl guesser, CustomRoles role, ref bool guesserSuicide)
+    {
+        var error = GetGuessedRoleError(guesser, target, role);
+        if (error != null) guesser.ShowInfoMessage(isUI, Translator.GetString(error));
+        return target == null || error != null;
+    }
 
     /// <summary>
     /// When guesser was misguessed

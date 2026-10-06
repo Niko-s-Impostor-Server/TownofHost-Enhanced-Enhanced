@@ -91,14 +91,13 @@ internal class Eraser : RoleBase, IMeetingTargetAbility
         Utils.NotifyRoles(SpecifySeer: player);
         return false;
     }
-    public override bool GuessCheck(bool isUI, PlayerControl guesser, PlayerControl target, CustomRoles role, ref bool guesserSuicide)
+    public override string GetGuessRoleError(PlayerControl guesser, PlayerControl target, CustomRoles role)
     {
         if (PlayerToErase.Contains(target.PlayerId) && !role.IsAdditionRole())
         {
-            guesser.ShowInfoMessage(isUI, GetString("EraserTryingGuessErasedPlayer"));
-            return true;
+            return "EraserTryingGuessErasedPlayer";
         }
-        return false;
+        return null;
     }
     public override void OnReportDeadBody(PlayerControl reporter, NetworkedPlayerInfo target)
     {

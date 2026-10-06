@@ -42,14 +42,13 @@ internal class SuperStar : RoleBase
                 x.PlayerId != target.PlayerId &&
                 GetDistance(x.transform.position, target.transform.position) < 2f);
     }
-    public override bool OnRoleGuess(bool isUI, PlayerControl target, PlayerControl pc, CustomRoles role, ref bool guesserSuicide)
+    public override string GetGuessedRoleError(PlayerControl guesser, PlayerControl target, CustomRoles role)
     {
         if (role is CustomRoles.SuperStar)
         {
-            pc.ShowInfoMessage(isUI, GetString("GuessSuperStar"));
-            return true;
+            return "GuessSuperStar";
         }
-        return false;
+        return null;
     }
     public static bool VisibleToEveryone(PlayerControl target) => target.Is(CustomRoles.SuperStar) && EveryOneKnowSuperStar.GetBool();
     public override bool OthersKnowTargetRoleColor(PlayerControl seer, PlayerControl target) => VisibleToEveryone(target);

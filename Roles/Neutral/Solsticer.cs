@@ -262,14 +262,13 @@ internal class Solsticer : RoleBase
         }
         return false;
     }
-    public override bool OnRoleGuess(bool isUI, PlayerControl target, PlayerControl pc, CustomRoles role, ref bool guesserSuicide)
+    public override string GetGuessedRoleError(PlayerControl guesser, PlayerControl target, CustomRoles role)
     {
         if (role == CustomRoles.Solsticer)
         {
-            pc.ShowInfoMessage(isUI, GetString("GuessSolsticer"));
-            return true;
+            return "GuessSolsticer";
         }
-        return false;
+        return null;
     }
     public override bool GuessCheck(bool isUI, PlayerControl pc, PlayerControl target, CustomRoles role, ref bool guesserSuicide)
     {

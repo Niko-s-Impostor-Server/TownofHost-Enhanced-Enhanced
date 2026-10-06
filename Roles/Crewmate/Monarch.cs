@@ -81,14 +81,13 @@ internal class Monarch : RoleBase
         Logger.Info($"{killer.GetNameWithRole()} : 剩余{AbilityLimit}次招募机会", "Monarch");
         return false;
     }
-    public override bool OnRoleGuess(bool isUI, PlayerControl target, PlayerControl guesser, CustomRoles role, ref bool guesserSuicide)
+    public override string GetGuessedRoleError(PlayerControl guesser, PlayerControl target, CustomRoles role)
     {
         if (role == CustomRoles.Monarch && CustomRoles.Knighted.RoleExist())
         {
-            guesser.ShowInfoMessage(isUI, GetString("GuessMonarch"));
-            return true;
+            return "GuessMonarch";
         }
-        return false;
+        return null;
     }
     public override string GetProgressText(byte PlayerId, bool comms)
     {
@@ -105,14 +104,13 @@ internal class Monarch : RoleBase
     }
     public override string PlayerKnowTargetColor(PlayerControl seer, PlayerControl target) => seer.Is(CustomRoles.Monarch) && target.Is(CustomRoles.Knighted) ? Main.roleColors[CustomRoles.Knighted] : "";
 
-    public override bool GuessCheck(bool isUI, PlayerControl guesser, PlayerControl target, CustomRoles role, ref bool guesserSuicide)
+    public override string GetGuessRoleError(PlayerControl guesser, PlayerControl target, CustomRoles role)
     {
         if (role == CustomRoles.Knighted)
         {
-            guesser.ShowInfoMessage(isUI, GetString("GuessKnighted"));
-            return true;
+            return "GuessKnighted";
         }
-        return false;
+        return null;
     }
 
     public override void SetAbilityButtonText(HudManager hud, byte playerId)

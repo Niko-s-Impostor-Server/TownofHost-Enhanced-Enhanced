@@ -1,4 +1,6 @@
 {
+  "CrossLanguageGetRole": "Recognize role names across languages",
+  "RoleNameAmbiguous": "Multiple roles match: {0}. No role was selected.",
   "LanguageID": "0",
   "HostText": "Host",
   "HostColor": "#902efd",

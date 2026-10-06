@@ -487,6 +487,7 @@ public static class Options
 
     // Guesser Mode
     public static OptionItem GuesserMode;
+    public static OptionItem CrossLanguageGetRole;
     public static OptionItem CrewmatesCanGuess;
     public static OptionItem ImpostorsCanGuess;
     public static OptionItem NeutralKillersCanGuess;
@@ -1888,6 +1889,7 @@ public static class Options
 
         // End Load Settings
         AfkMonitor.SetupCustomOptions();
+        CrossLanguageGetRole = BooleanOptionItem.Create(61040, "CrossLanguageGetRole", false, TabGroup.ModSettings, false);
         OptionSaver.Load();
         IsLoaded = true;
         Logger.Msg("Mod option loading eng", "Load Options");

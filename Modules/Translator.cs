@@ -21,6 +21,10 @@ public static class Translator
     }
     public static void LoadLangs()
     {
+        ActualRoleNames.Clear();
+        RoleNameResolver.Clear();
+        translateMaps = [];
+        Dictionary<string, Dictionary<int, string>> builtInNames = [];
         try
         {
             // Get the directory containing the JSON files (e.g., TOHE.Resources.Lang)
@@ -76,6 +80,7 @@ public static class Translator
             Logger.Error($"Error: {ex}", "Translator");
         }
         //カスタム翻訳ファイルの読み込み
+        builtInNames = translateMaps.ToDictionary(entry => entry.Key, entry => new Dictionary<int, string>(entry.Value));
         if (!Directory.Exists(LANGUAGE_FOLDER_NAME)) Directory.CreateDirectory(LANGUAGE_FOLDER_NAME);
 
         // 翻訳テンプレートの作成
@@ -99,6 +104,7 @@ public static class Translator
                 LoadCustomTranslation($"{lang}.dat", lang);
             }
         }
+        RoleNameResolver.Rebuild(builtInNames, translateMaps);
     }
     static void MergeJsonIntoTranslationMap(Dictionary<string, Dictionary<int, string>> translationMaps, int languageId, Dictionary<string, string> jsonDictionary)
     {
@@ -189,6 +195,12 @@ public static class Translator
             RealName = GetString($"{role}");
         }
     }
+    internal static SupportedLangs GetCommandLanguage()
+    {
+        var language = TranslationController.InstanceExists ? TranslationController.Instance.currentLanguage.languageID : SupportedLangs.English;
+        return Main.ForceOwnLanguage.Value ? GetUserTrueLang() : language;
+    }
+
     public static string GetString(string s, Dictionary<string, string> replacementDic = null, bool console = false, bool showInvalid = true, bool vanilla = false)
     {
         if (vanilla)

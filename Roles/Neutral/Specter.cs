@@ -56,13 +56,12 @@ internal class Specter : RoleBase
         return false;
     }
 
-    public override bool OnRoleGuess(bool isUI, PlayerControl target, PlayerControl guesser, CustomRoles role, ref bool guesserSuicide)
+    public override string GetGuessedRoleError(PlayerControl guesser, PlayerControl target, CustomRoles role)
     {
         if (role == CustomRoles.Specter)
         {
-            guesser.ShowInfoMessage(isUI, Translator.GetString("GuessSpecter"));
-            return true;
+            return "GuessSpecter";
         }
-        return false;
+        return null;
     }
 }

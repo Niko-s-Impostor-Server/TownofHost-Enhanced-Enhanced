@@ -1,6 +1,5 @@
-using Hazel;
+﻿using Hazel;
 using System;
-using System.Text.RegularExpressions;
 using TMPro;
 using TOHE.Modules;
 using TOHE.Modules.ChatManager;
@@ -42,7 +41,7 @@ public static class GuessManager
             {
                 if (msg.StartsWith("/" + comm))
                 {
-                    msg = msg.Replace("/" + comm, string.Empty);
+                    msg = msg[(comm.Length + 1)..];
                     return true;
                 }
             }
@@ -90,7 +89,9 @@ public static class GuessManager
     }
 
     public static readonly Dictionary<byte, int> GuesserGuessed = [];
-    public static bool GuesserMsg(PlayerControl pc, string msg, bool isUI = false)
+    public static bool GuesserMsg(PlayerControl pc, string msg, bool isUI = false) => HandleGuess(pc, msg, isUI);
+
+    private static bool HandleGuess(PlayerControl pc, string msg, bool isUI, byte? selectedTarget = null, CustomRoles? selectedRole = null)
     {
         var originMsg = msg;
 
@@ -105,8 +106,9 @@ public static class GuessManager
             && !Options.GuesserMode.GetBool()) return false;
 
         int operate = 0; // 1:ID 2:猜测
-        msg = msg.ToLower().TrimStart().TrimEnd();
-        if (CheckCommond(ref msg, "id|guesslist|gl编号|玩家编号|玩家id|id列表|玩家列表|列表|所有id|全部id||編號|玩家編號")) operate = 1;
+        msg = msg.ToLowerInvariant().Trim();
+        if (selectedRole.HasValue) operate = 2;
+        else if (CheckCommond(ref msg, "id|guesslist|gl编号|玩家编号|玩家id|id列表|玩家列表|列表|所有id|全部id||編號|玩家編號")) operate = 1;
         else if (CheckCommond(ref msg, "shoot|guess|bet|st|gs|bt|猜|赌|賭", false)) operate = 2;
         else return false;
 
@@ -174,16 +176,42 @@ public static class GuessManager
             }
             else if (!HostOnlyChatCommand.IsActive && pc.AmOwner && !isUI) Utils.SendMessage(originMsg, 255, pc.GetRealName());
 
-            if (!MsgToPlayerAndRole(msg, out byte targetId, out CustomRoles role, out string error))
+            byte targetId;
+            CustomRoles[] candidates;
+            string error;
+            if (selectedRole.HasValue)
+            {
+                targetId = selectedTarget ?? byte.MaxValue;
+                candidates = RoleNameResolver.Resolve(selectedRole.Value);
+                error = GetString("GuessHelp");
+            }
+            else if (!MsgToPlayerAndRoles(msg, out targetId, out candidates, out error))
             {
                 pc.ShowInfoMessage(isUI, error);
                 return true;
             }
             var target = Utils.GetPlayerById(targetId);
-
-            Logger.Msg($" {pc.PlayerId}", "Guesser - pc.PlayerId");
-            Logger.Msg($" {target.PlayerId}", "Guesser - target.PlayerId");
-            Logger.Msg($" {role}", "Guesser - role");
+            if (target == null || target.Data == null || target.Data.Disconnected || !target.IsAlive())
+            {
+                pc.ShowInfoMessage(isUI, GetString("GuessNull"));
+                return true;
+            }
+            if (candidates.Length == 0)
+            {
+                pc.ShowInfoMessage(isUI, error);
+                return true;
+            }
+            if (!GuesserGuessed.ContainsKey(pc.PlayerId)) GuesserGuessed.Add(pc.PlayerId, 0);
+            var selected = GuessCandidateSelector.Select(candidates,
+                candidate => GetCandidateError(pc, target, candidate) == null, candidate => target.Is(candidate));
+            if (!selected.HasValue)
+            {
+                pc.ShowInfoMessage(isUI, GetString(GetCandidateError(pc, target, candidates[0])));
+                return true;
+            }
+            // Prefer an actual legal main role/add-on. A miss uses one legal candidate once.
+            var role = selected.Value;
+            Logger.Msg($"{pc.PlayerId} => {targetId}: {string.Join(", ", candidates)}; selected {role}", "Guesser candidates");
 
             if (target != null)
             {
@@ -203,11 +231,6 @@ public static class GuessManager
                     pc.ShowInfoMessage(isUI, GetString("GuessDisabled"));
                     return true;
                 }
-                if (Jailer.IsTarget(pc.PlayerId) && role != CustomRoles.Jailer)
-                {
-                    pc.ShowInfoMessage(isUI, GetString("JailedCanOnlyGuessJailer"), Utils.ColorString(Utils.GetRoleColor(CustomRoles.Jailer), GetString("JailerTitle")));
-                    return true;
-                }
                 if (Jailer.IsTarget(target.PlayerId))
                 {
                     pc.ShowInfoMessage(isUI, GetString("CantGuessJailed"), Utils.ColorString(Utils.GetRoleColor(CustomRoles.Jailer), GetString("JailerTitle")));
@@ -222,98 +245,6 @@ public static class GuessManager
                 {
                     pc.ShowInfoMessage(isUI, GetString("GuessShielded"));
                     return true;
-                }
-
-                if (role == CustomRoles.Bait && target.Is(CustomRoles.Bait) && Bait.BaitNotification.GetBool())
-                {
-                    pc.ShowInfoMessage(isUI, GetString("GuessNotifiedBait"));
-                    return true;
-                }
-                if (role == CustomRoles.Rainbow && target.Is(CustomRoles.Rainbow))
-                {
-                    pc.ShowInfoMessage(isUI, GetString("GuessRainbow"));
-                    return true;
-                }
-                if (role is CustomRoles.LastImpostor or CustomRoles.Mare or CustomRoles.Cyber or CustomRoles.Flash or CustomRoles.Glow or CustomRoles.Sloth)
-                {
-                    pc.ShowInfoMessage(isUI, GetString("GuessObviousAddon"));
-                    return true;
-                }
-                if (target.Is(CustomRoles.Onbound))
-                {
-                    pc.ShowInfoMessage(isUI, GetString("GuessOnbound"));
-                    return true;
-                }
-
-                if (role == CustomRoles.GM || target.Is(CustomRoles.GM))
-                {
-                    pc.ShowInfoMessage(isUI, GetString("GuessGM"));
-                    return true;
-                }
-
-                if (role.IsTNA() && role != CustomRoles.Pestilence && !Options.TransformedNeutralApocalypseCanBeGuessed.GetBool())
-                {
-                    pc.ShowInfoMessage(isUI, GetString("GuessImmune"));
-                    return true;
-                }
-
-                // Guesser (add-on) Cant Guess Addons
-                if (role.IsAdditionRole() && pc.Is(CustomRoles.Guesser) && !Guesser.GCanGuessAdt.GetBool())
-                {
-                    pc.ShowInfoMessage(isUI, GetString("GuessAdtRole"));
-                    return true;
-                }
-
-                // Guesser Mode Can/Cant Guess Addons
-                if (Options.GuesserMode.GetBool())
-                {
-                    if (role.IsAdditionRole() && !Options.CanGuessAddons.GetBool())
-                    {
-                        // Impostors Cant Guess Addons
-                        if (Options.ImpostorsCanGuess.GetBool() && (pc.Is(Custom_Team.Impostor) || pc.GetCustomRole().IsMadmate()) && !(pc.Is(CustomRoles.EvilGuesser) || pc.Is(CustomRoles.Guesser)))
-                        {
-                            pc.ShowInfoMessage(isUI, GetString("GuessAdtRole"));
-                            return true;
-                        }
-
-                        // Crewmates Cant Guess Addons
-                        if (Options.CrewmatesCanGuess.GetBool() && pc.Is(Custom_Team.Crewmate) && !(pc.Is(CustomRoles.NiceGuesser) || pc.Is(CustomRoles.Guesser)))
-                        {
-                            pc.ShowInfoMessage(isUI, GetString("GuessAdtRole"));
-                            return true;
-                        }
-
-                        // Neutrals Cant Guess Addons
-                        if ((Options.NeutralKillersCanGuess.GetBool() || Options.PassiveNeutralsCanGuess.GetBool()) && pc.Is(Custom_Team.Neutral) && !(pc.Is(CustomRoles.Doomsayer) || pc.Is(CustomRoles.Guesser)))
-                        {
-                            pc.ShowInfoMessage(isUI, GetString("GuessAdtRole"));
-                            return true;
-                        }
-                    }
-                    if (role.IsImpostor() && !Options.ImpCanGuessImp.GetBool())
-                    {
-                        if (Options.ImpostorsCanGuess.GetBool() && (pc.Is(Custom_Team.Impostor) || pc.GetCustomRole().IsMadmate()) && !(pc.Is(CustomRoles.EvilGuesser) || pc.Is(CustomRoles.Guesser)))
-                        {
-                            pc.ShowInfoMessage(isUI, GetString("GuessImpRole"));
-                            return true;
-                        }
-                    }
-                    if (role.IsCrewmate() && !Options.CrewCanGuessCrew.GetBool())
-                    {
-                        if (Options.CrewmatesCanGuess.GetBool() && pc.Is(Custom_Team.Crewmate) && !(pc.Is(CustomRoles.NiceGuesser) || pc.Is(CustomRoles.Guesser)))
-                        {
-                            pc.ShowInfoMessage(isUI, GetString("GuessCrewRole"));
-                            return true;
-                        }
-                    }
-                    if (role.IsNA() && !Options.ApocCanGuessApoc.GetBool())
-                    {
-                        if (Options.NeutralApocalypseCanGuess.GetBool() && pc.IsNeutralApocalypse() && !pc.Is(CustomRoles.Guesser))
-                        {
-                            pc.ShowInfoMessage(isUI, GetString("GuessApocRole"));
-                            return true;
-                        }
-                    }
                 }
 
                 if (pc.PlayerId == target.PlayerId)
@@ -506,50 +437,108 @@ public static class GuessManager
         hudManager.SetHudActive(false);
         _ = new LateTask(() => hudManager.SetHudActive(false), 0.3f, "SetHudActive in ClientGuess", shoudLog: false);
     }
-    private static bool MsgToPlayerAndRole(string msg, out byte id, out CustomRoles role, out string error)
+    private static string GetCandidateError(PlayerControl pc, PlayerControl target, CustomRoles role)
     {
-        if (msg.StartsWith("/")) msg = msg.Replace("/", string.Empty);
-
-        Regex r = new("\\d+");
-        MatchCollection mc = r.Matches(msg);
-        string result = string.Empty;
-        for (int i = 0; i < mc.Count; i++)
+        var error = pc.GetRoleClass().GetGuessRoleError(pc, target, role)
+            ?? target.GetRoleClass().GetGuessedRoleError(pc, target, role);
+        if (error != null) return error;
+        if (Jailer.IsTarget(pc.PlayerId) && role != CustomRoles.Jailer) return "JailedCanOnlyGuessJailer";
+        if (role == CustomRoles.Bait && target.Is(CustomRoles.Bait) && Bait.BaitNotification.GetBool())
         {
-            result += mc[i];//匹配结果是完整的数字，此处可以不做拼接的
+            return "GuessNotifiedBait";
+        }
+        if (role == CustomRoles.Rainbow && target.Is(CustomRoles.Rainbow))
+        {
+            return "GuessRainbow";
+        }
+        if (role is CustomRoles.LastImpostor or CustomRoles.Mare or CustomRoles.Cyber or CustomRoles.Flash or CustomRoles.Glow or CustomRoles.Sloth)
+        {
+            return "GuessObviousAddon";
+        }
+        if (target.Is(CustomRoles.Onbound))
+        {
+            return "GuessOnbound";
         }
 
-        if (int.TryParse(result, out int num))
+        if (role == CustomRoles.GM || target.Is(CustomRoles.GM))
         {
-            id = Convert.ToByte(num);
-        }
-        else
-        {
-            //并不是玩家编号，判断是否颜色
-            //byte color = GetColorFromMsg(msg);
-            //好吧我不知道怎么取某位玩家的颜色，等会了的时候再来把这里补上
-            id = byte.MaxValue;
-            error = GetString("GuessHelp");
-            role = new();
-            return false;
+            return "GuessGM";
         }
 
-        //判断选择的玩家是否合理
-        PlayerControl target = Utils.GetPlayerById(id);
-        if (target == null || target.Data.IsDead)
+        if (role.IsTNA() && role != CustomRoles.Pestilence && !Options.TransformedNeutralApocalypseCanBeGuessed.GetBool())
         {
-            error = GetString("GuessNull");
-            role = new();
-            return false;
+            return "GuessImmune";
         }
 
-        if (!ChatCommands.GetRoleByName(msg, out role))
+        // Guesser (add-on) Cant Guess Addons
+        if (role.IsAdditionRole() && pc.Is(CustomRoles.Guesser) && !Guesser.GCanGuessAdt.GetBool())
         {
-            error = GetString("GuessHelp");
-            return false;
+            return "GuessAdtRole";
         }
 
-        error = string.Empty;
-        return true;
+        // Guesser Mode Can/Cant Guess Addons
+        if (Options.GuesserMode.GetBool())
+        {
+            if (role.IsAdditionRole() && !Options.CanGuessAddons.GetBool())
+            {
+                // Impostors Cant Guess Addons
+                if (Options.ImpostorsCanGuess.GetBool() && (pc.Is(Custom_Team.Impostor) || pc.GetCustomRole().IsMadmate()) && !(pc.Is(CustomRoles.EvilGuesser) || pc.Is(CustomRoles.Guesser)))
+                {
+                    return "GuessAdtRole";
+                }
+
+                // Crewmates Cant Guess Addons
+                if (Options.CrewmatesCanGuess.GetBool() && pc.Is(Custom_Team.Crewmate) && !(pc.Is(CustomRoles.NiceGuesser) || pc.Is(CustomRoles.Guesser)))
+                {
+                    return "GuessAdtRole";
+                }
+
+                // Neutrals Cant Guess Addons
+                if ((Options.NeutralKillersCanGuess.GetBool() || Options.PassiveNeutralsCanGuess.GetBool()) && pc.Is(Custom_Team.Neutral) && !(pc.Is(CustomRoles.Doomsayer) || pc.Is(CustomRoles.Guesser)))
+                {
+                    return "GuessAdtRole";
+                }
+            }
+            if (role.IsImpostor() && !Options.ImpCanGuessImp.GetBool())
+            {
+                if (Options.ImpostorsCanGuess.GetBool() && (pc.Is(Custom_Team.Impostor) || pc.GetCustomRole().IsMadmate()) && !(pc.Is(CustomRoles.EvilGuesser) || pc.Is(CustomRoles.Guesser)))
+                {
+                    return "GuessImpRole";
+                }
+            }
+            if (role.IsCrewmate() && !Options.CrewCanGuessCrew.GetBool())
+            {
+                if (Options.CrewmatesCanGuess.GetBool() && pc.Is(Custom_Team.Crewmate) && !(pc.Is(CustomRoles.NiceGuesser) || pc.Is(CustomRoles.Guesser)))
+                {
+                    return "GuessCrewRole";
+                }
+            }
+            if (role.IsNA() && !Options.ApocCanGuessApoc.GetBool())
+            {
+                if (Options.NeutralApocalypseCanGuess.GetBool() && pc.IsNeutralApocalypse() && !pc.Is(CustomRoles.Guesser))
+                {
+                    return "GuessApocRole";
+                }
+            }
+        }
+
+        return null;
+    }
+
+
+    private static bool MsgToPlayerAndRoles(string msg, out byte id, out CustomRoles[] roles, out string error)
+    {
+        roles = [];
+        error = GetString("GuessHelp");
+        if (!RoleNameIndex.TrySplitGuess(msg, out id, out var roleName)) return false;
+        roles = RoleNameResolver.Resolve(roleName);
+        return roles.Length != 0;
+    }
+
+    private static void GuessByRoleId(PlayerControl pc, int targetId, CustomRoles role)
+    {
+        if (targetId < byte.MinValue || targetId > byte.MaxValue) return;
+        HandleGuess(pc, "", true, (byte)targetId, role);
     }
 
     public static void TryHideMsg()
@@ -1035,7 +1024,7 @@ public static class GuessManager
 
                         Logger.Msg($"Click: {pc.GetNameWithRole().RemoveHtmlTags()} => {role}", "Guesser UI");
 
-                        if (AmongUsClient.Instance.AmHost) GuesserMsg(PlayerControl.LocalPlayer, $"/bt {playerId} {GetString(role.ToString())}", true);
+                        if (AmongUsClient.Instance.AmHost) GuessByRoleId(PlayerControl.LocalPlayer, playerId, role);
                         else SendRPC(playerId, role);
 
                         // Reset the GUI
@@ -1100,6 +1089,6 @@ public static class GuessManager
         Logger.Msg($"{role}", "Role Int32");
         Logger.Msg($"{GetString(role.ToString())}", "Role String");
 
-        GuesserMsg(pc, $"/bt {PlayerId} {GetString(role.ToString())}", true);
+        GuessByRoleId(pc, PlayerId, role);
     }
 }

@@ -1,4 +1,4 @@
-using Assets.CoreScripts;
+﻿using Assets.CoreScripts;
 using Hazel;
 using System;
 using System.IO;
@@ -1898,39 +1898,6 @@ internal class ChatCommands
         };
     }
 
-    public static bool GetRoleByName(string name, out CustomRoles role)
-    {
-        role = new();
-
-        if (name == "" || name == string.Empty) return false;
-
-        if ((TranslationController.InstanceExists ? TranslationController.Instance.currentLanguage.languageID : SupportedLangs.SChinese) == SupportedLangs.SChinese)
-        {
-            Regex r = new("[\u4e00-\u9fa5]+$");
-            MatchCollection mc = r.Matches(name);
-            string result = string.Empty;
-            for (int i = 0; i < mc.Count; i++)
-            {
-                if (mc[i].ToString() == "是") continue;
-                result += mc[i]; //匹配结果是完整的数字，此处可以不做拼接的
-            }
-            name = FixRoleNameInput(result.Replace("是", string.Empty).Trim());
-        }
-        else name = name.Trim().ToLower();
-
-        foreach (var rl in CustomRolesHelper.AllRoles)
-        {
-            if (rl.IsVanilla()) continue;
-            var roleName = GetString(rl.ToString()).ToLower().Trim().Replace(" ", "");
-            string nameWithoutId = Regex.Replace(name.Replace(" ", ""), @"^\d+", "");
-            if (nameWithoutId == roleName)
-            {
-                role = rl;
-                return true;
-            }
-        }
-        return false;
-    }
     public static void SendRolesInfo(string role, byte playerId, bool isDev = false, bool isUp = false)
     {
         if (Options.CurrentGameMode == CustomGameMode.FFA)
@@ -1938,12 +1905,7 @@ internal class ChatCommands
             Utils.SendMessage(GetString("ModeDescribe.FFA"), playerId);
             return;
         }
-        role = role.Trim().ToLower();
-        if (role.StartsWith("/r")) _ = role.Replace("/r", string.Empty);
-        if (role.StartsWith("/up")) _ = role.Replace("/up", string.Empty);
-        if (role.EndsWith("\r\n")) _ = role.Replace("\r\n", string.Empty);
-        if (role.EndsWith("\n")) _ = role.Replace("\n", string.Empty);
-        if (role.StartsWith("/bt")) _ = role.Replace("/bt", string.Empty);
+        role = role.Trim();
 
         if (role == "" || role == string.Empty)
         {
@@ -1951,70 +1913,71 @@ internal class ChatCommands
             return;
         }
 
-        role = FixRoleNameInput(role).ToLower().Trim().Replace(" ", string.Empty);
-
-        foreach (var rl in CustomRolesHelper.AllRoles)
+        var matches = RoleNameResolver.Resolve(role);
+        // Selection commands cannot silently pick one of several matching roles.
+        if (matches.Length > 1 && (isDev || isUp) && GameStates.IsLobby)
         {
-            if (rl.IsVanilla()) continue;
-            var roleName = GetString(rl.ToString());
-            if (role == roleName.ToLower().Trim().TrimStart('*').Replace(" ", string.Empty))
-            {
-                string devMark = "";
-                if ((isDev || isUp) && GameStates.IsLobby)
-                {
-                    devMark = "▲";
-                    if (CustomRolesHelper.IsAdditionRole(rl) || rl is CustomRoles.GM or CustomRoles.Mini || rl.IsGhostRole()) devMark = "";
-                    if (rl.GetCount() < 1 || rl.GetMode() == 0) devMark = "";
-                    if (isUp)
-                    {
-                        if (devMark == "▲") Utils.SendMessage(string.Format(GetString("Message.YTPlanSelected"), roleName), playerId);
-                        else Utils.SendMessage(string.Format(GetString("Message.YTPlanSelectFailed"), roleName), playerId);
-                    }
-                    if (devMark == "▲")
-                    {
-                        byte pid = playerId == 255 ? (byte)0 : playerId;
-                        GhostRoleAssign.forceRole.Remove(pid);
-                        RoleAssign.SetRoles.Remove(pid);
-                        RoleAssign.SetRoles.Add(pid, rl);
-                    }
-                    if (rl.IsGhostRole() && !rl.IsAdditionRole() && isDev && (rl.GetCount() >= 1 && rl.GetMode() > 0))
-                    {
-                        byte pid = playerId == 255 ? (byte)0 : playerId;
-                        CustomRoles setrole = rl.GetCustomRoleTeam() switch
-                        {
-                            Custom_Team.Impostor => CustomRoles.ImpostorTOHE,
-                            _ => CustomRoles.CrewmateTOHE
-
-                        };
-                        RoleAssign.SetRoles.Remove(pid);
-                        RoleAssign.SetRoles.Add(pid, setrole);
-                        GhostRoleAssign.forceRole[pid] = rl;
-
-                        devMark = "▲";
-                    }
-
-                    if (isUp) return;
-                }
-                var Des = rl.GetInfoLong();
-                var title = devMark + $"<color=#ffffff>" + rl.GetRoleTitle() + "</color>\n";
-                var Conf = new StringBuilder();
-                string rlHex = Utils.GetRoleColorCode(rl);
-                if (Options.CustomRoleSpawnChances.ContainsKey(rl))
-                {
-                    Utils.ShowChildrenSettings(Options.CustomRoleSpawnChances[rl], ref Conf);
-                    var cleared = Conf.ToString();
-                    var Setting = $"<color={rlHex}>{GetString(rl.ToString())} {GetString("Settings:")}</color>\n";
-                    Conf.Clear().Append($"<color=#ffffff>" + $"<size={Csize}>" + Setting + cleared + "</size>" + "</color>");
-
-                }
-                // Show role info
-                Utils.SendMessage(Des, playerId, title, noReplay: true);
-
-                // Show role settings
-                Utils.SendMessage("", playerId, Conf.ToString(), noReplay: true);
-                return;
-            }
+            Utils.SendMessage(string.Format(GetString("RoleNameAmbiguous"), string.Join(", ", matches.Select(candidate => $"{GetString(candidate.ToString())} ({candidate})"))), playerId);
+            isDev = isUp = false;
         }
+        foreach (var rl in matches)
+        {
+            var roleName = GetString(rl.ToString());
+            string devMark = "";
+            if ((isDev || isUp) && GameStates.IsLobby)
+            {
+                devMark = "▲";
+                if (CustomRolesHelper.IsAdditionRole(rl) || rl is CustomRoles.GM or CustomRoles.Mini || rl.IsGhostRole()) devMark = "";
+                if (rl.GetCount() < 1 || rl.GetMode() == 0) devMark = "";
+                if (isUp)
+                {
+                    if (devMark == "▲") Utils.SendMessage(string.Format(GetString("Message.YTPlanSelected"), roleName), playerId);
+                    else Utils.SendMessage(string.Format(GetString("Message.YTPlanSelectFailed"), roleName), playerId);
+                }
+                if (devMark == "▲")
+                {
+                    byte pid = playerId == 255 ? (byte)0 : playerId;
+                    GhostRoleAssign.forceRole.Remove(pid);
+                    RoleAssign.SetRoles.Remove(pid);
+                    RoleAssign.SetRoles.Add(pid, rl);
+                }
+                if (rl.IsGhostRole() && !rl.IsAdditionRole() && isDev && (rl.GetCount() >= 1 && rl.GetMode() > 0))
+                {
+                    byte pid = playerId == 255 ? (byte)0 : playerId;
+                    CustomRoles setrole = rl.GetCustomRoleTeam() switch
+                    {
+                        Custom_Team.Impostor => CustomRoles.ImpostorTOHE,
+                        _ => CustomRoles.CrewmateTOHE
+
+                    };
+                    RoleAssign.SetRoles.Remove(pid);
+                    RoleAssign.SetRoles.Add(pid, setrole);
+                    GhostRoleAssign.forceRole[pid] = rl;
+
+                    devMark = "▲";
+                }
+
+                if (isUp) return;
+            }
+            var Des = rl.GetInfoLong();
+            var title = devMark + $"<color=#ffffff>" + rl.GetRoleTitle() + "</color>\n";
+            var Conf = new StringBuilder();
+            string rlHex = Utils.GetRoleColorCode(rl);
+            if (Options.CustomRoleSpawnChances.ContainsKey(rl))
+            {
+                Utils.ShowChildrenSettings(Options.CustomRoleSpawnChances[rl], ref Conf);
+                var cleared = Conf.ToString();
+                var Setting = $"<color={rlHex}>{GetString(rl.ToString())} {GetString("Settings:")}</color>\n";
+                Conf.Clear().Append($"<color=#ffffff>" + $"<size={Csize}>" + Setting + cleared + "</size>" + "</color>");
+
+            }
+            // Show role info
+            Utils.SendMessage(Des, playerId, title, noReplay: true);
+
+            // Show role settings
+            Utils.SendMessage("", playerId, Conf.ToString(), noReplay: true);
+        }
+        if (matches.Length != 0) return;
         if (isUp) Utils.SendMessage(GetString("Message.YTPlanCanNotFindRoleThePlayerEnter"), playerId);
         else Utils.SendMessage(GetString("Message.CanNotFindRoleThePlayerEnter"), playerId);
         return;

@@ -1,4 +1,6 @@
 {
+  "CrossLanguageGetRole": "跨语言识别职业名称",
+  "RoleNameAmbiguous": "匹配到多个职业：{0}。未指定职业。",
   "LanguageID": "13",
   "HostText": "TOHE",
   "HostColor": "#902efd",

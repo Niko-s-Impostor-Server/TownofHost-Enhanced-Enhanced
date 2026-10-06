@@ -144,36 +144,31 @@ internal class Doomsayer : RoleBase
         return false;
     }
 
-    public override bool GuessCheck(bool isUI, PlayerControl guesser, PlayerControl target, CustomRoles role, ref bool guesserSuicide)
+    public override string GetGuessRoleError(PlayerControl guesser, PlayerControl target, CustomRoles role)
     {
         if (CheckCantGuess)
         {
-            guesser.ShowInfoMessage(isUI, GetString("DoomsayerCantGuess"));
-            return true;
+            return "DoomsayerCantGuess";
         }
 
         if (role.IsImpostor() && !DCanGuessImpostors.GetBool())
         {
-            guesser.ShowInfoMessage(isUI, GetString("GuessNotAllowed"));
-            return true;
+            return "GuessNotAllowed";
         }
         if (role.IsCrewmate() && !DCanGuessCrewmates.GetBool())
         {
-            guesser.ShowInfoMessage(isUI, GetString("GuessNotAllowed"));
-            return true;
+            return "GuessNotAllowed";
         }
         if (role.IsNeutral() && !DCanGuessNeutrals.GetBool())
         {
-            guesser.ShowInfoMessage(isUI, GetString("GuessNotAllowed"));
-            return true;
+            return "GuessNotAllowed";
         }
         if (role.IsAdditionRole() && !DCanGuessAdt.GetBool())
         {
-            guesser.ShowInfoMessage(isUI, GetString("GuessAdtRole"));
-            return true;
+            return "GuessAdtRole";
         }
 
-        return false;
+        return null;
     }
 
     public override bool CheckMisGuessed(bool isUI, PlayerControl guesser, PlayerControl target, CustomRoles role, ref bool guesserSuicide)
