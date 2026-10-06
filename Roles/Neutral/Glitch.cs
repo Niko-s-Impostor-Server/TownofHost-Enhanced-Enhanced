@@ -98,6 +98,7 @@ internal class Glitch : RoleBase
             LastMimic = Utils.GetTimeStamp();
             MimicCDTimer = MimicCooldown.GetInt();
             MimicDurTimer = MimicDuration.GetInt();
+            AfkMonitor.RecordActivity(pc);
         }
         catch (System.Exception ex)
         {
