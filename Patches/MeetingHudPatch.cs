@@ -967,7 +967,7 @@ class MeetingHudStartPatch
             var textTemplate = pva.NameText;
 
             // Create role text in meeting
-            var RoleTextData = GetRoleAndSubText(PlayerControl.LocalPlayer.PlayerId, pc.PlayerId);
+            var RoleTextData = GetRoleAndSubText(PlayerControl.LocalPlayer.PlayerId, pc.PlayerId, isMeeting: true, useShortNames: true);
             var roleTextMeeting = UnityEngine.Object.Instantiate(textTemplate);
             if (roleTextMeeting.transform.FindChild("DeathReasonTextMeeting") != null)
                 UnityEngine.Object.Destroy(roleTextMeeting.transform.FindChild("DeathReasonTextMeeting").gameObject);

@@ -369,27 +369,25 @@ public static class Utils
 
         return InfoLong.Replace(RealRole, $"{ColorName}");
     }
-    public static string GetDisplayRoleAndSubName(byte seerId, byte targetId, bool notShowAddOns = false, bool? isMeeting = null)
+    public static string GetDisplayRoleAndSubName(byte seerId, byte targetId, bool notShowAddOns = false, bool? isMeeting = null, bool useShortNames = false)
     {
-        var TextData = GetRoleAndSubText(seerId, targetId, notShowAddOns, isMeeting);
+        var TextData = GetRoleAndSubText(seerId, targetId, notShowAddOns, isMeeting, useShortNames);
         return ColorString(TextData.Item2, TextData.Item1);
     }
     public static string GetRoleName(CustomRoles role, bool forUser = true)
     {
         return GetRoleString(Enum.GetName(typeof(CustomRoles), role), forUser);
     }
-    public static string GetAddOnDisplayName(CustomRoles role, bool? isMeeting = null, bool preferPrefix = true, bool forUser = true)
+    public static string GetAddOnDisplayName(CustomRoles role, bool? isMeeting = null, bool preferPrefix = true, bool forUser = true, bool useShortNames = false)
     {
         var name = preferPrefix ? GetString($"Prefix.{role}") : GetRoleName(role, forUser);
         if (string.IsNullOrWhiteSpace(name) || name.StartsWith("*") || name.Contains("INVALID"))
             name = preferPrefix ? GetString($"{role}") : GetRoleName(role, forUser);
 
-        var meeting = isMeeting ?? GameStates.IsMeeting;
-        var mode = (Options.ShortAddOnNamesMode)(Options.ShowShortNamesForAddOns?.GetValue() ?? 0);
-        var useShortName = mode == Options.ShortAddOnNamesMode.ShortAddOnNamesMode_Always
-            || mode == Options.ShortAddOnNamesMode.ShortAddOnNamesMode_OnlyInMeeting && meeting
-            || mode == Options.ShortAddOnNamesMode.ShortAddOnNamesMode_OnlyInGame && !meeting;
-        if (!useShortName) return name;
+        var meeting = isMeeting == true && GameStates.IsMeeting && !GameStates.IsEnded;
+        var task = isMeeting != true && GameStates.IsInTask && !GameStates.IsEnded && !GameStates.IsExilling
+            && Main.IntroDestroyed && !Main.MeetingIsStarted && !SetUpRoleTextPatch.IsInIntro;
+        if (!ShortNamePolicy.ShouldShorten(Options.ShowShortNamesForAddOns?.GetValue() ?? 0, useShortNames, meeting, task)) return name;
 
         // Strip rich text before taking a full Unicode text element, not a UTF-16 code unit.
         var plainName = name.RemoveHtmlTags().Trim();
@@ -504,7 +502,7 @@ public static class Utils
         if (!Main.roleColors.TryGetValue(role, out var hexColor)) hexColor = "#ffffff";
         return hexColor;
     }
-    public static (string, Color) GetRoleAndSubText(byte seerId, byte targetId, bool notShowAddOns = false, bool? isMeeting = null)
+    public static (string, Color) GetRoleAndSubText(byte seerId, byte targetId, bool notShowAddOns = false, bool? isMeeting = null, bool useShortNames = false)
     {
         string RoleText = "Invalid Role";
         Color RoleColor = new Color32(byte.MaxValue, byte.MaxValue, byte.MaxValue, byte.MaxValue);
@@ -545,7 +543,7 @@ public static class Utils
                     var seerPlatform = seer.GetClient()?.PlatformData.Platform;
                     var addBracketsToAddons = Options.AddBracketsToAddons.GetBool();
 
-                    string Getname(CustomRoles subRole) => GetAddOnDisplayName(subRole, isMeeting);
+                    string Getname(CustomRoles subRole) => GetAddOnDisplayName(subRole, isMeeting, useShortNames: useShortNames);
 
                     // if the player is playing on a console platform
                     if (seerPlatform is Platforms.Playstation or Platforms.Xbox or Platforms.Switch)
@@ -2047,7 +2045,7 @@ public static class Utils
                 // ====== Combine SelfRoleName, SelfTaskText, SelfName, SelfDeathReason for seer ======
                 string SelfTaskText = GetProgressText(seer);
 
-                string SelfRoleName = $"<size={fontSize}>{seer.GetDisplayRoleAndSubName(seer, false, isForMeeting)}{SelfTaskText}</size>";
+                string SelfRoleName = $"<size={fontSize}>{seer.GetDisplayRoleAndSubName(seer, false, isForMeeting, useShortNames: true)}{SelfTaskText}</size>";
                 string SelfDeathReason = seer.KnowDeathReason(seer) ? $"\n<size={fontSizeDeathReason}>『{ColorString(GetRoleColor(CustomRoles.Doctor), GetVitalText(seer.PlayerId))}』</size>" : string.Empty;
                 string SelfName = $"{ColorString(seer.GetRoleColor(), SeerRealName)}{SelfDeathReason}{SelfMark}";
 
@@ -2180,7 +2178,7 @@ public static class Utils
                         bool KnowRoleTarget = ExtendedPlayerControl.KnowRoleTarget(seer, target);
 
                         string TargetRoleText = KnowRoleTarget
-                                ? $"<size={fontSize}>{seer.GetDisplayRoleAndSubName(target, false, isForMeeting)}{GetProgressText(target)}</size>\r\n" : "";
+                                ? $"<size={fontSize}>{seer.GetDisplayRoleAndSubName(target, false, isForMeeting, useShortNames: true)}{GetProgressText(target)}</size>\r\n" : "";
 
                         if (seer.IsAlive() && Overseer.IsRevealedPlayer(seer, target) && target.Is(CustomRoles.Trickster))
                         {

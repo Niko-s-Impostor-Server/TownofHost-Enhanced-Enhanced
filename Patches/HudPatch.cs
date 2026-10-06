@@ -293,7 +293,7 @@ class TaskPanelBehaviourPatch
         // Display Description
         if (!player.GetCustomRole().IsVanilla())
         {
-            var RoleWithInfo = $"{player.GetDisplayRoleAndSubName(player, false)}:\r\n";
+            var RoleWithInfo = $"{player.GetDisplayRoleAndSubName(player, false, useShortNames: true)}:\r\n";
             RoleWithInfo += player.GetRoleInfo();
 
             var AllText = Utils.ColorString(player.GetRoleColor(), RoleWithInfo);

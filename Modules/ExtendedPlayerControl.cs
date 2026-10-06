@@ -930,9 +930,9 @@ static class ExtendedPlayerControl
     {
         return Main.PlayerStates[player.PlayerId].TaskState;
     }
-    public static string GetDisplayRoleAndSubName(this PlayerControl seer, PlayerControl target, bool notShowAddOns = false, bool? isMeeting = null)
+    public static string GetDisplayRoleAndSubName(this PlayerControl seer, PlayerControl target, bool notShowAddOns = false, bool? isMeeting = null, bool useShortNames = false)
     {
-        return Utils.GetDisplayRoleAndSubName(seer.PlayerId, target.PlayerId, notShowAddOns, isMeeting);
+        return Utils.GetDisplayRoleAndSubName(seer.PlayerId, target.PlayerId, notShowAddOns, isMeeting, useShortNames);
     }
     public static string GetSubRoleName(this PlayerControl player, bool forUser = false)
     {
