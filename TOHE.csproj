@@ -13,7 +13,7 @@
     <CodePage>65001</CodePage>
   </PropertyGroup>
   <ItemGroup>
-    <!-- Translator reads every language from the main assembly, including dotted Features locale files. -->
+    <!-- Translator reads language resources from the main assembly. -->
     <EmbeddedResource Include="Resources/**" WithCulture="false" />
   </ItemGroup>
   <!-- Use the interop assemblies generated for the actual IL2CPP installation. -->
