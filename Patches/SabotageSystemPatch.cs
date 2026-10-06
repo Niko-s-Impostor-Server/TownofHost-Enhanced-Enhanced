@@ -309,7 +309,10 @@ public class SabotageSystemPatch
 
             Logger.Info($"PlayerName: {player.GetNameWithRole()}, SabotageType: {nextSabotage}, amount {amount}", "SabotageSystemType.UpdateSystem");
 
-            return CanSabotage(player, nextSabotage);
+            var accepted = CanSabotage(player, nextSabotage);
+            if (accepted && player.AmOwner && MapRoomActivityPatch.IsPlayerInput)
+                AfkMonitor.RecordActivity(player);
+            return accepted;
         }
         private static bool CanSabotage(PlayerControl player, SystemTypes systemType)
         {

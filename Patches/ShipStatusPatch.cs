@@ -1,5 +1,6 @@
 using Hazel;
 using System;
+using System.Reflection;
 using TOHE.Patches;
 using TOHE.Roles.AddOns.Common;
 using TOHE.Roles.Core;
@@ -7,6 +8,28 @@ using TOHE.Roles.Neutral;
 using UnityEngine;
 
 namespace TOHE;
+
+[HarmonyPatch]
+internal static class MapRoomActivityPatch
+{
+    [ThreadStatic] private static int inputDepth;
+    internal static bool IsPlayerInput => inputDepth > 0;
+
+    private static IEnumerable<MethodBase> TargetMethods() => new[]
+    {
+        nameof(MapRoom.SabotageReactor), nameof(MapRoom.SabotageHeli), nameof(MapRoom.SabotageComms),
+        nameof(MapRoom.SabotageOxygen), nameof(MapRoom.SabotageLights), nameof(MapRoom.SabotageSeismic),
+        nameof(MapRoom.SabotageMushroomMixup), nameof(MapRoom.SabotageDoors)
+    }.Select(name => AccessTools.Method(typeof(MapRoom), name));
+
+    private static void Prefix() => inputDepth++;
+
+    private static Exception Finalizer(Exception __exception)
+    {
+        inputDepth--;
+        return __exception;
+    }
+}
 
 [HarmonyPatch(typeof(ShipStatus), nameof(ShipStatus.FixedUpdate))]
 class ShipFixedUpdatePatch
@@ -170,6 +193,8 @@ class ShipStatusCloseDoorsPatch
 
         if (allow)
         {
+            if (MapRoomActivityPatch.IsPlayerInput)
+                AfkMonitor.RecordActivity(PlayerControl.LocalPlayer);
             Logger.Info($"The door is closed in room: {room}", "CloseDoorsOfType");
         }
         return allow;
