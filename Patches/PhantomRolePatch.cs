@@ -68,6 +68,8 @@ public static class PhantomRolePatch
 
         var phantom = __instance;
         Logger.Info($"Player: {phantom.GetRealName()}", "CheckVanish");
+        if (phantom.IsAlive() && GameStates.IsInTask && phantom.Data.Role.Role == RoleTypes.Phantom)
+            AfkMonitor.RecordActivity(phantom);
 
         foreach (var target in Main.AllPlayerControls)
         {
@@ -110,6 +112,7 @@ public static class PhantomRolePatch
 
         var phantom = __instance;
         Logger.Info($"Player: {phantom.GetRealName()} => shouldAnimate {shouldAnimate}", "CheckAppear");
+        if (shouldAnimate && phantom.IsAlive() && GameStates.IsInTask) AfkMonitor.RecordActivity(phantom);
 
         if (phantom.inVent)
         {

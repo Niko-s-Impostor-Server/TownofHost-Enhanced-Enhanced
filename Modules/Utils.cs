@@ -2029,6 +2029,7 @@ public static class Utils
 
                 SelfSuffix.Append(Radar.GetPlayerArrow(seer, seer, isForMeeting: isForMeeting));
                 SelfSuffix.Append(Spurt.GetSuffix(seer, isformeeting: isForMeeting));
+                SelfSuffix.Append(AfkMonitor.GetSuffix(seer, seer));
 
 
                 switch (Options.CurrentGameMode)
@@ -2255,6 +2256,7 @@ public static class Utils
 
                         TargetSuffix.Append(seerRoleClass?.GetSuffix(seer, target, isForMeeting: isForMeeting));
                         TargetSuffix.Append(CustomRoleManager.GetSuffixOthers(seer, target, isForMeeting: isForMeeting));
+                        TargetSuffix.Append(AfkMonitor.GetSuffix(seer, target));
 
                         if (TargetSuffix.Length > 0)
                         {

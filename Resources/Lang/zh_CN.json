@@ -1,4 +1,11 @@
 {
+  "AfkMonitor.SuicideMode": "自杀",
+  "AfkMonitor.ActivateOnStart": "开场启用挂机检测",
+  "AfkMonitor.ExemptAdministrators": "豁免房主和管理员",
+  "AfkMonitor.SuicideWarning": "你已被标记为挂机，请在15秒内活动，否则将自杀。",
+  "AfkMonitor.Countdown": "<color=#ffb347>挂机警告：{0}秒</color>",
+  "AfkMonitor.Repairing": "<color=#ffb347>挂机：等待黑屏恢复</color>",
+  "AfkMonitor.CollectiveFailure": "多数玩家同时出现活动异常，本局已停止自动挂机惩罚。",
   "ManagementReasonUnspecified": "未指定",
   "ManagementReason": "原因",
   "ManagementLogFailed": "操作已完成，但管理日志保存失败。",

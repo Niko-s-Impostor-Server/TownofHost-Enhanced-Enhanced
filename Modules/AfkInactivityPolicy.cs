@@ -3,7 +3,8 @@ using System;
 namespace TOHE;
 
 internal readonly record struct AfkIdentity(byte PlayerId, int OwnerId, nint Pointer);
-internal readonly record struct AfkStatus(double IdleSeconds, bool IsAfk, bool Exempt, bool KickSent);
+internal enum AfkConsequence { Warning = 0, Shield = 1, Kick = 2, Suicide = 3 }
+internal readonly record struct AfkStatus(double IdleSeconds, bool IsAfk, bool Exempt, bool ConsequenceSent, bool RepairAttempted);
 
 // Counts observed task-stage time. A host stall cannot become an instant AFK penalty.
 internal sealed class AfkInactivityPolicy
@@ -16,20 +17,20 @@ internal sealed class AfkInactivityPolicy
         internal double Idle;
         internal float X, Y;
         internal int Tasks;
-        internal bool HasBaseline, Afk, Exempt, KickSent;
+        internal bool HasBaseline, Afk, Exempt, ConsequenceSent, RepairAttempted;
 
         internal void Restart(double now, double grace)
         {
             LastObserved = now;
             Grace = grace;
             Idle = 0;
-            Afk = KickSent = HasBaseline = false;
+            Afk = ConsequenceSent = RepairAttempted = HasBaseline = false;
         }
         internal void Activity(double now)
         {
             LastObserved = now;
             Idle = 0;
-            Afk = KickSent = false;
+            Afk = ConsequenceSent = RepairAttempted = false;
         }
     }
 
@@ -43,7 +44,7 @@ internal sealed class AfkInactivityPolicy
     }
 
     internal bool Observe(AfkIdentity identity, float x, float y, int tasks, double now,
-        bool paused, double grace, double threshold)
+        bool paused, double grace, double threshold, bool frozen = false)
     {
         var entry = Ensure(identity, now, grace);
         if (paused || entry.Exempt || now < entry.LastObserved)
@@ -67,6 +68,9 @@ internal sealed class AfkInactivityPolicy
             entry.Activity(now);
             return false;
         }
+
+        // Queued repairs freeze the warning, but real movement/tasks can still cancel them.
+        if (frozen) { entry.LastObserved = now; return false; }
 
         // Polling every 0.5 seconds may arrive a little late; cap gaps at one second.
         var elapsed = Math.Min(1d, Math.Max(0d, now - entry.LastObserved));
@@ -96,15 +100,29 @@ internal sealed class AfkInactivityPolicy
     {
         status = default;
         if (!entries.TryGetValue(identity.PlayerId, out var entry) || entry.Identity != identity) return false;
-        status = new(entry.Idle, entry.Afk, entry.Exempt, entry.KickSent);
+        status = new(entry.Idle, entry.Afk, entry.Exempt, entry.ConsequenceSent, entry.RepairAttempted);
         return true;
     }
 
-    internal void MarkKickSent(AfkIdentity identity)
+    internal void MarkConsequenceSent(AfkIdentity identity)
     {
         if (entries.TryGetValue(identity.PlayerId, out var entry) && entry.Identity == identity)
-            entry.KickSent = true;
+            entry.ConsequenceSent = true;
     }
+
+    internal void MarkRepairAttempted(AfkIdentity identity)
+    {
+        if (entries.TryGetValue(identity.PlayerId, out var entry) && entry.Identity == identity)
+            entry.RepairAttempted = true;
+    }
+
+    internal void Freeze(AfkIdentity identity, double now)
+    {
+        if (entries.TryGetValue(identity.PlayerId, out var entry) && entry.Identity == identity)
+            entry.LastObserved = now;
+    }
+
+    internal static bool CollectiveFailure(int alive, int warning) => alive > 0 && warning >= 2 && warning * 2 >= alive;
 
     internal void RemoveMissing(HashSet<AfkIdentity> live)
     {

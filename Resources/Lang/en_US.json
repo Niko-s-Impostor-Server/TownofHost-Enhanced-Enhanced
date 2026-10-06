@@ -1,4 +1,11 @@
 {
+  "AfkMonitor.SuicideMode": "Suicide",
+  "AfkMonitor.ActivateOnStart": "Start detecting at game start",
+  "AfkMonitor.ExemptAdministrators": "Exempt host and administrators",
+  "AfkMonitor.SuicideWarning": "You are AFK. Act within 15 seconds to avoid suicide.",
+  "AfkMonitor.Countdown": "<color=#ffb347>AFK: {0}s</color>",
+  "AfkMonitor.Repairing": "<color=#ffb347>AFK: awaiting recovery</color>",
+  "AfkMonitor.CollectiveFailure": "Many players are inactive at once. Automatic AFK penalties are suspended for this round.",
   "ManagementReasonUnspecified": "Not specified",
   "ManagementReason": "Reason",
   "ManagementLogFailed": "The action succeeded, but the management log could not be saved.",

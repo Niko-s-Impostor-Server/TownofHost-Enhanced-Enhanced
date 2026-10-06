@@ -1,4 +1,4 @@
-using AmongUs.GameOptions;
+﻿using AmongUs.GameOptions;
 using Hazel;
 using InnerNet;
 using System;
@@ -94,6 +94,7 @@ class CheckMurderPatch
         }
 
         killer.ResetKillCooldown();
+        AfkMonitor.RecordActivity(__instance);
         Logger.Info($"Kill Cooldown Resets", "CheckMurder");
 
         // Replacement process when the actual killer and the KILLER are different
@@ -567,6 +568,7 @@ public static class CheckShapeshiftPatch
 
         var shapeshifter = __instance;
         bool resetCooldown = true;
+        AfkMonitor.RecordActivity(shapeshifter);
 
         logger.Info($"Self:{shapeshifter.PlayerId == target.PlayerId} - Is animate:{shouldAnimate} - In Meeting:{GameStates.IsMeeting}");
 
@@ -646,7 +648,11 @@ public static class CheckShapeshiftPatch
 
         if (instance == target && Main.UnShapeShifter.Contains(instance.PlayerId))
         {
-            if (!instance.IsMushroomMixupActive() && !GameStates.IsMeeting) instance.GetRoleClass().UnShapeShiftButton(instance);
+            if (!instance.IsMushroomMixupActive() && !GameStates.IsMeeting)
+            {
+                instance.GetRoleClass().UnShapeShiftButton(instance);
+                AfkMonitor.RecordActivity(instance);
+            }
             instance.RpcResetAbilityCooldown(); // Just incase
             logger.Info($"Cancel shapeshifting because {instance.GetRealName()} is using un-shapeshift ability button");
             return false;
@@ -1315,6 +1321,7 @@ class FixedUpdateInNormalGamePatch
 
                 Suffix.Append(seerRoleClass?.GetSuffix(seer, target, false));
                 Suffix.Append(CustomRoleManager.GetSuffixOthers(seer, target, false));
+                Suffix.Append(AfkMonitor.GetSuffix(seer, target));
 
                 Suffix.Append(Radar.GetPlayerArrow(seer, target, isForMeeting: false));
 
@@ -1482,6 +1489,8 @@ class CoEnterVentPatch
     {
         if (!AmongUsClient.Instance.AmHost || GameStates.IsHideNSeek) return true;
         Logger.Info($" {__instance.myPlayer.GetNameWithRole().RemoveHtmlTags()}, Vent ID: {id}", "CoEnterVent");
+        if (__instance.myPlayer.IsAlive() && GameStates.IsInTask && ShipStatus.Instance
+            && ShipStatus.Instance.AllVents.Any(vent => vent.Id == id)) AfkMonitor.RecordActivity(__instance.myPlayer);
 
         //FFA
         if (Options.CurrentGameMode == CustomGameMode.FFA && FFAManager.CheckCoEnterVent(__instance, id))
@@ -1573,6 +1582,7 @@ class PlayerControlCompleteTaskPatch
         // NextStep already completed the local minigame, so use the installed
         // TaskInfo flag rather than the local minigame's IsComplete property.
         if (!InstalledTaskStatePatch.HasPendingTask(__instance, idx)) return false;
+        AfkMonitor.RecordActivity(__instance);
 
         var player = __instance;
 

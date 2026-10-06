@@ -38,10 +38,11 @@ internal static class BlackScreenFix
         }
     }
 
-    private sealed class Pending(Context context, Actor target)
+    private sealed class Pending(Context context, Actor target, bool automatic)
     {
         internal readonly Context Context = context;
         internal readonly Actor Target = target;
+        internal readonly bool Automatic = automatic;
         internal readonly Vector2 RequestedPosition = target.Player.GetCustomPosition();
         internal float ReadyAt = float.PositiveInfinity;
         internal Actor Ghost;
@@ -57,7 +58,14 @@ internal static class BlackScreenFix
     private static bool InGame() => AmongUsClient.Instance && AmongUsClient.Instance.AmConnected
         && AmongUsClient.Instance.AmHost && GameStates.IsInGame && !GameStates.IsEnded && ShipStatus.Instance;
 
-    internal static string Request(PlayerControl target)
+    internal static string RequestAutomatic(PlayerControl target)
+    {
+        if (!InGame() || !target || !target.IsAlive() || target.IsModded() || MeetingStates.FirstMeeting || !Ready(target, automatic: true))
+            return "BlackScreenFixWaiting";
+        return Request(target, automatic: true);
+    }
+
+    internal static string Request(PlayerControl target, bool automatic = false)
     {
         Tick();
         if (!InGame()) return "BlackScreenFixNotInGame";
@@ -88,9 +96,9 @@ internal static class BlackScreenFix
         var client = AmongUsClient.Instance;
         var context = new Context(OnGameJoinedPatch.Generation, client.Pointer, client.GameId,
             client.HostId, ShipStatus.Instance.Pointer, Main.PlayerStates);
-        var request = new Pending(context, Capture(target));
+        var request = new Pending(context, Capture(target), automatic);
         Requests.Add(target.PlayerId, request);
-        if (Ready(target) && FindGhost() is { } ghost)
+        if (Ready(target, automatic) && FindGhost() is { } ghost)
         {
             try
             {
@@ -106,7 +114,8 @@ internal static class BlackScreenFix
         return FindGhost() == null ? "FixBlackScreenWaitForDead" : "BlackScreenFixWaiting";
     }
 
-    private static bool Ready(PlayerControl player) => GameStates.IsInTask && !ExileController.Instance
+    private static bool Ready(PlayerControl player, bool automatic = false) => GameStates.IsInTask && !ExileController.Instance
+        && (!automatic || player.moveable)
         && !AntiBlackout.SkipTasks && !AntiBlackout.IsCached && !player.inVent && !player.walkingToVent
         && !player.onLadder && !player.inMovingPlat && player.MyPhysics != null
         && !player.MyPhysics.Animations.IsPlayingEnterVentAnimation()
@@ -118,6 +127,9 @@ internal static class BlackScreenFix
 
     internal static bool IsRepairing(PlayerControl player) => player && Requests.Values.Any(request =>
         request.Started && (request.Target.Pointer == player.Pointer || request.Ghost?.Pointer == player.Pointer));
+
+    internal static bool IsPendingOrRepairing(PlayerControl player) => player &&
+        (Requests.Values.Any(request => request.Target.Pointer == player.Pointer) || IsRepairing(player));
 
     internal static void CancelWaiting(PlayerControl player)
     {
@@ -161,7 +173,7 @@ internal static class BlackScreenFix
                     }
                     continue;
                 }
-                if (request.Target.Player.IsModded())
+                if (request.Target.Player.IsModded() || request.Automatic && !request.Target.Player.IsAlive())
                 {
                     Requests.Remove(request.Target.Id);
                     continue;
@@ -177,7 +189,7 @@ internal static class BlackScreenFix
                     continue;
                 }
                 var ghost = FindGhost();
-                if (!Ready(request.Target.Player) || ghost == null)
+                if (!Ready(request.Target.Player, request.Automatic) || ghost == null)
                 {
                     request.ReadyAt = float.PositiveInfinity;
                     continue;

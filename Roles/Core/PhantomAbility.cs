@@ -58,7 +58,11 @@ public static class PhantomAbility
         role.PhantomAbilityReadyAt = Time.realtimeSinceStartup + Mathf.Max(0f, role.PhantomAbilityCooldown);
         try
         {
-            if (role.OnPhantomAbility(player)) return true;
+            if (role.OnPhantomAbility(player))
+            {
+                AfkMonitor.RecordActivity(player);
+                return true;
+            }
             role.PhantomAbilityReadyAt = previousDeadline;
             return false;
         }

@@ -118,6 +118,7 @@ enum CustomRPC : uint
     MeetingAbilityRequest = 188,
     // 189 was the removed presentation-only recovery RPC; do not reuse it.
     SyncExileText = 190,
+    SyncAfkState,
 }
 public enum Sounds
 {
@@ -746,6 +747,9 @@ internal class RPCHandlerPatch
                 break;
             case CustomRPC.MeetingAbilityRequest:
                 MeetingAbilities.ReceiveRequest(__instance, reader);
+                break;
+            case CustomRPC.SyncAfkState:
+                AfkMonitor.ReceiveState(__instance, reader);
                 break;
         }
     }

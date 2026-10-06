@@ -52,7 +52,9 @@ public static class MessageReaderUpdateSystemPatch
             return false;
         }
 
-        return UpdateSystemPatch.Prefix(__instance, systemType, player, amount);
+        var accepted = UpdateSystemPatch.Prefix(__instance, systemType, player, amount);
+        if (accepted && player && player.IsAlive() && GameStates.IsInTask) AfkMonitor.RecordActivity(player);
+        return accepted;
     }
     public static void Postfix(ShipStatus __instance, [HarmonyArgument(0)] SystemTypes systemType, [HarmonyArgument(1)] PlayerControl player, [HarmonyArgument(2)] MessageReader reader)
     {
@@ -108,6 +110,9 @@ class UpdateSystemPatch
                 return false;
         }
 
+        // Local repairs originate in a minigame; automated host system updates do not.
+        if (player.AmOwner && player.IsAlive() && GameStates.IsInTask && Minigame.Instance)
+            AfkMonitor.RecordActivity(player);
         player.GetRoleClass()?.UpdateSystem(__instance, systemType, amount, player);
 
         if (Quizmaster.HasEnabled)
