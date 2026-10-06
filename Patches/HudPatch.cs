@@ -23,6 +23,7 @@ class HudManagerPatch
     public static void Postfix(HudManager __instance)
     {
         FeatureChatCommands.UpdateSession();
+        BlackScreenFix.Tick();
         AfkMonitor.Tick();
         if (!GameStates.IsModHost || __instance == null) return;
 

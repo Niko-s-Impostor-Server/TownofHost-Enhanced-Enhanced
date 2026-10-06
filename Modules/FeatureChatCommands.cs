@@ -92,10 +92,21 @@ internal static class FeatureChatCommands
                 else if (args[1] != "status") { Reply(GetString("AfkCommandUsage")); return true; }
                 Reply(AfkMonitor.GetStatus(afkTarget));
                 return true;
+            case "/fix":
+            case "/blackscreenfix":
+            case "/fixblackscreen":
             case "/fixblack":
-                if (!host) { Denied(); return true; }
-                var recoveryTarget = args.Length == 1 ? sender : Target(1);
-                Reply(GetString(PresentationRecovery.TryRequest(recoveryTarget)));
+                bool canFixOthers = Granted(LocalPlayerPermission.Moderate)
+                    || (Options.ApplyModeratorList?.GetBool() == true && Utils.IsPlayerModerator(sender.Data.FriendCode));
+                // AntiBlackout temporarily clears Data.IsDead; use the host's actual player state.
+                bool deadSelfFix = GameStates.IsInGame && !sender.IsAlive();
+                if (!canFixOthers && !deadSelfFix)
+                { Denied(); return true; }
+                if (args.Length > 2) { Reply(GetString("BlackScreenFixUsage")); return true; }
+                var fixTarget = args.Length == 1 ? sender : Target(1);
+                if (!canFixOthers && (!fixTarget || fixTarget.Pointer != sender.Pointer))
+                { Denied(); return true; }
+                Reply(GetString(BlackScreenFix.Request(fixTarget)));
                 return true;
             case "/end":
                 if (!Granted(LocalPlayerPermission.End)) { Denied(); return true; }

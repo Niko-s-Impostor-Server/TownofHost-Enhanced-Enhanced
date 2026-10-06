@@ -116,7 +116,7 @@ enum CustomRPC : uint
     ClearPelicanOwner,
     ClearShroudOwner,
     MeetingAbilityRequest = 188,
-    RecoverPresentation = 189,
+    // 189 was the removed presentation-only recovery RPC; do not reuse it.
     SyncExileText = 190,
 }
 public enum Sounds
@@ -226,10 +226,6 @@ internal class RPCHandlerPatch
             case CustomRPC.SyncExileText:
                 if (isLocalRecipient && __instance.OwnerId == AmongUsClient.Instance.HostId)
                     ExileText.Receive(__instance, reader);
-                break;
-            case CustomRPC.RecoverPresentation:
-                if (isLocalRecipient && reader.BytesRemaining == 0 && __instance.OwnerId == AmongUsClient.Instance.HostId)
-                    PresentationRecovery.RecoverLocal();
                 break;
             case CustomRPC.AntiBlackout:
                 Logger.Fatal($"{__instance?.Data?.PlayerName}({__instance.PlayerId}): Error: {reader.ReadString()} - end the game according to the setting", "Anti-black");

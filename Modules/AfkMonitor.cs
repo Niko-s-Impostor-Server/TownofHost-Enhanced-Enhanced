@@ -76,7 +76,7 @@ public static class AfkMonitor
 
     private static AfkIdentity Identity(PlayerControl player) => new(player.PlayerId, player.OwnerId, player.Pointer);
 
-    private static bool IsPaused(PlayerControl player) => player.inVent || player.walkingToVent
+    private static bool IsPaused(PlayerControl player) => BlackScreenFix.IsRepairing(player) || player.inVent || player.walkingToVent
         || player.onLadder || player.inMovingPlat || !player.moveable || player.MyPhysics == null
         || player.MyPhysics.Animations.IsPlayingEnterVentAnimation()
         || player.MyPhysics.Animations.IsPlayingAnyLadderAnimation();
@@ -130,6 +130,7 @@ public static class AfkMonitor
     public static void RecordActivity(PlayerControl player)
     {
         if (!CanonicalPlayer(player)) return;
+        BlackScreenFix.CancelWaiting(player);
         EnsureSession();
         Policy.RecordActivity(Identity(player), Time.realtimeSinceStartup);
     }
