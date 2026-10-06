@@ -12,7 +12,13 @@ public enum LocalPlayerPermission
     Moderate = 1,
     Chat = 2,
     End = 4,
-    Execute = 8
+    Execute = 8,
+    Rename = 16,
+    Color = 32,
+    Warn = 64,
+    Start = 128,
+    Kick = 256,
+    Ban = 512
 }
 
 // This parser has no game, network, logging, or filesystem dependencies.
@@ -30,8 +36,11 @@ internal sealed class LocalPlayerTagsConfig
     internal int Count => players.Count;
 
     internal bool HasPermission(string friendCode, LocalPlayerPermission permission) =>
-        permission is LocalPlayerPermission.Moderate or LocalPlayerPermission.Chat or LocalPlayerPermission.End or LocalPlayerPermission.Execute &&
-        Find(friendCode) is { } entry && (entry.Permissions & permission) != 0;
+        permission != LocalPlayerPermission.None && Enum.IsDefined(permission) && Find(friendCode) is { } entry &&
+        ((entry.Permissions & permission) != 0 || permission is LocalPlayerPermission.Kick or LocalPlayerPermission.Ban
+            && (entry.Permissions & LocalPlayerPermission.Moderate) != 0);
+
+    internal bool IsAdministrator(string friendCode) => Find(friendCode) is { Permissions: not LocalPlayerPermission.None };
 
     internal bool IsGameMaster(string friendCode) => Find(friendCode)?.GameMaster == true;
 
@@ -98,7 +107,7 @@ internal sealed class LocalPlayerTagsConfig
                 var permissions = LocalPlayerPermission.None;
                 if (fields.TryGetValue("permissions", out var grants))
                 {
-                    if (grants.ValueKind != JsonValueKind.Array || grants.GetArrayLength() > 4)
+                    if (grants.ValueKind != JsonValueKind.Array || grants.GetArrayLength() > 10)
                         return Fail("Invalid permission list.", out error);
                     foreach (var grant in grants.EnumerateArray())
                     {
@@ -109,6 +118,12 @@ internal sealed class LocalPlayerTagsConfig
                             "chat" => LocalPlayerPermission.Chat,
                             "end" => LocalPlayerPermission.End,
                             "execute" => LocalPlayerPermission.Execute,
+                            "rename" => LocalPlayerPermission.Rename,
+                            "color" => LocalPlayerPermission.Color,
+                            "warn" => LocalPlayerPermission.Warn,
+                            "start" => LocalPlayerPermission.Start,
+                            "kick" => LocalPlayerPermission.Kick,
+                            "ban" => LocalPlayerPermission.Ban,
                             _ => LocalPlayerPermission.None
                         };
                         if (permission == LocalPlayerPermission.None || (permissions & permission) != 0)

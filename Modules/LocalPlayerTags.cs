@@ -68,6 +68,9 @@ public static class LocalPlayerTags
     public static bool HasPermission(PlayerControl sender, LocalPlayerPermission permission) =>
         TryGetIdentity(sender, out var friendCode) && config.HasPermission(friendCode, permission);
 
+    public static bool IsAdministrator(PlayerControl player) =>
+        TryGetIdentity(player, out var friendCode) && config.IsAdministrator(friendCode);
+
     public static bool IsDesignatedGameMaster(PlayerControl player) =>
         TryGetIdentity(player, out var friendCode) && config.IsGameMaster(friendCode);
 

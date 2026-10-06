@@ -1,4 +1,7 @@
 {
+  "ManagementReasonUnspecified": "未指定",
+  "ManagementReason": "原因",
+  "ManagementLogFailed": "操作已完成，但管理日志保存失败。",
   "CrossLanguageGetRole": "跨语言识别职业名称",
   "RoleNameAmbiguous": "匹配到多个职业：{0}。未指定职业。",
   "LanguageID": "13",

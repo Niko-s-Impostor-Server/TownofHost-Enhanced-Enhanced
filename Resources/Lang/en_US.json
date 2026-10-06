@@ -1,4 +1,7 @@
 {
+  "ManagementReasonUnspecified": "Not specified",
+  "ManagementReason": "Reason",
+  "ManagementLogFailed": "The action succeeded, but the management log could not be saved.",
   "CrossLanguageGetRole": "Recognize role names across languages",
   "RoleNameAmbiguous": "Multiple roles match: {0}. No role was selected.",
   "LanguageID": "0",

@@ -32,6 +32,7 @@ internal static class FeatureChatCommands
         var client = AmongUsClient.Instance;
         if (!client || !client.AmConnected || !client.AmHost || !sender || sender.Data == null || sender.Data.Disconnected || string.IsNullOrWhiteSpace(text)) return false;
         UpdateSession();
+        if (ManagementCommands.TryHandle(sender, text)) return true;
         var args = text.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
         var command = args[0].ToLowerInvariant();
         bool host = sender.OwnerId == client.HostId;
@@ -97,7 +98,7 @@ internal static class FeatureChatCommands
             case "/fixblackscreen":
             case "/fixblack":
                 bool canFixOthers = Granted(LocalPlayerPermission.Moderate)
-                    || (Options.ApplyModeratorList?.GetBool() == true && Utils.IsPlayerModerator(sender.Data.FriendCode));
+                    || ManagementCommands.IsLegacyModerator(sender);
                 // AntiBlackout temporarily clears Data.IsDead; use the host's actual player state.
                 bool deadSelfFix = GameStates.IsInGame && !sender.IsAlive();
                 if (!canFixOthers && !deadSelfFix)
@@ -107,43 +108,6 @@ internal static class FeatureChatCommands
                 if (!canFixOthers && (!fixTarget || fixTarget.Pointer != sender.Pointer))
                 { Denied(); return true; }
                 Reply(GetString(BlackScreenFix.Request(fixTarget)));
-                return true;
-            case "/end":
-                if (!Granted(LocalPlayerPermission.End)) { Denied(); return true; }
-                if (!GameStates.IsInGame || !GameManager.Instance) { Reply(GetString("Message.CanNotUseInLobby")); return true; }
-                CustomWinnerHolder.ResetAndSetWinner(CustomWinner.Draw);
-                GameManager.Instance.LogicFlow.CheckEndCriteria();
-                return true;
-            case "/exe":
-                if (!Granted(LocalPlayerPermission.Execute)) { Denied(); return true; }
-                var executed = Target(1);
-                if (!GameStates.IsInGame || !executed || executed.Data == null || executed.Data.Disconnected ||
-                    !Main.PlayerStates.TryGetValue(executed.PlayerId, out var executedState) || !executed.IsAlive() ||
-                    (!host && executed.OwnerId == client.HostId))
-                { Reply(GetString("FeatureInvalidTarget")); return true; }
-                executed.SetDeathReason(PlayerState.DeathReason.etc);
-                executed.SetRealKiller(sender);
-                executedState.SetDead();
-                executed.Data.IsDead = true;
-                executed.RpcExileV2();
-                MurderPlayerPatch.AfterPlayerDeathTasks(sender, executed, GameStates.IsMeeting);
-                Reply(string.Format(GetString("Message.Executed"), executed.GetRealName().RemoveHtmlTags()));
-                return true;
-            case "/say":
-            case "/s":
-                // Keep the legacy host/dev/moderator path unless this file grants chat.
-                if (host || !LocalPlayerTags.HasPermission(sender, LocalPlayerPermission.Chat)) return false;
-                if (args.Length > 1) Utils.SendMessage(string.Join(" ", args.Skip(1)), title: sender.GetRealName().RemoveHtmlTags());
-                return true;
-            case "/ban":
-            case "/kick":
-                if (host || !LocalPlayerTags.HasPermission(sender, LocalPlayerPermission.Moderate)) return false;
-                var target = Target(1);
-                if (args.Length < 3 || !target || target.Data == null || target.Data.Disconnected || target.OwnerId == client.HostId ||
-                    LocalPlayerTags.HasPermission(target, LocalPlayerPermission.Moderate) || Utils.IsPlayerModerator(target.Data.FriendCode))
-                { Reply(GetString("FeatureInvalidTarget")); return true; }
-                client.KickPlayer(target.OwnerId, command == "/ban");
-                Reply(GetString("FeatureCommandCompleted"));
                 return true;
             default: return false;
         }

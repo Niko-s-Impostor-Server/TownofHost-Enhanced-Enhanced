@@ -702,18 +702,21 @@ internal class StartGameHostPatch
 [HarmonyPatch(typeof(RoleManager), nameof(RoleManager.SelectRoles))]
 internal class SelectRolesPatch
 {
+    internal static bool IsGameMaster(PlayerControl player) => player && player.Data != null && !player.Data.Disconnected
+        && (player.OwnerId == AmongUsClient.Instance.HostId && Main.EnableGM.Value || LocalPlayerTags.IsDesignatedGameMaster(player));
+
     public static void Prefix()
     {
         if (!AmongUsClient.Instance.AmHost) return;
 
         if (GameStates.IsHideNSeek)
         {
-            if (Main.EnableGM.Value)
+            foreach (var player in Main.AllPlayerControls.Where(IsGameMaster))
             {
-                PlayerControl.LocalPlayer.RpcSetCustomRole(CustomRoles.GM);
-                PlayerControl.LocalPlayer.RpcSetRole(RoleTypes.Crewmate, false);
-                PlayerControl.LocalPlayer.Data.IsDead = true;
-                Main.PlayerStates[PlayerControl.LocalPlayer.PlayerId].SetDead();
+                player.RpcSetCustomRole(CustomRoles.GM);
+                player.RpcSetRole(RoleTypes.Crewmate, false);
+                player.Data.IsDead = true;
+                Main.PlayerStates[player.PlayerId].SetDead();
             }
 
             EAC.OriginalRoles = [];
@@ -726,9 +729,36 @@ internal class SelectRolesPatch
                 );
             }
 
-            EAC.LogAllRoles();
-            Utils.SyncAllSettings();
         }
+    }
+
+    public static void Postfix()
+    {
+        if (!AmongUsClient.Instance.AmHost || !GameStates.IsHideNSeek) return;
+        foreach (var player in Main.AllPlayerControls.Where(IsGameMaster))
+        {
+            player.RpcSetRole(RoleTypes.CrewmateGhost, true);
+            player.RpcSetCustomRole(CustomRoles.GM);
+            player.Data.IsDead = true;
+            Main.PlayerStates[player.PlayerId].SetDead();
+            player.Data.MarkDirty();
+        }
+        Utils.SendGameData();
+        EAC.LogAllRoles();
+        Utils.SyncAllSettings();
+    }
+}
+
+// Remove GMs from the actual native list, so a configured seeker cannot become a GM.
+[HarmonyPatch(typeof(LogicRoleSelectionHnS), nameof(LogicRoleSelectionHnS.AssignRolesForTeam))]
+internal static class HideNSeekGameMasterCandidates
+{
+    public static void Prefix(Il2CppSystem.Collections.Generic.List<NetworkedPlayerInfo> __0, ref int __3)
+    {
+        if (!AmongUsClient.Instance.AmHost || !GameStates.IsHideNSeek || __0 == null) return;
+        for (int index = __0.Count - 1; index >= 0; index--)
+            if (SelectRolesPatch.IsGameMaster(Utils.GetPlayerById(__0[index].PlayerId))) __0.RemoveAt(index);
+        __3 = Math.Clamp(__3, 0, __0.Count);
     }
 }
 [HarmonyPatch(typeof(PlayerControl), nameof(PlayerControl.RpcSetRole)), HarmonyPriority(Priority.High)]

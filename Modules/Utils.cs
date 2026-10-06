@@ -1543,17 +1543,31 @@ public static class Utils
     }
     public static bool IsPlayerModerator(string friendCode)
     {
-        if (friendCode == "") return false;
+        if (string.IsNullOrEmpty(friendCode)) return false;
         var friendCodesFilePath = @"./TOHE-DATA/Moderators.txt";
-        var friendCodes = File.ReadAllLines(friendCodesFilePath);
-        return friendCodes.Any(code => code.Contains(friendCode));
+        try
+        {
+            return File.Exists(friendCodesFilePath) && File.ReadAllLines(friendCodesFilePath).Any(code => code.Contains(friendCode));
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+        {
+            Logger.Warn("Local identity list could not be read", "ManagementCommands");
+            return false;
+        }
     }
     public static bool IsPlayerVIP(string friendCode)
     {
-        if (friendCode == "") return false;
+        if (string.IsNullOrEmpty(friendCode)) return false;
         var friendCodesFilePath = @"./TOHE-DATA/VIP-List.txt";
-        var friendCodes = File.ReadAllLines(friendCodesFilePath);
-        return friendCodes.Any(code => code.Contains(friendCode));
+        try
+        {
+            return File.Exists(friendCodesFilePath) && File.ReadAllLines(friendCodesFilePath).Any(code => code.Contains(friendCode));
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+        {
+            Logger.Warn("Local identity list could not be read", "ManagementCommands");
+            return false;
+        }
     }
     public static bool CheckColorHex(string ColorCode)
     {
