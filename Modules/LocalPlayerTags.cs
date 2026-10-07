@@ -4,7 +4,7 @@ using System.IO;
 namespace TOHE.Modules;
 
 // Only the host's fixed local file grants permissions. Caller-supplied RPC identities
-// are deliberately absent from this API; authorization reads the live sender Data.
+// are deliberately absent from this API; authorization reads the native owner.
 public static class LocalPlayerTags
 {
 #if ANDROID
@@ -84,10 +84,19 @@ public static class LocalPlayerTags
 
     private static bool TryGetIdentity(PlayerControl player, out string friendCode)
     {
-        friendCode = string.Empty;
-        if (AmongUsClient.Instance == null || !AmongUsClient.Instance.AmHost || player == null || player.Data == null || player.Data.Disconnected)
-            return false;
-        friendCode = player.Data.FriendCode;
+        friendCode = GetOwnerFriendCode(player);
         return LocalPlayerTagsConfig.IsValidFriendCode(friendCode);
+    }
+
+    // Native player-info synchronization may replace Data.FriendCode at round start.
+    // Resolve the connected owner instead, and reject stale/reused player objects.
+    internal static string GetOwnerFriendCode(PlayerControl player)
+    {
+        if (AmongUsClient.Instance == null || !AmongUsClient.Instance.AmConnected || !AmongUsClient.Instance.AmHost
+            || player == null || player.Data == null || player.Data.Disconnected || player.OwnerId < 0)
+            return string.Empty;
+        var owner = AmongUsClient.Instance.FindClientById(player.OwnerId);
+        return owner?.Character != null && owner.Character.Pointer == player.Pointer
+            ? owner.FriendCode ?? string.Empty : string.Empty;
     }
 }
