@@ -386,7 +386,7 @@ public static class Utils
 
         var meeting = isMeeting == true && GameStates.IsMeeting && !GameStates.IsEnded;
         var task = isMeeting != true && GameStates.IsInTask && !GameStates.IsEnded && !GameStates.IsExilling
-            && Main.IntroDestroyed && !Main.MeetingIsStarted && !SetUpRoleTextPatch.IsInIntro;
+            && Main.IntroDestroyed && !Main.MeetingIsStarted;
         if (!ShortNamePolicy.ShouldShorten(Options.ShowShortNamesForAddOns?.GetValue() ?? 0, useShortNames, meeting, task)) return name;
 
         // Strip rich text before taking a full Unicode text element, not a UTF-16 code unit.
