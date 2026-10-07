@@ -2368,7 +2368,7 @@
   "Warning.AutoExitAtMismatchedVersion": "你的 【{0}】 版本与房主不同\n你将在<b>{1}</b>秒内被踢出",
   "Warning.CanNotUseBepInExConsole": "已将你的控制台关闭，无法使用控制台",
   "Error.MeetingException": "错误: <b>{0}</b>\n使用「Shift+M+Enter」强制结束会议",
-  "Error.InvalidRoleAssignment": "错误：在分配职业时发现职业无效的玩家 (<b>{1}</b>)",
+  "Error.InvalidRoleAssignment": "错误：在分配职业时发现职业无效的玩家 (<b>{0}</b>)",
   "Error.InvalidColor": "警告：存在使用非法颜色的玩家，可能引起游戏错误",
   "Error.InvalidColorPreventStart": "请等待其他玩家加载完毕后开始游戏\n（或存在非法颜色无法开始游戏）",
   "ErrorLevel1": "可能同时产生多个bug",
