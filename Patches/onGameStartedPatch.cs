@@ -739,6 +739,8 @@ internal class SelectRolesPatch
         if (!AmongUsClient.Instance.AmHost || !GameStates.IsHideNSeek) return;
         foreach (var player in Main.AllPlayerControls.Where(IsGameMaster))
         {
+            // Native HNS allocation skips GMs, including their alive-role metadata.
+            player.Data.RoleWhenAlive = new Il2CppSystem.Nullable<RoleTypes>(RoleTypes.Crewmate);
             player.RpcSetRole(RoleTypes.CrewmateGhost, true);
             player.RpcSetCustomRole(CustomRoles.GM);
             player.Data.IsDead = true;
