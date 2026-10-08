@@ -15,10 +15,12 @@ internal static class BlackScreenFix
     private sealed record Context(uint Generation, nint Client, int GameId, int HostId,
         nint Ship, object PlayerStates)
     {
+        private readonly OfficialSessionContext session = OfficialSessionContext.Capture();
         internal bool Current()
         {
             var client = AmongUsClient.Instance;
-            return client && client.AmConnected && client.AmHost && client.Pointer == Client
+            return (!OfficialAnticheatPolicy.Enabled || session.IsCurrent())
+                && client && client.AmConnected && client.AmHost && client.Pointer == Client
                 && client.GameId == GameId && client.HostId == HostId
                 && OnGameJoinedPatch.Generation == Generation && ShipStatus.Instance
                 && ShipStatus.Instance.Pointer == Ship && ReferenceEquals(Main.PlayerStates, PlayerStates);
@@ -246,10 +248,10 @@ internal static class BlackScreenFix
     {
         // Only the affected vanilla client receives this replay; host death/role/task state stays authoritative.
         var client = AmongUsClient.Instance;
-        var writer = client.StartRpcImmediately(target.NetId, (byte)RpcCalls.MurderPlayer, SendOption.Reliable, target.OwnerId);
+        var writer = client.StartImmediate(target.NetId, (byte)RpcCalls.MurderPlayer, SendOption.Reliable, target.OwnerId);
         writer.WriteNetObject(victim);
         writer.Write((int)MurderResultFlags.Succeeded);
-        client.FinishRpcImmediately(writer);
+        client.FinishImmediate(writer);
     }
 
     private static void RestorePositions(Pending request)

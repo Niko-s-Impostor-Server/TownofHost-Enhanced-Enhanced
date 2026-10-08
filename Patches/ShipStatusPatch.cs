@@ -395,7 +395,8 @@ class ShipStatusSerializePatch
                 else
                 {
                     // Logger.Info("vanilla update vents", "ShipStatusSerializePatch");
-                    var subwriter = MessageWriter.Get(SendOption.Reliable);
+                    using var owner = new OfficialPacketBuilder.BoundedWriter(SendOption.Reliable, OfficialAnticheatPolicy.Enabled);
+                    var subwriter = owner.Writer;
                     subwriter.StartMessage(5);
                     {
                         subwriter.Write(AmongUsClient.Instance.GameId);
@@ -409,8 +410,7 @@ class ShipStatusSerializePatch
                         subwriter.EndMessage();
                     }
                     subwriter.EndMessage();
-                    AmongUsClient.Instance.SendOrDisconnect(subwriter);
-                    subwriter.Recycle();
+                    OfficialPacketBuilder.SendCompleted(subwriter);
                 }
                 ventilationSystem.IsDirty = false;
             }

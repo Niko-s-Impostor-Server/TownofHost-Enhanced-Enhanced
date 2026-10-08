@@ -181,10 +181,10 @@ internal class EAC
                     {
                         // Only be sent by host
                         Report(pc, "Directly Shapeshift");
-                        MessageWriter swriter = AmongUsClient.Instance.StartRpcImmediately(pc.NetId, (byte)RpcCalls.Shapeshift, SendOption.Reliable, -1);
+                        MessageWriter swriter = AmongUsClient.Instance.StartImmediate(pc.NetId, (byte)RpcCalls.Shapeshift, SendOption.Reliable, -1);
                         swriter.WriteNetObject(pc);
                         swriter.Write(false);
-                        AmongUsClient.Instance.FinishRpcImmediately(swriter);
+                        AmongUsClient.Instance.FinishImmediate(swriter);
                         HandleCheat(pc, "Directly Shapeshift");
                         Logger.Fatal($"玩家【{pc.GetClientId()}:{pc.GetRealName()}】直接变形，已驳回", "EAC");
                         return true;
@@ -196,9 +196,9 @@ internal class EAC
                         var sreason = "Directly Phantom Rpcs " + rpc.ToString();
                         // Only be sent by host
                         Report(pc, sreason);
-                        var swriter = AmongUsClient.Instance.StartRpcImmediately(pc.NetId, (byte)RpcCalls.StartAppear, SendOption.Reliable, -1);
+                        var swriter = AmongUsClient.Instance.StartImmediate(pc.NetId, (byte)RpcCalls.StartAppear, SendOption.Reliable, -1);
                         swriter.Write(false);
-                        AmongUsClient.Instance.FinishRpcImmediately(swriter);
+                        AmongUsClient.Instance.FinishImmediate(swriter);
                         HandleCheat(pc, sreason);
                         Logger.Fatal($"玩家【{pc.GetClientId()}:{pc.GetRealName()} {sreason}，已驳回", "EAC");
                         return true;

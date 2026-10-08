@@ -60,10 +60,10 @@ static class ExtendedPlayerControl
             player.SetRole(role, true);
             return;
         }
-        MessageWriter writer = AmongUsClient.Instance.StartRpcImmediately(player.NetId, (byte)RpcCalls.SetRole, SendOption.Reliable, clientId);
+        MessageWriter writer = AmongUsClient.Instance.StartImmediate(player.NetId, (byte)RpcCalls.SetRole, SendOption.Reliable, clientId);
         writer.Write((ushort)role);
         writer.Write(true);
-        AmongUsClient.Instance.FinishRpcImmediately(writer);
+        AmongUsClient.Instance.FinishImmediate(writer);
     }
 
     public static (RoleTypes RoleType, CustomRoles CustomRole) GetRoleMap(this PlayerControl player, byte targetId = byte.MaxValue) => Utils.GetRoleMap(player.PlayerId, targetId);
@@ -157,6 +157,9 @@ static class ExtendedPlayerControl
                         {
                             remeberRoleType = RoleTypes.CrewmateGhost;
                             if (!newCustomRole.IsImpostor() && seer.Is(Custom_Team.Impostor)) remeberRoleType = RoleTypes.ImpostorGhost;
+                            if (OfficialAnticheatPolicy.Enabled)
+                                remeberRoleType = GhostRoleView.Resolve(false, seer.Is(Custom_Team.Impostor), seer.HasDesyncRole(),
+                                    newCustomRole.IsImpostor() || newRoleIsDesync, seer.HasGhostRole());
 
                             RpcSetRoleReplacer.RoleMap[(playerId, seer.PlayerId)] = (seerCustomRole.IsDesyncRole() ? seerIsHost ? RoleTypes.Crewmate : RoleTypes.Scientist : seerRoleType, seerCustomRole);
                             seer.RpcSetRoleDesync(remeberRoleType, playerClientId);
@@ -205,7 +208,10 @@ static class ExtendedPlayerControl
                         }
                         else
                         {
-                            remeberRoleType = RoleTypes.CrewmateGhost;
+                            remeberRoleType = OfficialAnticheatPolicy.Enabled
+                                ? GhostRoleView.Resolve(false, seer.Is(Custom_Team.Impostor), seer.HasDesyncRole(),
+                                    newCustomRole.IsImpostor() || newRoleIsDesync, seer.HasGhostRole())
+                                : RoleTypes.CrewmateGhost;
                             RpcSetRoleReplacer.RoleMap[(playerId, seer.PlayerId)] = (seerCustomRole.GetVNRole() is CustomRoles.Noisemaker ? RoleTypes.Noisemaker : RoleTypes.Scientist, seerCustomRole);
                             seer.RpcSetRoleDesync(remeberRoleType, playerClientId);
                             continue;
@@ -266,38 +272,59 @@ static class ExtendedPlayerControl
             return;
         }
         player.Data.DefaultOutfit.PetSequenceId += 10;
-        MessageWriter writer = AmongUsClient.Instance.StartRpcImmediately(player.NetId, (byte)RpcCalls.SetPetStr, SendOption.Reliable, clientId);
+        MessageWriter writer = AmongUsClient.Instance.StartImmediate(player.NetId, (byte)RpcCalls.SetPetStr, SendOption.Reliable, clientId);
         writer.Write(petId);
         writer.Write(player.GetNextRpcSequenceId(RpcCalls.SetPetStr));
-        AmongUsClient.Instance.FinishRpcImmediately(writer);
+        AmongUsClient.Instance.FinishImmediate(writer);
     }
     public static void RpcExile(this PlayerControl player)
     {
+        if (OfficialAnticheatPolicy.Enabled)
+        {
+            GhostRoleView.Exile(player, susceptible: false);
+            return;
+        }
         player.Exiled();
-        MessageWriter writer = AmongUsClient.Instance.StartRpcImmediately(player.NetId, (byte)RpcCalls.Exiled, SendOption.None, -1);
-        AmongUsClient.Instance.FinishRpcImmediately(writer);
+        MessageWriter writer = AmongUsClient.Instance.StartImmediate(player.NetId, (byte)RpcCalls.Exiled, SendOption.None, -1);
+        AmongUsClient.Instance.FinishImmediate(writer);
     }
     public static void RpcExileDesync(this PlayerControl player, PlayerControl seer)
     {
+        if (player == null || seer == null) return;
         var clientId = seer.GetClientId();
+        if (clientId < 0) return;
+        if (OfficialAnticheatPolicy.Enabled)
+        {
+            // Phantom's hiding trick is a remote view only. Applying a native ghost
+            // role to our authoritative host object would run Die via RoleManager.
+            // Phantom excludes the host recipient before requesting this view.
+            if (clientId == AmongUsClient.Instance.ClientId) return;
+            player.RpcSetRoleDesync(GhostRoleView.ForRecipient(player, seer), clientId);
+            return;
+        }
         if (AmongUsClient.Instance.ClientId == clientId)
         {
             player.Exiled();
             return;
         }
-        MessageWriter writer = AmongUsClient.Instance.StartRpcImmediately(player.NetId, (byte)RpcCalls.Exiled, SendOption.None, clientId);
-        AmongUsClient.Instance.FinishRpcImmediately(writer);
+        MessageWriter writer = AmongUsClient.Instance.StartImmediate(player.NetId, (byte)RpcCalls.Exiled, SendOption.None, clientId);
+        AmongUsClient.Instance.FinishImmediate(writer);
     }
     public static void RpcExileV2(this PlayerControl player)
     {
+        if (OfficialAnticheatPolicy.Enabled)
+        {
+            GhostRoleView.Exile(player, susceptible: true);
+            return;
+        }
         if (player.Is(CustomRoles.Susceptible))
         {
             Susceptible.CallEnabledAndChange(player);
         }
         player.Exiled();
 
-        MessageWriter writer = AmongUsClient.Instance.StartRpcImmediately(player.NetId, (byte)RpcCalls.Exiled, SendOption.None, -1);
-        AmongUsClient.Instance.FinishRpcImmediately(writer);
+        MessageWriter writer = AmongUsClient.Instance.StartImmediate(player.NetId, (byte)RpcCalls.Exiled, SendOption.None, -1);
+        AmongUsClient.Instance.FinishImmediate(writer);
     }
     public static void RpcCastVote(this PlayerControl player, byte suspectIdx)
     {
@@ -372,10 +399,10 @@ static class ExtendedPlayerControl
         var clientId = seer.GetClientId();
         if (clientId == -1) return;
 
-        MessageWriter writer = AmongUsClient.Instance.StartRpcImmediately(player.NetId, (byte)RpcCalls.SetName, SendOption.Reliable, clientId);
+        MessageWriter writer = AmongUsClient.Instance.StartImmediate(player.NetId, (byte)RpcCalls.SetName, SendOption.Reliable, clientId);
         writer.Write(player.Data.NetId);
         writer.Write(name);
-        AmongUsClient.Instance.FinishRpcImmediately(writer);
+        AmongUsClient.Instance.FinishImmediate(writer);
     }
     public static void RpcEnterVentDesync(this PlayerPhysics physics, int ventId, PlayerControl seer)
     {
@@ -388,9 +415,9 @@ static class ExtendedPlayerControl
             physics.StartCoroutine(physics.CoEnterVent(ventId));
             return;
         }
-        MessageWriter writer = AmongUsClient.Instance.StartRpcImmediately(physics.NetId, (byte)RpcCalls.EnterVent, SendOption.Reliable, seer.GetClientId());
+        MessageWriter writer = AmongUsClient.Instance.StartImmediate(physics.NetId, (byte)RpcCalls.EnterVent, SendOption.Reliable, seer.GetClientId());
         writer.WritePacked(ventId);
-        AmongUsClient.Instance.FinishRpcImmediately(writer);
+        AmongUsClient.Instance.FinishImmediate(writer);
     }
     public static void RpcExitVentDesync(this PlayerPhysics physics, int ventId, PlayerControl seer)
     {
@@ -403,9 +430,9 @@ static class ExtendedPlayerControl
             physics.StartCoroutine(physics.CoExitVent(ventId));
             return;
         }
-        MessageWriter writer = AmongUsClient.Instance.StartRpcImmediately(physics.NetId, (byte)RpcCalls.ExitVent, SendOption.Reliable, seer.GetClientId());
+        MessageWriter writer = AmongUsClient.Instance.StartImmediate(physics.NetId, (byte)RpcCalls.ExitVent, SendOption.Reliable, seer.GetClientId());
         writer.WritePacked(ventId);
-        AmongUsClient.Instance.FinishRpcImmediately(writer);
+        AmongUsClient.Instance.FinishImmediate(writer);
     }
     public static void RpcBootFromVentDesync(this PlayerPhysics physics, int ventId, PlayerControl seer)
     {
@@ -417,9 +444,9 @@ static class ExtendedPlayerControl
             physics.BootFromVent(ventId);
             return;
         }
-        MessageWriter writer = AmongUsClient.Instance.StartRpcImmediately(physics.NetId, (byte)RpcCalls.BootFromVent, SendOption.Reliable, seer.GetClientId());
+        MessageWriter writer = AmongUsClient.Instance.StartImmediate(physics.NetId, (byte)RpcCalls.BootFromVent, SendOption.Reliable, seer.GetClientId());
         writer.WritePacked(ventId);
-        AmongUsClient.Instance.FinishRpcImmediately(writer);
+        AmongUsClient.Instance.FinishImmediate(writer);
     }
     /// <summary>
     /// ONLY to be used when killer surely may kill the target, please check with killer.RpcCheckAndMurder(target, check: true) for indirect kill.
@@ -463,10 +490,10 @@ static class ExtendedPlayerControl
         // Other Clients
         else
         {
-            var writer = AmongUsClient.Instance.StartRpcImmediately(killer.NetId, (byte)RpcCalls.MurderPlayer, SendOption.Reliable, killer.GetClientId());
+            var writer = AmongUsClient.Instance.StartImmediate(killer.NetId, (byte)RpcCalls.MurderPlayer, SendOption.Reliable, killer.GetClientId());
             writer.WriteNetObject(target);
             writer.Write((int)MurderResultFlags.FailedProtected);
-            AmongUsClient.Instance.FinishRpcImmediately(writer);
+            AmongUsClient.Instance.FinishImmediate(writer);
         }
 
         if (!fromSetKCD) killer.SetKillTimer(half: true);
@@ -567,10 +594,10 @@ static class ExtendedPlayerControl
             player.Shapeshift(target, shouldAnimate);
             return;
         }
-        MessageWriter messageWriter = AmongUsClient.Instance.StartRpcImmediately(player.NetId, (byte)RpcCalls.Shapeshift, SendOption.Reliable, player.GetClientId());
+        MessageWriter messageWriter = AmongUsClient.Instance.StartImmediate(player.NetId, (byte)RpcCalls.Shapeshift, SendOption.Reliable, player.GetClientId());
         messageWriter.WriteNetObject(target);
         messageWriter.Write(shouldAnimate);
-        AmongUsClient.Instance.FinishRpcImmediately(messageWriter);
+        AmongUsClient.Instance.FinishImmediate(messageWriter);
     }
     public static void RpcSpecificRejectShapeshift(this PlayerControl player, PlayerControl target, bool shouldAnimate)
     {
@@ -579,8 +606,8 @@ static class ExtendedPlayerControl
         {
             if (seer != player)
             {
-                MessageWriter msg = AmongUsClient.Instance.StartRpcImmediately(player.NetId, (byte)RpcCalls.RejectShapeshift, SendOption.Reliable, seer.GetClientId());
-                AmongUsClient.Instance.FinishRpcImmediately(msg);
+                MessageWriter msg = AmongUsClient.Instance.StartImmediate(player.NetId, (byte)RpcCalls.RejectShapeshift, SendOption.Reliable, seer.GetClientId());
+                AmongUsClient.Instance.FinishImmediate(msg);
             }
             else
             {
@@ -638,10 +665,10 @@ static class ExtendedPlayerControl
             target.SetScanner(IsActive, cnt);
             return;
         }
-        MessageWriter messageWriter = AmongUsClient.Instance.StartRpcImmediately(target.NetId, (byte)RpcCalls.SetScanner, SendOption.Reliable, seerClientId);
+        MessageWriter messageWriter = AmongUsClient.Instance.StartImmediate(target.NetId, (byte)RpcCalls.SetScanner, SendOption.Reliable, seerClientId);
         messageWriter.Write(IsActive);
         messageWriter.Write(cnt);
-        AmongUsClient.Instance.FinishRpcImmediately(messageWriter);
+        AmongUsClient.Instance.FinishImmediate(messageWriter);
 
         target.scannerCount = cnt;
     }
@@ -652,9 +679,9 @@ static class ExtendedPlayerControl
             player.CheckVanish();
             return;
         }
-        MessageWriter messageWriter = AmongUsClient.Instance.StartRpcImmediately(player.NetId, (byte)RpcCalls.CheckVanish, SendOption.None, seer.GetClientId());
+        MessageWriter messageWriter = AmongUsClient.Instance.StartImmediate(player.NetId, (byte)RpcCalls.CheckVanish, SendOption.None, seer.GetClientId());
         messageWriter.Write(0); // not used, lol
-        AmongUsClient.Instance.FinishRpcImmediately(messageWriter);
+        AmongUsClient.Instance.FinishImmediate(messageWriter);
     }
     public static void RpcStartVanishDesync(this PlayerControl player, PlayerControl seer)
     {
@@ -663,8 +690,8 @@ static class ExtendedPlayerControl
             player.SetRoleInvisibility(true, false, true);
             return;
         }
-        MessageWriter msg = AmongUsClient.Instance.StartRpcImmediately(player.NetId, (byte)RpcCalls.StartVanish, SendOption.None, seer.GetClientId());
-        AmongUsClient.Instance.FinishRpcImmediately(msg);
+        MessageWriter msg = AmongUsClient.Instance.StartImmediate(player.NetId, (byte)RpcCalls.StartVanish, SendOption.None, seer.GetClientId());
+        AmongUsClient.Instance.FinishImmediate(msg);
     }
     public static void RpcCheckAppearDesync(this PlayerControl player, bool shouldAnimate, PlayerControl seer)
     {
@@ -673,9 +700,9 @@ static class ExtendedPlayerControl
             player.CheckAppear(shouldAnimate);
             return;
         }
-        MessageWriter messageWriter = AmongUsClient.Instance.StartRpcImmediately(player.NetId, (byte)RpcCalls.CheckAppear, SendOption.None, seer.GetClientId());
+        MessageWriter messageWriter = AmongUsClient.Instance.StartImmediate(player.NetId, (byte)RpcCalls.CheckAppear, SendOption.None, seer.GetClientId());
         messageWriter.Write(shouldAnimate);
-        AmongUsClient.Instance.FinishRpcImmediately(messageWriter);
+        AmongUsClient.Instance.FinishImmediate(messageWriter);
     }
     public static void RpcStartAppearDesync(this PlayerControl player, bool shouldAnimate, PlayerControl seer)
     {
@@ -684,16 +711,16 @@ static class ExtendedPlayerControl
             player.SetRoleInvisibility(false, shouldAnimate, true);
             return;
         }
-        MessageWriter messageWriter = AmongUsClient.Instance.StartRpcImmediately(player.NetId, (byte)RpcCalls.StartAppear, SendOption.None, seer.GetClientId());
+        MessageWriter messageWriter = AmongUsClient.Instance.StartImmediate(player.NetId, (byte)RpcCalls.StartAppear, SendOption.None, seer.GetClientId());
         messageWriter.Write(shouldAnimate);
-        AmongUsClient.Instance.FinishRpcImmediately(messageWriter);
+        AmongUsClient.Instance.FinishImmediate(messageWriter);
     }
     public static void RpcCheckAppear(this PlayerControl player, bool shouldAnimate)
     {
         player.CheckAppear(shouldAnimate);
-        MessageWriter messageWriter = AmongUsClient.Instance.StartRpcImmediately(player.NetId, (byte)RpcCalls.CheckAppear, SendOption.None);
+        MessageWriter messageWriter = AmongUsClient.Instance.StartImmediate(player.NetId, (byte)RpcCalls.CheckAppear, SendOption.None);
         messageWriter.Write(shouldAnimate);
-        AmongUsClient.Instance.FinishRpcImmediately(messageWriter);
+        AmongUsClient.Instance.FinishImmediate(messageWriter);
     }
     public static void RpcSpecificMurderPlayer(this PlayerControl killer, PlayerControl target, PlayerControl seer)
     {
@@ -702,10 +729,10 @@ static class ExtendedPlayerControl
             killer.MurderPlayer(target, MurderResultFlags.Succeeded);
             return;
         }
-        MessageWriter messageWriter = AmongUsClient.Instance.StartRpcImmediately(killer.NetId, (byte)RpcCalls.MurderPlayer, SendOption.None, seer.GetClientId());
+        MessageWriter messageWriter = AmongUsClient.Instance.StartImmediate(killer.NetId, (byte)RpcCalls.MurderPlayer, SendOption.None, seer.GetClientId());
         messageWriter.WriteNetObject(target);
         messageWriter.Write((int)MurderResultFlags.Succeeded);
-        AmongUsClient.Instance.FinishRpcImmediately(messageWriter);
+        AmongUsClient.Instance.FinishImmediate(messageWriter);
     } //Must provide seer, target
     public static void RpcSpecificProtectPlayer(this PlayerControl killer, PlayerControl target = null, int colorId = 0)
     {
@@ -713,10 +740,10 @@ static class ExtendedPlayerControl
         {
             killer.ProtectPlayer(target, colorId);
         }
-        MessageWriter messageWriter = AmongUsClient.Instance.StartRpcImmediately(killer.NetId, (byte)RpcCalls.ProtectPlayer, SendOption.Reliable, killer.GetClientId());
+        MessageWriter messageWriter = AmongUsClient.Instance.StartImmediate(killer.NetId, (byte)RpcCalls.ProtectPlayer, SendOption.Reliable, killer.GetClientId());
         messageWriter.WriteNetObject(target);
         messageWriter.Write(colorId);
-        AmongUsClient.Instance.FinishRpcImmediately(messageWriter);
+        AmongUsClient.Instance.FinishImmediate(messageWriter);
     }
     public static void RpcResetAbilityCooldown(this PlayerControl target)
     {
@@ -737,10 +764,10 @@ static class ExtendedPlayerControl
         }
         else
         {
-            MessageWriter writer = AmongUsClient.Instance.StartRpcImmediately(target.NetId, (byte)RpcCalls.ProtectPlayer, SendOption.None, target.GetClientId());
+            MessageWriter writer = AmongUsClient.Instance.StartImmediate(target.NetId, (byte)RpcCalls.ProtectPlayer, SendOption.None, target.GetClientId());
             writer.WriteNetObject(target);
             writer.Write(0);
-            AmongUsClient.Instance.FinishRpcImmediately(writer);
+            AmongUsClient.Instance.FinishImmediate(writer);
         }
         /*
             When a player puts up a barrier, the cooldown of the ability is reset regardless of the player's position.
@@ -751,11 +778,11 @@ static class ExtendedPlayerControl
     }
     public static void RpcDesyncUpdateSystem(this PlayerControl target, SystemTypes systemType, int amount)
     {
-        var messageWriter = AmongUsClient.Instance.StartRpcImmediately(ShipStatus.Instance.NetId, (byte)RpcCalls.UpdateSystem, SendOption.Reliable, target.GetClientId());
+        var messageWriter = AmongUsClient.Instance.StartImmediate(ShipStatus.Instance.NetId, (byte)RpcCalls.UpdateSystem, SendOption.Reliable, target.GetClientId());
         messageWriter.Write((byte)systemType);
         messageWriter.WriteNetObject(target);
         messageWriter.Write((byte)amount);
-        AmongUsClient.Instance.FinishRpcImmediately(messageWriter);
+        AmongUsClient.Instance.FinishImmediate(messageWriter);
     }
 
     public static void RpcTeleportAllPlayers(Vector2 location)
@@ -779,10 +806,10 @@ static class ExtendedPlayerControl
         netTransform.SetDirtyBit(uint.MaxValue);
 
         ushort newSid = (ushort)(8 + netTransform.lastSequenceId);
-        MessageWriter writer = AmongUsClient.Instance.StartRpcImmediately(netTransform.NetId, (byte)RpcCalls.SnapTo, SendOption.Reliable, clientId);
+        MessageWriter writer = AmongUsClient.Instance.StartImmediate(netTransform.NetId, (byte)RpcCalls.SnapTo, SendOption.Reliable, clientId);
         NetHelpers.WriteVector2(position, writer);
         writer.Write(newSid);
-        AmongUsClient.Instance.FinishRpcImmediately(writer);
+        AmongUsClient.Instance.FinishImmediate(writer);
     }
     public static void RpcTeleport(this PlayerControl player, Vector2 position, bool isRandomSpawn = false, bool sendInfoInLogs = true)
     {
@@ -831,10 +858,10 @@ static class ExtendedPlayerControl
         }
 
         ushort newSid = (ushort)(netTransform.lastSequenceId + 8);
-        MessageWriter messageWriter = AmongUsClient.Instance.StartRpcImmediately(netTransform.NetId, (byte)RpcCalls.SnapTo, SendOption.Reliable);
+        MessageWriter messageWriter = AmongUsClient.Instance.StartImmediate(netTransform.NetId, (byte)RpcCalls.SnapTo, SendOption.Reliable);
         NetHelpers.WriteVector2(position, messageWriter);
         messageWriter.Write(newSid);
-        AmongUsClient.Instance.FinishRpcImmediately(messageWriter);
+        AmongUsClient.Instance.FinishImmediate(messageWriter);
     }
     public static void RpcRandomVentTeleport(this PlayerControl player)
     {

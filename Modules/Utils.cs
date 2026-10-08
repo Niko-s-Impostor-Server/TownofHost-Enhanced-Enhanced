@@ -78,9 +78,7 @@ public static class Utils
         else
         {
             if (PlayerControl.LocalPlayer == null) return;
-            MessageWriter writer = CustomRpcTransport.Start(CustomRPC.AntiBlackout, SendOption.Reliable);
-            writer.Write(text);
-            CustomRpcTransport.Finish(writer);
+            CustomRpcTransport.SendPayload(CustomRPC.AntiBlackout, writer => writer.Write(text));
 
             Logger.Fatal($"Error: {text} - I'm triggering critical error", "Anti-black");
 
@@ -118,9 +116,14 @@ public static class Utils
         if (!AmongUsClient.Instance.AmHost) return;
         foreach (var player in Main.AllPlayerControls.Where(x => x.GetClient() != null && !x.Data.Disconnected))
         {
-            var writer = AmongUsClient.Instance.StartRpcImmediately(player.NetId, (byte)RpcCalls.SendChat, SendOption.Reliable, player.OwnerId);
+            if (OfficialAnticheatPolicy.Enabled)
+            {
+                OfficialChat.Send(player, GetString("NotifyGameEnding"), player.PlayerId);
+                continue;
+            }
+            var writer = AmongUsClient.Instance.StartImmediate(player.NetId, (byte)RpcCalls.SendChat, SendOption.Reliable, player.OwnerId);
             writer.Write(GetString("NotifyGameEnding"));
-            AmongUsClient.Instance.FinishRpcImmediately(writer);
+            AmongUsClient.Instance.FinishImmediate(writer);
         }
     }
 
@@ -1512,11 +1515,11 @@ public static class Utils
             else title = "\u27a1" + title.Replace("\u2605", "") + "\u2b05";
         }
 
-        text = text.Replace("color=", string.Empty);
+        if (!OfficialAnticheatPolicy.Enabled) text = text.Replace("color=", string.Empty);
 
         try
         {
-            if (ShouldSplit && text.Length > 1200)
+            if (!OfficialAnticheatPolicy.Enabled && ShouldSplit && text.Length > 1200)
             {
                 text.SplitMessage().Do(x => SendMessage(x, sendTo, title));
                 return;
@@ -2309,7 +2312,8 @@ public static class Utils
     {
         foreach (var playerinfo in GameData.Instance.AllPlayers)
         {
-            MessageWriter writer = MessageWriter.Get(SendOption.None);
+            using var owner = new OfficialPacketBuilder.BoundedWriter(SendOption.None, OfficialAnticheatPolicy.Enabled);
+            var writer = owner.Writer;
             writer.StartMessage(5); //0x05 GameData
             writer.Write(AmongUsClient.Instance.GameId);
             {
@@ -2322,8 +2326,7 @@ public static class Utils
             }
             writer.EndMessage();
 
-            AmongUsClient.Instance.SendOrDisconnect(writer);
-            writer.Recycle();
+            OfficialPacketBuilder.SendCompleted(writer);
         }
     }
     public static void SetAllVentInteractions()
@@ -2693,10 +2696,11 @@ public static class Utils
         }
 
         var customNetId = AmongUsClient.Instance.NetIdCnt++;
-        var vanillasend = MessageWriter.Get(SendOption.Reliable);
+        using var owner = new OfficialPacketBuilder.BoundedWriter(SendOption.Reliable, OfficialAnticheatPolicy.Enabled);
+        var vanillasend = owner.Writer;
         vanillasend.StartMessage(6);
         vanillasend.Write(AmongUsClient.Instance.GameId);
-        vanillasend.Write(player.OwnerId);
+        vanillasend.WritePacked(player.OwnerId);
 
         vanillasend.StartMessage((byte)GameDataTag.SpawnFlag);
         vanillasend.WritePacked(1); // 1 Meeting Hud Spawn id
@@ -2714,15 +2718,14 @@ public static class Utils
 
         vanillasend.StartMessage(6);
         vanillasend.Write(AmongUsClient.Instance.GameId);
-        vanillasend.Write(player.OwnerId);
+        vanillasend.WritePacked(player.OwnerId);
         vanillasend.StartMessage((byte)GameDataTag.RpcFlag);
         vanillasend.WritePacked(customNetId);
         vanillasend.Write((byte)RpcCalls.CloseMeeting);
         vanillasend.EndMessage();
         vanillasend.EndMessage();
 
-        AmongUsClient.Instance.SendOrDisconnect(vanillasend);
-        vanillasend.Recycle();
+        OfficialPacketBuilder.SendCompleted(vanillasend);
     }
 
     public static int AllPlayersCount => Main.PlayerStates.Values.Count(state => state.countTypes != CountTypes.OutOfGame);

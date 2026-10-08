@@ -11,6 +11,21 @@ public static class PhantomRolePatch
 {
     private static readonly Il2CppSystem.Collections.Generic.List<PlayerControl> InvisibilityList = new();
     private static readonly Dictionary<byte, string> PetsList = [];
+    private static readonly Dictionary<byte, uint> ViewEpochs = [];
+    private static uint nextViewEpoch;
+
+    private static uint BeginView(PlayerControl phantom)
+    {
+        ViewEpochs[phantom.PlayerId] = ++nextViewEpoch;
+        return nextViewEpoch;
+    }
+
+    private static bool CurrentView(OfficialSessionContext context, uint epoch, PlayerControl phantom, PlayerControl seer)
+        => context.IsCurrent() && AmongUsClient.Instance.AmHost && !GameStates.IsEnded
+        && phantom != null && phantom.Data != null && phantom.IsAlive() && !phantom.Data.Disconnected
+        && seer != null && seer.Data != null && !seer.Data.Disconnected && seer.GetClientId() >= 0
+        && Main.AllPlayerControls.Contains(phantom) && Main.AllPlayerControls.Contains(seer)
+        && ViewEpochs.TryGetValue(phantom.PlayerId, out var current) && current == epoch;
 
     /*
      *  InnerSloth is doing careless stuffs. They didnt put amModdedHost check in cmd check vanish appear
@@ -30,9 +45,9 @@ public static class PhantomRolePatch
             return false;
         }
         __instance.SetRoleInvisibility(true, true, false);
-        MessageWriter messageWriter = AmongUsClient.Instance.StartRpcImmediately(__instance.NetId, (byte)RpcCalls.CheckVanish, SendOption.Reliable, AmongUsClient.Instance.HostId);
+        MessageWriter messageWriter = AmongUsClient.Instance.StartImmediate(__instance.NetId, (byte)RpcCalls.CheckVanish, SendOption.Reliable, AmongUsClient.Instance.HostId);
         messageWriter.Write(maxDuration);
-        AmongUsClient.Instance.FinishRpcImmediately(messageWriter);
+        AmongUsClient.Instance.FinishImmediate(messageWriter);
         return false;
     }
 
@@ -44,9 +59,9 @@ public static class PhantomRolePatch
             __instance.CheckAppear(shouldAnimate);
             return false;
         }
-        MessageWriter messageWriter = AmongUsClient.Instance.StartRpcImmediately(__instance.NetId, (byte)RpcCalls.CheckAppear, SendOption.Reliable, AmongUsClient.Instance.HostId);
+        MessageWriter messageWriter = AmongUsClient.Instance.StartImmediate(__instance.NetId, (byte)RpcCalls.CheckAppear, SendOption.Reliable, AmongUsClient.Instance.HostId);
         messageWriter.Write(shouldAnimate);
-        AmongUsClient.Instance.FinishRpcImmediately(messageWriter);
+        AmongUsClient.Instance.FinishImmediate(messageWriter);
         return false;
     }
     // Called when Phantom press vanish button when visible
@@ -67,6 +82,9 @@ public static class PhantomRolePatch
         if (!AmongUsClient.Instance.AmHost) return true;
 
         var phantom = __instance;
+        var compatible = OfficialAnticheatPolicy.Enabled;
+        var context = OfficialSessionContext.Capture();
+        var epoch = compatible ? BeginView(phantom) : 0;
         Logger.Info($"Player: {phantom.GetRealName()}", "CheckVanish");
         if (phantom.IsAlive() && GameStates.IsInTask && phantom.Data.Role.Role == RoleTypes.Phantom)
             AfkMonitor.RecordActivity(phantom);
@@ -83,6 +101,7 @@ public static class PhantomRolePatch
             _ = new LateTask(() =>
             {
                 if (Main.MeetingIsStarted || phantom == null) return;
+                if (compatible && !CurrentView(context, epoch, phantom, target)) return;
 
                 var petId = phantom.Data.DefaultOutfit.PetId;
                 if (petId != "")
@@ -111,6 +130,9 @@ public static class PhantomRolePatch
         if (!AmongUsClient.Instance.AmHost) return;
 
         var phantom = __instance;
+        var compatible = OfficialAnticheatPolicy.Enabled;
+        var context = OfficialSessionContext.Capture();
+        var epoch = compatible ? BeginView(phantom) : 0;
         Logger.Info($"Player: {phantom.GetRealName()} => shouldAnimate {shouldAnimate}", "CheckAppear");
         if (shouldAnimate && phantom.IsAlive() && GameStates.IsInTask) AfkMonitor.RecordActivity(phantom);
 
@@ -130,6 +152,7 @@ public static class PhantomRolePatch
 
             _ = new LateTask(() =>
             {
+                if (compatible && (Main.MeetingIsStarted || !CurrentView(context, epoch, phantom, target))) return;
                 // Check appear again for desync role
                 if (target != null)
                     phantom?.RpcCheckAppearDesync(shouldAnimate, target);
@@ -138,6 +161,7 @@ public static class PhantomRolePatch
             _ = new LateTask(() =>
             {
                 if (Main.MeetingIsStarted || phantom == null) return;
+                if (compatible && !CurrentView(context, epoch, phantom, target)) return;
 
                 InvisibilityList.Remove(phantom);
                 phantom?.RpcSetRoleDesync(RoleTypes.Scientist, clientId);
@@ -175,33 +199,37 @@ public static class PhantomRolePatch
     private static bool InValid(PlayerControl phantom, PlayerControl seer) => seer.GetClientId() == -1 || phantom == null;
     private static System.Collections.IEnumerator CoRevertInvisible(PlayerControl phantom, PlayerControl seer, bool force)
     {
+        var compatible = OfficialAnticheatPolicy.Enabled;
+        var context = OfficialSessionContext.Capture();
+        ViewEpochs.TryGetValue(phantom.PlayerId, out var epoch);
+        bool Invalid() => InValid(phantom, seer) || compatible && !CurrentView(context, epoch, phantom, seer);
         // Set Scientist for meeting
         if (!force)
         {
             yield return new WaitForSeconds(0.0001f);
         }
-        if (InValid(phantom, seer)) yield break;
+        if (Invalid()) yield break;
 
         phantom?.RpcSetRoleDesync(RoleTypes.Scientist, seer.GetClientId());
 
         // Return Phantom in meeting
         yield return new WaitForSeconds(1f);
         {
-            if (InValid(phantom, seer)) yield break;
+            if (Invalid()) yield break;
 
             phantom?.RpcSetRoleDesync(RoleTypes.Phantom, seer.GetClientId());
         }
         // Revert invis for phantom
         yield return new WaitForSeconds(1f);
         {
-            if (InValid(phantom, seer)) yield break;
+            if (Invalid()) yield break;
 
             phantom?.RpcStartAppearDesync(false, seer);
         }
         // Set Scientist back
         yield return new WaitForSeconds(4f);
         {
-            if (InValid(phantom, seer)) yield break;
+            if (Invalid()) yield break;
 
             phantom?.RpcSetRoleDesync(RoleTypes.Scientist, seer.GetClientId());
 
@@ -212,10 +240,16 @@ public static class PhantomRolePatch
         }
         yield break;
     }
-    public static void AfterMeeting()
+    internal static void ResetViews()
     {
         InvisibilityList.Clear();
         PetsList.Clear();
+        ViewEpochs.Clear();
+    }
+
+    public static void AfterMeeting()
+    {
+        ResetViews();
         foreach (var player in Main.AllPlayerControls)
         {
             var role = player.GetRoleClass();

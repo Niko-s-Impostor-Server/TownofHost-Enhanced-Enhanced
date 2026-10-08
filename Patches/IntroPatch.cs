@@ -710,7 +710,8 @@ class IntroCutsceneDestroyPatch
 
     private static void AfterIntroDestroyed()
     {
-
+        var compatible = OfficialAnticheatPolicy.Enabled;
+        var context = OfficialSessionContext.Capture();
         if (!GameStates.AirshipIsActive)
         {
             foreach (var state in Main.PlayerStates.Values)
@@ -733,6 +734,9 @@ class IntroCutsceneDestroyPatch
                     {
                         _ = new LateTask(() =>
                         {
+                            if (compatible && (!context.IsCurrent() || !RoleDistribution.GameplayReady
+                                || !AmongUsClient.Instance.AmHost || pc == null || pc.Data == null
+                                || pc.Data.Disconnected || !Main.AllPlayerControls.Contains(pc))) return;
                             if (pc != null)
                             {
                                 pc.ResetKillCooldown();
@@ -757,12 +761,21 @@ class IntroCutsceneDestroyPatch
             }
             if (GhostRoleAssign.forceRole.Any())
             {
+                var forcedGhosts = GhostRoleAssign.forceRole.Keys.Select(id =>
+                {
+                    var player = id.GetPlayer();
+                    return (Id: id, Pointer: player == null ? IntPtr.Zero : player.Pointer);
+                }).ToArray();
                 // Needs to be delayed for the game to load it properly
                 _ = new LateTask(() =>
                 {
+                    if (compatible && (!context.IsCurrent() || !RoleDistribution.GameplayReady
+                        || !AmongUsClient.Instance.AmHost)) return;
                     GhostRoleAssign.forceRole.Do(x =>
                     {
                         var plr = x.Key.GetPlayer();
+                        if (compatible && (plr == null || plr.Data == null || plr.Data.Disconnected
+                            || !forcedGhosts.Any(captured => captured.Id == x.Key && captured.Pointer == plr.Pointer))) return;
                         plr.RpcExile();
                         Main.PlayerStates[x.Key].SetDead();
 

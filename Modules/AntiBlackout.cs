@@ -225,22 +225,37 @@ public static class AntiBlackout
     public static void SetRealPlayerRoles()
     {
         if (CustomWinnerHolder.WinnerTeam != CustomWinner.Default) return;
+        if (OfficialAnticheatPolicy.Enabled)
+        {
+            var barrier = CustomRpcTransport.CaptureBarrier();
+            if (!barrier.IsComplete)
+            {
+                Main.Instance.StartCoroutine(WaitForRoleMetadata(OfficialSessionContext.Capture(), barrier));
+                return;
+            }
+        }
 
         foreach (var ((seerId, targetId), (roletype, _)) in RpcSetRoleReplacer.RoleMap)
         {
             // skip host
-            if (seerId == 0) continue;
-
             var seer = seerId.GetPlayer();
             var target = targetId.GetPlayer();
 
             if (seer == null || target == null) continue;
+            if (seer.IsHost()) continue;
             if (seer.IsModded()) continue;
 
             var isSelf = seerId == targetId;
             var changedRoleType = roletype;
             if (target.Data.IsDead)
             {
+                if (OfficialAnticheatPolicy.Enabled)
+                {
+                    // This repairs a view after the meeting; the death and custom
+                    // ghost assignment already happened on the authoritative host.
+                    target.RpcSetRoleDesync(GhostRoleView.ForRecipient(target, seer), seer.GetClientId());
+                    continue;
+                }
                 if (isSelf)
                 {
                     target.RpcExile();
@@ -259,6 +274,16 @@ public static class AntiBlackout
 
             target.RpcSetRoleDesync(changedRoleType, seer.GetClientId());
         }
+    }
+    private static System.Collections.IEnumerator WaitForRoleMetadata(OfficialSessionContext context, RpcSendBarrier barrier)
+    {
+        while (!barrier.IsComplete)
+        {
+            if (barrier.IsCancelled || !context.IsCurrent() || !AmongUsClient.Instance.AmHost
+                || CustomWinnerHolder.WinnerTeam != CustomWinner.Default) yield break;
+            yield return null;
+        }
+        if (context.IsCurrent() && AmongUsClient.Instance.AmHost) SetRealPlayerRoles();
     }
     private static void ResetAllCooldown()
     {

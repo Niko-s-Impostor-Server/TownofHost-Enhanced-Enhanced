@@ -18,6 +18,8 @@ namespace TOHE.Modules.ChatManager
         {
             chatHistory.Clear();
             LastSystemChatMsg.Clear();
+            ChatSentBySystem.Clear();
+            cancel = false;
         }
         public static void ClearLastSysMsg()
         {
@@ -172,6 +174,11 @@ namespace TOHE.Modules.ChatManager
 
                 for (int i = 0; i < 20 - chatHistory.Count; i++)
                 {
+                    if (OfficialAnticheatPolicy.Enabled)
+                    {
+                        OfficialChat.Send(firstAlivePlayer, spamMsg, title: title);
+                        continue;
+                    }
                     int clientId = -1; //sendTo == byte.MaxValue ? -1 : Utils.GetPlayerById(sendTo).GetClientId();
                     //if (clientId == -1)
                     //{
@@ -251,6 +258,12 @@ namespace TOHE.Modules.ChatManager
                 var senderMessage = entry[senderId];
                 var senderPlayer = senderId.GetPlayer();
                 if (senderPlayer == null) continue;
+
+                if (OfficialAnticheatPolicy.Enabled)
+                {
+                    OfficialChat.Send(senderPlayer, senderMessage);
+                    continue;
+                }
 
                 var playerDead = !senderPlayer.IsAlive();
                 if (playerDead)

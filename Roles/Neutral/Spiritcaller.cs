@@ -82,21 +82,28 @@ internal class Spiritcaller : RoleBase
 
             target.RpcSetCustomRole(CustomRoles.EvilSpirit);
 
-            var writer = CustomRpcSender.Create("SpiritCallerSendMessage", SendOption.None);
-            writer.StartMessage(target.GetClientId());
-            writer.StartRpc(target.NetId, (byte)RpcCalls.SetName)
-                .Write(target.Data.NetId)
-                .Write(GetString("SpiritcallerNoticeTitle"))
-                .EndRpc();
-            writer.StartRpc(target.NetId, (byte)RpcCalls.SendChat)
-                .Write(GetString("SpiritcallerNoticeMessage"))
-                .EndRpc();
-            writer.StartRpc(target.NetId, (byte)RpcCalls.SetName)
-                .Write(target.Data.NetId)
-                .Write(target.Data.PlayerName)
-                .EndRpc();
-            writer.EndMessage();
-            writer.SendMessage();
+            if (OfficialAnticheatPolicy.Enabled)
+            {
+                OfficialChat.Send(target, GetString("SpiritcallerNoticeMessage"), target.PlayerId, GetString("SpiritcallerNoticeTitle"));
+            }
+            else
+            {
+                var writer = CustomRpcSender.Create("SpiritCallerSendMessage", SendOption.None);
+                writer.StartMessage(target.GetClientId());
+                writer.StartRpc(target.NetId, (byte)RpcCalls.SetName)
+                    .Write(target.Data.NetId)
+                    .Write(GetString("SpiritcallerNoticeTitle"))
+                    .EndRpc();
+                writer.StartRpc(target.NetId, (byte)RpcCalls.SendChat)
+                    .Write(GetString("SpiritcallerNoticeMessage"))
+                    .EndRpc();
+                writer.StartRpc(target.NetId, (byte)RpcCalls.SetName)
+                    .Write(target.Data.NetId)
+                    .Write(target.Data.PlayerName)
+                    .EndRpc();
+                writer.EndMessage();
+                writer.SendMessage();
+            }
         }
         return true;
     }

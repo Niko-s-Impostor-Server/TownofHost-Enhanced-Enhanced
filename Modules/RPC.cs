@@ -213,6 +213,7 @@ internal class RPCHandlerPatch
                 break;
             case RpcCalls.SendQuickChat:
                 Logger.Info($"{__instance.GetNameWithRole().RemoveHtmlTags()}:Some message from quick chat", "ReceiveChat");
+                if (OfficialAnticheatPolicy.Enabled) break;
                 ChatCommands.OnReceiveChat(__instance, "Some message from quick chat", out var canceledQuickChat);
                 if (canceledQuickChat) return false;
                 break;

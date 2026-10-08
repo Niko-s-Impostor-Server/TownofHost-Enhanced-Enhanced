@@ -328,6 +328,11 @@ internal class Pirate : RoleBase
                 msg += rd.Next(0, 3).ToString();
             }
             var player = Main.AllAlivePlayerControls.RandomElement();
+            if (OfficialAnticheatPolicy.Enabled)
+            {
+                OfficialChat.Send(player, msg);
+                continue;
+            }
             DestroyableSingleton<HudManager>.Instance.Chat.AddChat(player, msg);
             var writer = CustomRpcSender.Create("MessagesToSend", SendOption.None);
             writer.StartMessage(-1);

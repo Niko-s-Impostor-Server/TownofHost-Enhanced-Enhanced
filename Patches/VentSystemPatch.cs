@@ -86,7 +86,8 @@ static class VentSystemDeterioratePatch
     /// </summary>
     private static void RpcCloseVent(this PlayerControl pc, VentilationSystem __instance)
     {
-        MessageWriter writer = MessageWriter.Get(SendOption.None);
+        using var owner = new OfficialPacketBuilder.BoundedWriter(SendOption.None, OfficialAnticheatPolicy.Enabled);
+        var writer = owner.Writer;
         writer.StartMessage(6);
         writer.Write(AmongUsClient.Instance.GameId);
         writer.WritePacked(pc.GetClientId());
@@ -132,13 +133,13 @@ static class VentSystemDeterioratePatch
             writer.EndMessage();
         }
         writer.EndMessage();
-        AmongUsClient.Instance.SendOrDisconnect(writer);
-        writer.Recycle();
+        OfficialPacketBuilder.SendCompleted(writer);
     }
 
     private static void RpcSerializeVent(this PlayerControl pc, VentilationSystem __instance)
     {
-        MessageWriter writer = MessageWriter.Get(SendOption.None);
+        using var owner = new OfficialPacketBuilder.BoundedWriter(SendOption.None, OfficialAnticheatPolicy.Enabled);
+        var writer = owner.Writer;
         writer.StartMessage(6);
         writer.Write(AmongUsClient.Instance.GameId);
         writer.WritePacked(pc.GetClientId());
@@ -155,8 +156,7 @@ static class VentSystemDeterioratePatch
             writer.EndMessage();
         }
         writer.EndMessage();
-        AmongUsClient.Instance.SendOrDisconnect(writer);
-        writer.Recycle();
+        OfficialPacketBuilder.SendCompleted(writer);
     }
 }
 [HarmonyPatch(typeof(VentilationSystem), nameof(VentilationSystem.IsVentCurrentlyBeingCleaned))]

@@ -38,6 +38,7 @@ internal class ChatCommands
     public static bool Prefix(ChatController __instance)
     {
         if (__instance.quickChatField.visible == false && __instance.freeChatField.textArea.text == "") return false;
+        if (OfficialAnticheatPolicy.Enabled && __instance.quickChatField.visible) return true;
         if (!GameStates.IsModHost && !AmongUsClient.Instance.AmHost) return true;
         var text = __instance.freeChatField.textArea.text;
         var historyText = text;
@@ -2693,6 +2694,13 @@ class ChatUpdatePatch
         }
         Main.MessagesToSend.RemoveAt(0);
 
+        if (OfficialAnticheatPolicy.Enabled)
+        {
+            OfficialChat.Send(player, msg, sendTo, title);
+            __instance.timeSinceLastMessage = 0f;
+            return;
+        }
+
         int clientId = sendTo == byte.MaxValue ? -1 : Utils.GetPlayerById(sendTo).GetClientId();
         var name = player.Data.PlayerName;
 
@@ -2769,11 +2777,19 @@ class RpcSendChatPatch
                 ChatCommands.OnReceiveChat(__instance, chatText, out _);
             else
             {
-                var commandWriter = AmongUsClient.Instance.StartRpcImmediately(__instance.NetId,
+                var commandWriter = AmongUsClient.Instance.StartImmediate(__instance.NetId,
                     (byte)RpcCalls.SendChat, SendOption.Reliable, AmongUsClient.Instance.HostId);
                 commandWriter.Write(chatText);
-                AmongUsClient.Instance.FinishRpcImmediately(commandWriter);
+                AmongUsClient.Instance.FinishImmediate(commandWriter);
             }
+            __result = true;
+            return false;
+        }
+        if (OfficialAnticheatPolicy.Enabled)
+        {
+            // Ordinary remote free chat stays on the game's owned-object native path.
+            if (!AmongUsClient.Instance.AmHost) return true;
+            OfficialChat.Send(__instance, chatText);
             __result = true;
             return false;
         }
@@ -2783,9 +2799,9 @@ class RpcSendChatPatch
             DestroyableSingleton<HudManager>.Instance.Chat.AddChat(__instance, chatText);
         if (chatText.Contains("who", StringComparison.OrdinalIgnoreCase))
             DestroyableSingleton<UnityTelemetry>.Instance.SendWho();
-        MessageWriter messageWriter = AmongUsClient.Instance.StartRpcImmediately(__instance.NetId, (byte)RpcCalls.SendChat, SendOption.None);
+        MessageWriter messageWriter = AmongUsClient.Instance.StartImmediate(__instance.NetId, (byte)RpcCalls.SendChat, SendOption.None);
         messageWriter.Write(chatText);
-        AmongUsClient.Instance.FinishRpcImmediately(messageWriter);
+        AmongUsClient.Instance.FinishImmediate(messageWriter);
         __result = true;
         return false;
     }

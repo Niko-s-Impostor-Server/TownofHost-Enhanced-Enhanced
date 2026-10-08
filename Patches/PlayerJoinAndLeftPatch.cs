@@ -445,12 +445,19 @@ class OnPlayerLeftPatch
                 else if (GameStates.IsLobby)
                     msg = GetString("Message.HostLeftGameInLobby");
 
-                player.SetName(title);
-                DestroyableSingleton<HudManager>.Instance.Chat.AddChat(player, msg);
-                player.SetName(name);
+                if (!OfficialAnticheatPolicy.Enabled || !AmongUsClient.Instance.AmHost)
+                {
+                    player.SetName(title);
+                    DestroyableSingleton<HudManager>.Instance.Chat.AddChat(player, msg);
+                    player.SetName(name);
+                }
 
                 //On Become Host is called before OnPlayerLeft, so this is safe to use
-                if (AmongUsClient.Instance.AmHost)
+                if (AmongUsClient.Instance.AmHost && OfficialAnticheatPolicy.Enabled)
+                {
+                    OfficialChat.Send(player, msg, title: title);
+                }
+                else if (AmongUsClient.Instance.AmHost)
                 {
                     var writer = CustomRpcSender.Create("MessagesToSend", SendOption.None);
                     writer.StartMessage(clientId);
@@ -626,10 +633,10 @@ class InnerNetClientSpawnPatch
                         // Only for vanilla
                         if (!client.Character.IsModded())
                         {
-                            MessageWriter writer = AmongUsClient.Instance.StartRpcImmediately(LobbyBehaviour.Instance.NetId, (byte)RpcCalls.LobbyTimeExpiring, SendOption.None, client.Id);
+                            MessageWriter writer = AmongUsClient.Instance.StartImmediate(LobbyBehaviour.Instance.NetId, (byte)RpcCalls.LobbyTimeExpiring, SendOption.None, client.Id);
                             writer.WritePacked((int)GameStartManagerPatch.timer);
                             writer.Write(false);
-                            AmongUsClient.Instance.FinishRpcImmediately(writer);
+                            AmongUsClient.Instance.FinishImmediate(writer);
                         }
                         // Non-host modded client
                         else if (client.Character.IsNonHostModdedClient())

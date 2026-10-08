@@ -181,6 +181,14 @@ public static class GhostRoleAssign
                 var cleared = conf.ToString();
                 conf.Clear().Append($"<size={ChatCommands.Csize}>" + $"<color={rlHex}>{Translator.GetString(role.ToString())} {Translator.GetString("Settings:")}</color>\n" + cleared + "</size>");
 
+                if (OfficialAnticheatPolicy.Enabled)
+                {
+                    string heading = Utils.ColorString(Utils.GetRoleColor(role), Translator.GetString("GhostTransformTitle"));
+                    OfficialChat.Send(host, sb.ToString(), __instance.PlayerId, heading);
+                    OfficialChat.Send(host, conf.ToString(), __instance.PlayerId, heading);
+                    return;
+                }
+
                 var writer = CustomRpcSender.Create("SendGhostRoleInfo", SendOption.None);
                 writer.StartMessage(__instance.GetClientId());
                 {

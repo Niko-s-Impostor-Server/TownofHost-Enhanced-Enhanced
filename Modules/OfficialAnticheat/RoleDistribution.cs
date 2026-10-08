@@ -363,10 +363,10 @@ internal static class RoleDistribution
         }
         else
         {
-        if (state.HostApplied || phase == 1 && state.Subjects.Count != count - 1)
-            throw new InvalidOperationException("Out-of-order native role");
-        state.Subjects.Add(subject, role);
-        state.Queue.Enqueue((subject, role, phase));
+            if (state.HostApplied || phase == 1 && state.Subjects.Count != count - 1)
+                throw new InvalidOperationException("Out-of-order native role");
+            state.Subjects.Add(subject, role);
+            state.Queue.Enqueue((subject, role, phase));
         }
         if (!state.Draining)
         {

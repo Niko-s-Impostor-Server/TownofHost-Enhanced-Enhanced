@@ -41,9 +41,9 @@ public static class PhantomAbility
             player.CheckVanish();
             return;
         }
-        var writer = client.StartRpcImmediately(player.NetId, (byte)RpcCalls.CheckVanish, SendOption.Reliable, client.HostId);
+        var writer = client.StartImmediate(player.NetId, (byte)RpcCalls.CheckVanish, SendOption.Reliable, client.HostId);
         writer.Write(maxDuration);
-        client.FinishRpcImmediately(writer);
+        client.FinishImmediate(writer);
     }
 
     public static bool TryActivate(PlayerControl player, RoleTypes requiredRole = RoleTypes.Phantom)

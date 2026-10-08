@@ -19,6 +19,7 @@ internal static class OfficialAnticheatLifecyclePatch
         CustomRpcTransport.Reset(preserveCapabilities);
         OfficialNativePacking.Reset();
         OfficialNetworkSend.Reset();
+        PhantomRolePatch.ResetViews();
         Main.MessagesToSend.Clear();
         TOHE.Modules.ChatManager.ChatManager.ResetHistory();
     }

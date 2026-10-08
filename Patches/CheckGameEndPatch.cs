@@ -466,8 +466,23 @@ class GameEndCheckerForNormal
     public static bool ForEndGame = false;
     private static IEnumerator CoEndGame(AmongUsClient self, GameOverReason reason)
     {
+        var compatible = OfficialAnticheatPolicy.Enabled;
+        var context = OfficialSessionContext.Capture();
+        if (compatible && (!context.IsCurrent() || !self.AmHost)) yield break;
         CustomRoleManager.AllEnabledRoles.Do(roleClass => roleClass.OnCoEndGame());
         ForEndGame = true;
+        if (compatible)
+        {
+            // Winner metadata and role end callbacks must actually leave the native
+            // RPC queue before the direct vanilla presentation transaction begins.
+            var winnerBarrier = CustomRpcTransport.CaptureBarrier();
+            while (!winnerBarrier.IsComplete)
+            {
+                if (winnerBarrier.IsCancelled || !context.IsCurrent() || !self.AmHost) yield break;
+                yield return null;
+            }
+            if (!context.IsCurrent() || !self.AmHost) yield break;
+        }
 
         // Set ghost role
         List<byte> ReviveRequiredPlayerIds = [];
@@ -493,15 +508,33 @@ class GameEndCheckerForNormal
                 if (ToGhostImpostor)
                 {
                     Logger.Info($"{pc.GetNameWithRole().RemoveHtmlTags()}: changed to ImpostorGhost", "ResetRoleAndEndGame");
-                    pc.RpcSetRole(RoleTypes.ImpostorGhost);
+                    PublishEndRole(RoleTypes.ImpostorGhost);
                 }
                 else
                 {
                     Logger.Info($"{pc.GetNameWithRole().RemoveHtmlTags()}: changed to CrewmateGhost", "ResetRoleAndEndGame");
-                    pc.RpcSetRole(RoleTypes.CrewmateGhost);
+                    PublishEndRole(RoleTypes.CrewmateGhost);
                 }
                 // Put it back on so it can't be auto-muted during the delay until resuscitation ~~ TOH comment
                 pc.Data.IsDead = isDead;
+
+                void PublishEndRole(RoleTypes role)
+                {
+                    if (!compatible)
+                    {
+                        pc.RpcSetRole(role);
+                        return;
+                    }
+                    // The winner presentation deliberately uses the same ghost role
+                    // for every recipient. Complete these reliable direct sends before
+                    // any resurrection DataFlags, without assigning custom ghosts.
+                    pc.Data.Role.OnRoleSet();
+                    foreach (var seer in Main.AllPlayerControls)
+                    {
+                        if (seer == null || seer.Data == null || seer.Data.Disconnected || seer.GetClientId() < 0) continue;
+                        pc.RpcSetRoleDesync(role, seer.GetClientId());
+                    }
+                }
             }
         }
 
@@ -511,6 +544,7 @@ class GameEndCheckerForNormal
 
         // Delay to ensure that resuscitation is delivered after the ghost roll setting
         yield return new WaitForSeconds(0.2f);
+        if (compatible && (!context.IsCurrent() || !self.AmHost)) yield break;
 
         if (ReviveRequiredPlayerIds.Count > 0)
         {
@@ -527,6 +561,7 @@ class GameEndCheckerForNormal
             Utils.SendGameData();
             // Delay to ensure that the end of the game is delivered at the end of the game
             yield return new WaitForSeconds(0.3f);
+            if (compatible && (!context.IsCurrent() || !self.AmHost)) yield break;
         }
 
         // Update all Notify Roles

@@ -537,10 +537,10 @@ class RpcMurderPlayerPatch
         {
             __instance.MurderPlayer(target, murderResultFlags);
         }
-        MessageWriter messageWriter = AmongUsClient.Instance.StartRpcImmediately(__instance.NetId, (byte)RpcCalls.MurderPlayer, SendOption.Reliable, -1);
+        MessageWriter messageWriter = AmongUsClient.Instance.StartImmediate(__instance.NetId, (byte)RpcCalls.MurderPlayer, SendOption.Reliable, -1);
         messageWriter.WriteNetObject(target);
         messageWriter.Write((int)murderResultFlags);
-        AmongUsClient.Instance.FinishRpcImmediately(messageWriter);
+        AmongUsClient.Instance.FinishImmediate(messageWriter);
 
         return false;
         // There is no need to include DecisionByHost. DecisionByHost will make client check protection locally and cause confusion.
@@ -1828,6 +1828,7 @@ class PlayerControlSetRolePatch
     private static readonly Dictionary<PlayerControl, RoleTypes> GhostRoles = [];
     public static bool Prefix(PlayerControl __instance, [HarmonyArgument(0)] ref RoleTypes roleType, [HarmonyArgument(1)] ref bool canOverrideRole)
     {
+        if (GhostRoleView.SuppressNativeAssignment(__instance)) return false;
         // Skip first assign
         if (RpcSetRoleReplacer.BlockSetRole || GameStates.IsHideNSeek) return true;
 
@@ -1841,6 +1842,13 @@ class PlayerControlSetRolePatch
         // Ghost assign
         if (roleType is RoleTypes.CrewmateGhost or RoleTypes.ImpostorGhost)
         {
+            if (OfficialAnticheatPolicy.Enabled)
+            {
+                GhostRoleView.AssignCustomGhost(target);
+                GhostRoleView.Publish(target);
+                if (target.HasGhostRole()) GhostRoleAssign.CreateGAMessage(target);
+                return false;
+            }
             try
             {
                 GhostRoleAssign.GhostAssignPatch(__instance); // Sets customrole ghost if succeed
@@ -1851,25 +1859,17 @@ class PlayerControlSetRolePatch
                 Logger.Warn($"Error After RpcSetRole: {error}", "RpcSetRole.Prefix.GhostAssignPatch");
             }
 
-            var targetIsKiller = target.Is(Custom_Team.Impostor) || target.HasDesyncRole();
             GhostRoles.Clear();
 
             foreach (var seer in Main.AllPlayerControls)
             {
-                var self = seer.PlayerId == target.PlayerId;
-                var seerIsKiller = seer.Is(Custom_Team.Impostor) || seer.HasDesyncRole();
-
                 if (target.HasGhostRole())
                 {
                     GhostRoles[seer] = RoleTypes.GuardianAngel;
                 }
-                else if ((self && targetIsKiller) || (!seerIsKiller && target.Is(Custom_Team.Impostor)))
-                {
-                    GhostRoles[seer] = RoleTypes.ImpostorGhost;
-                }
                 else
                 {
-                    GhostRoles[seer] = RoleTypes.CrewmateGhost;
+                    GhostRoles[seer] = GhostRoleView.ForRecipient(target, seer);
                 }
             }
             // If all players see player as Guardian Angel
