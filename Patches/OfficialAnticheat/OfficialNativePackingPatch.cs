@@ -334,7 +334,8 @@ internal static class OfficialPackingLimitPatch
 [HarmonyPatch(typeof(InnerNetClient), nameof(InnerNetClient.PackAndSendQueuedMessages))]
 internal static class OfficialQueuedMessagesPatch
 {
-    public static bool Prefix(InnerNetClient __instance, NativeQueue queue, SendOption sendOption, ref bool thereAreQueuedMessagesLeft)
+    public static bool Prefix(InnerNetClient __instance, [HarmonyArgument(0)] NativeQueue queue,
+        [HarmonyArgument(1)] SendOption sendOption, [HarmonyArgument(2)] ref bool thereAreQueuedMessagesLeft)
     {
         if (!OfficialAnticheatPolicy.Enabled) return true;
         OfficialNativePacking.PackQueue(__instance, queue, sendOption, out thereAreQueuedMessagesLeft);
@@ -345,7 +346,8 @@ internal static class OfficialQueuedMessagesPatch
 [HarmonyPatch(typeof(InnerNetClient), nameof(InnerNetClient.PackAndSendDirtyStreamedObjects))]
 internal static class OfficialDirtyObjectsPatch
 {
-    public static bool Prefix(InnerNetClient __instance, NativeObjects streamCollection, SendOption sendOption, ref int trackingIndex)
+    public static bool Prefix(InnerNetClient __instance, [HarmonyArgument(0)] NativeObjects streamCollection,
+        [HarmonyArgument(1)] SendOption sendOption, [HarmonyArgument(2)] ref int trackingIndex)
     {
         if (!OfficialAnticheatPolicy.Enabled) return true;
         // During the start mask only its immutable reliable snapshots may send.
@@ -358,7 +360,7 @@ internal static class OfficialDirtyObjectsPatch
 [HarmonyPatch(typeof(InnerNetClient), nameof(InnerNetClient.SendInitialData))]
 internal static class OfficialInitialSpawnPatch
 {
-    public static bool Prefix(InnerNetClient __instance, int clientId)
+    public static bool Prefix(InnerNetClient __instance, [HarmonyArgument(0)] int clientId)
     {
         if (!OfficialAnticheatPolicy.Enabled) return true;
         OfficialNativePacking.SendInitial(__instance, clientId);
@@ -379,7 +381,8 @@ internal static class OfficialNativePackingResetPatch
 [HarmonyPatch(typeof(InnerNetClient), nameof(InnerNetClient.SendGameManager))]
 internal static class OfficialInitialManagerPatch
 {
-    public static bool Prefix(InnerNetClient __instance, int clientId, GameManager gameManager)
+    public static bool Prefix(InnerNetClient __instance, [HarmonyArgument(0)] int clientId,
+        [HarmonyArgument(1)] GameManager gameManager)
     {
         if (!OfficialAnticheatPolicy.Enabled) return true;
         OfficialNativePacking.SendManager(__instance, clientId, gameManager);
