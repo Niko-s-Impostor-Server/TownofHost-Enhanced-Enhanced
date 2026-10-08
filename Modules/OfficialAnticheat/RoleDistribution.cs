@@ -27,6 +27,7 @@ internal static class RoleDistribution
     private static OfficialSessionContext context;
     private static StartDisconnectedMask mask;
     private static Dictionary<byte, PlayerControl> players;
+    private static Dictionary<byte, CustomRoles> customRoles;
     private static Dictionary<byte, nint> identities;
     private static float introStartedAt = float.PositiveInfinity;
     private static bool applyingNative;
@@ -48,6 +49,7 @@ internal static class RoleDistribution
         players = Main.AllPlayerControls.Where(player => player != null && player.Data != null && !player.Data.Disconnected)
             .OrderBy(player => player.PlayerId).ToDictionary(player => player.PlayerId);
         identities = players.ToDictionary(pair => pair.Key, pair => pair.Value.Pointer);
+        customRoles = players.Keys.ToDictionary(id => id, id => Main.PlayerStates[id].MainRole);
         Plan = new RoleDistributionPlan(players.Values.Select(player =>
         {
             var role = RoleAssign.RoleResult[player.PlayerId];
@@ -227,11 +229,12 @@ internal static class RoleDistribution
     }
 
     private static void SendNative(PlayerControl recipient, byte subject, byte phase) =>
-        CustomRpcTransport.Send(CustomRPC.SetNativeRole, writer =>
+        CustomRpcTransport.Send(CustomRPC.SetCustomRole, writer =>
         {
+            writer.Write(subject);
+            writer.WritePacked((int)customRoles[subject]);
             writer.Write(context.RoundIdentity);
             writer.Write(phase);
-            writer.Write(subject);
             writer.Write((ushort)Plan.DesiredNativeRole[(recipient.PlayerId, subject)]);
             writer.Write(true);
             writer.Write(Plan.PlayerIds.Length);
@@ -307,6 +310,7 @@ internal static class RoleDistribution
         Cancel("Reset");
         mask = null;
         players = null;
+        customRoles = null;
         identities = null;
         Plan = null;
         RestoreComplete = false;
@@ -325,18 +329,21 @@ internal static class RoleDistribution
     }
     private static Receiving receiver;
 
-    internal static void ReceiveNativeRole(PlayerControl sender, MessageReader reader)
+    internal static void ReceiveNativeRole(PlayerControl sender, MessageReader reader, byte subject, CustomRoles customRole)
     {
         if (sender == null || AmongUsClient.Instance == null || sender.OwnerId != AmongUsClient.Instance.HostId ||
             AmongUsClient.Instance.AmHost) throw new InvalidOperationException("Native role sender must be the current host");
         uint round = reader.ReadUInt32();
-        byte phase = reader.ReadByte(), subject = reader.ReadByte();
+        byte phase = reader.ReadByte();
         var role = (RoleTypes)reader.ReadUInt16();
         bool canOverride = reader.ReadBoolean();
         int count = reader.ReadInt32();
         if (!canOverride || phase > 2 || count < 1 || count > 127 || !Enum.IsDefined(typeof(RoleTypes), role) ||
             RoleManager.IsGhostRole(role) || reader.Position != reader.Length)
             throw new InvalidOperationException("Invalid native role payload");
+        if (!Main.PlayerStates.TryGetValue(subject, out var playerState) || playerState.MainRole != customRole ||
+            customRole >= CustomRoles.NotAssigned)
+            throw new InvalidOperationException("Native role view requires synchronized custom role metadata");
         if (receiver == null || !receiver.Session.IsCurrent())
         {
             if (phase != 0 && count != 1) throw new InvalidOperationException("Host role arrived before non-host roles");

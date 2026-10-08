@@ -121,7 +121,7 @@ enum CustomRPC : uint
     SyncAfkState,
     ProtocolCapabilities,
     Fragment,
-    SetNativeRole,
+    // 194 was the removed SetNativeRole RPC; next append must explicitly start at 195.
 }
 public enum Sounds
 {
@@ -231,10 +231,6 @@ internal class RPCHandlerPatch
         {
             case CustomRPC.ProtocolCapabilities:
                 RpcCompatibility.ReceiveCapabilities(__instance, reader);
-                break;
-            case CustomRPC.SetNativeRole:
-                if (isLocalRecipient && __instance.OwnerId == AmongUsClient.Instance.HostId)
-                    RoleDistribution.ReceiveNativeRole(__instance, reader);
                 break;
             case CustomRPC.SyncExileText:
                 if (isLocalRecipient && __instance.OwnerId == AmongUsClient.Instance.HostId)
@@ -457,7 +453,12 @@ internal class RPCHandlerPatch
             case CustomRPC.SetCustomRole:
                 byte CustomRoleTargetId = reader.ReadByte();
                 CustomRoles role = (CustomRoles)reader.ReadPackedInt32();
-                RPC.SetCustomRole(CustomRoleTargetId, role);
+                if (reader.BytesRemaining == 0)
+                    RPC.SetCustomRole(CustomRoleTargetId, role);
+                else if (isLocalRecipient)
+                    // Startup views confirm previously synchronized metadata;
+                    // repeating OnAdd here would reset skills at each phase.
+                    RoleDistribution.ReceiveNativeRole(__instance, reader, CustomRoleTargetId, role);
                 break;
             case CustomRPC.SyncLobbyTimer:
                 GameStartManagerPatch.timer = reader.ReadPackedInt32();
