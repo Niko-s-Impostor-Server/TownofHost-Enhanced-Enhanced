@@ -449,7 +449,7 @@ public static class GameStates
         {
             if (!IsOnlineGame) return false;
 
-            return ServerRegion.IsOfficial(ServerRegion.Current);
+            return ServerRegion.IsOfficialConnection;
         }
     }
     public static bool IsLocalGame => AmongUsClient.Instance.NetworkMode == NetworkModes.LocalGame;

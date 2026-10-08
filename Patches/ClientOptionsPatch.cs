@@ -1,4 +1,5 @@
 using UnityEngine;
+using TOHE.Modules;
 
 namespace TOHE;
 
@@ -7,6 +8,7 @@ namespace TOHE;
 public static class OptionsMenuBehaviourStartPatch
 {
     private static ClientOptionItem UnlockFPS;
+    private static ClientOptionItem OfficialAnticheatSupport;
     private static ClientOptionItem ShowFPS;
     private static ClientOptionItem EnableGM;
     private static ClientOptionItem AutoStart;
@@ -49,6 +51,16 @@ public static class OptionsMenuBehaviourStartPatch
                 Logger.SendInGame(string.Format(Translator.GetString("FPSSetTo"), Application.targetFrameRate));
             }
         }
+        if (OfficialAnticheatSupport == null || OfficialAnticheatSupport.ToggleButton == null)
+        {
+            OfficialAnticheatSupport = ClientOptionItem.Create("OfficialAnticheatSupport", Main.OfficialAnticheatSupport,
+                __instance, () =>
+                {
+                    if (OfficialAnticheatPolicy.SessionFrozen)
+                        Logger.SendInGame(Translator.GetString("OfficialAnticheatNextLobby"));
+                }, () => OfficialAnticheatPolicy.Forced);
+        }
+        OfficialAnticheatSupport.UpdateToggle();
         if (ShowFPS == null || ShowFPS.ToggleButton == null)
         {
             ShowFPS = ClientOptionItem.Create("ShowFPS", Main.ShowFPS, __instance);

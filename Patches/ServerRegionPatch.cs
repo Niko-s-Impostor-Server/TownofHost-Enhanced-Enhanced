@@ -43,7 +43,7 @@ internal static class ConnectGameRegionPatch
             // A preview can leave GameId pointing at the found room. Creating a
             // new room must use its own selected region even on the same endpoint.
             if (mode == MatchMakerModes.HostAndClient)
-                ServerRegion.ClearLookup();
+                ServerRegion.ClearLookup(false);
 
             // Resolve before the original's first MoveNext calls SetEndpoint/
             // CoConnect, rather than when its iterator is merely constructed.

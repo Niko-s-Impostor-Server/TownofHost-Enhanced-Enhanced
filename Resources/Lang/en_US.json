@@ -1,4 +1,7 @@
 {
+  "OfficialAnticheatSupport": "Official Anticheat Support",
+  "OfficialAnticheatForced": "Forced on",
+  "OfficialAnticheatNextLobby": "Change saved; takes effect in the next lobby.",
   "AfkMonitor.SuicideMode": "Suicide",
   "AfkMonitor.ActivateOnStart": "Start detecting at game start",
   "AfkMonitor.ExemptAdministrators": "Exempt host and administrators",

@@ -10,15 +10,27 @@ internal static class ServerRegion
     private static int foundGameId;
     private static string foundAddress;
     private static ushort foundPort;
+    private static string matchmakerAddress;
+    private static string foundMatchmakerAddress;
+    private static string connectedMatchmakerAddress;
+    private static string connectedAddress;
 
     // The menu selection is restored after a cross-region game-code lookup.
     // Keep the region that supplied the listing until its endpoint is joined.
     public static IRegionInfo Current => connectedRegion ?? ServerManager.Instance?.CurrentRegion;
+    public static bool IsOfficialConnection => IsOfficialHost(connectedAddress) ||
+        IsOfficialHost(connectedRegion != null ? connectedMatchmakerAddress : ServerManager.Instance?.CurrentUdpServer?.Ip);
 
-    public static void ClearLookup()
+    public static void RememberMatchmakerSource(string address) => matchmakerAddress = address;
+
+    public static void ClearLookup() => ClearLookup(true);
+
+    public static void ClearLookup(bool clearRequestSource)
     {
         foundRegion = null;
         foundAddress = null;
+        foundMatchmakerAddress = null;
+        if (clearRequestSource) matchmakerAddress = null;
     }
 
     public static void RememberFoundGame(HttpMatchmakerManager.FindGameByCodeResponse response)
@@ -29,20 +41,28 @@ internal static class ServerRegion
         foundGameId = response.Game.GameId;
         foundAddress = response.Game.IPString;
         foundPort = response.Game.Port;
+        foundMatchmakerAddress = matchmakerAddress ?? ServerManager.Instance?.CurrentUdpServer?.Ip;
     }
 
     public static void BeginConnection(int gameId, string address, ushort port)
     {
-        connectedRegion = foundRegion != null && foundGameId == gameId &&
-                          foundAddress == address && foundPort == port
-            ? foundRegion
-            : ServerManager.Instance?.CurrentRegion?.Duplicate();
+        var fromLookup = foundRegion != null && foundGameId == gameId &&
+                         foundAddress == address && foundPort == port;
+        connectedRegion = fromLookup ? foundRegion : ServerManager.Instance?.CurrentRegion?.Duplicate();
+        connectedMatchmakerAddress = fromLookup ? foundMatchmakerAddress :
+            matchmakerAddress ?? ServerManager.Instance?.CurrentUdpServer?.Ip;
+        connectedAddress = address;
+        OfficialSessionContext.Reset();
+        OfficialAnticheatPolicy.Reset();
+        CustomRpcTransport.Reset();
         ClearLookup();
     }
 
     public static void ClearConnection()
     {
         connectedRegion = null;
+        connectedAddress = null;
+        connectedMatchmakerAddress = null;
         ClearLookup();
     }
 
@@ -57,7 +77,7 @@ internal static class ServerRegion
             address = uri.Host;
         }
 
-        address = address.TrimEnd('.');
+        address = address.Trim().TrimEnd('.');
         return address.Equals("among.us", StringComparison.OrdinalIgnoreCase) ||
                address.EndsWith(".among.us", StringComparison.OrdinalIgnoreCase);
     }

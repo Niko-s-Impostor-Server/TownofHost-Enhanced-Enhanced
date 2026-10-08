@@ -76,6 +76,7 @@ public class Main : BasePlugin
     public static ConfigEntry<int> MessageWait { get; private set; }
 
     public static ConfigEntry<bool> UnlockFPS { get; private set; }
+    public static ConfigEntry<bool> OfficialAnticheatSupport { get; private set; }
     public static ConfigEntry<bool> ShowFPS { get; private set; }
     public static ConfigEntry<bool> EnableGM { get; private set; }
     public static ConfigEntry<bool> AutoStart { get; private set; }
@@ -472,6 +473,9 @@ public class Main : BasePlugin
 
     public override bool Unload()
     {
+        OfficialSessionContext.Reset();
+        OfficialAnticheatPolicy.Reset();
+        CustomRpcTransport.Reset();
         Harmony.UnpatchSelf();
         ModRegistration.Unregister();
         return true;
@@ -487,6 +491,7 @@ public class Main : BasePlugin
         DebugKeyInput = Config.Bind("Authentication", "Debug Key", "");
 
         UnlockFPS = Config.Bind("Client Options", "UnlockFPS", false);
+        OfficialAnticheatSupport = Config.Bind("Client Options", "Official Anticheat Support", false);
         ShowFPS = Config.Bind("Client Options", "ShowFPS", false);
         EnableGM = Config.Bind("Client Options", "EnableGM", false);
         AutoStart = Config.Bind("Client Options", "AutoStart", false);

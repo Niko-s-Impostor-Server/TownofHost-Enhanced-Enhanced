@@ -1,4 +1,7 @@
 {
+  "OfficialAnticheatSupport": "官方反作弊兼容",
+  "OfficialAnticheatForced": "已强制启用",
+  "OfficialAnticheatNextLobby": "已保存，将在下个房间生效。",
   "AfkMonitor.SuicideMode": "自杀",
   "AfkMonitor.ActivateOnStart": "开场启用挂机检测",
   "AfkMonitor.ExemptAdministrators": "豁免房主和管理员",

@@ -13,16 +13,21 @@ public class ClientOptionItem
 
     public static SpriteRenderer CustomBackground;
     private static int numOptions = 0;
+    private readonly string optionName;
+    private readonly Func<bool> forced;
 
     private ClientOptionItem(
         string name,
         ConfigEntry<bool> config,
         OptionsMenuBehaviour optionsMenuBehaviour,
-        Action additionalOnClickAction = null)
+        Action additionalOnClickAction = null,
+        Func<bool> forced = null)
     {
         try
         {
             Config = config;
+            optionName = name;
+            this.forced = forced;
 
             var mouseMoveToggle = optionsMenuBehaviour.DisableMouseMovement;
 
@@ -93,6 +98,7 @@ public class ClientOptionItem
             passiveButton.OnClick = new();
             passiveButton.OnClick.AddListener((UnityEngine.Events.UnityAction)(() =>
             {
+                if (this.forced?.Invoke() == true) { UpdateToggle(); return; }
                 if (config != null) config.Value = !config.Value;
                 UpdateToggle();
                 additionalOnClickAction?.Invoke();
@@ -106,16 +112,19 @@ public class ClientOptionItem
         string name,
         ConfigEntry<bool> config,
         OptionsMenuBehaviour optionsMenuBehaviour,
-        Action additionalOnClickAction = null)
+        Action additionalOnClickAction = null,
+        Func<bool> forced = null)
     {
-        return new(name, config, optionsMenuBehaviour, additionalOnClickAction);
+        return new(name, config, optionsMenuBehaviour, additionalOnClickAction, forced);
     }
 
     public void UpdateToggle()
     {
         if (ToggleButton == null) return;
 
-        var color = (Config != null && Config.Value) ? new Color32(255, 192, 203, byte.MaxValue) : new Color32(77, 77, 77, byte.MaxValue);
+        var isForced = forced?.Invoke() == true;
+        ToggleButton.Text.text = Translator.GetString(optionName) + (isForced ? $" ({Translator.GetString("OfficialAnticheatForced")})" : "");
+        var color = (isForced || (Config != null && Config.Value)) ? new Color32(255, 192, 203, byte.MaxValue) : new Color32(77, 77, 77, byte.MaxValue);
         ToggleButton.Background.color = color;
         ToggleButton.Rollover?.ChangeOutColor(color);
     }
