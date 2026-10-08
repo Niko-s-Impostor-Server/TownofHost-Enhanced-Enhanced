@@ -1,5 +1,14 @@
 namespace TOHE;
 
+[HarmonyPatch(typeof(InnerNet.InnerNetClient), nameof(InnerNet.InnerNetClient.SendAllStreamedObjects))]
+internal static class CustomRpcSealBeforeNativeCyclePatch
+{
+    public static void Prefix()
+    {
+        if (OfficialAnticheatPolicy.Enabled) CustomRpcTransport.FlushPending();
+    }
+}
+
 [HarmonyPatch(typeof(AmongUsClient), nameof(AmongUsClient.OnGameJoined))]
 internal static class CustomRpcJoinPatch
 {

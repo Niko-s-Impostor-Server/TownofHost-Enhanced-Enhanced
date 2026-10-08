@@ -50,11 +50,13 @@ public abstract class GameOptionsSender
         catch (System.Exception error)
         {
             Logger.Fatal(error.ToString(), "GameOptionsSender.SendOptionsArray");
+            throw;
         }
     }
     protected virtual void SendOptionsArray(Il2CppStructArray<byte> optionArray, byte LogicOptionsIndex, int targetClientId)
     {
-        var writer = MessageWriter.Get(SendOption.Reliable);
+        using var owner = new OfficialPacketBuilder.BoundedWriter(SendOption.Reliable, OfficialAnticheatPolicy.Enabled);
+        var writer = owner.Writer;
 
         writer.StartMessage(targetClientId == -1 ? Tags.GameData : Tags.GameDataTo);
         {
@@ -73,8 +75,7 @@ public abstract class GameOptionsSender
         }
         writer.EndMessage();
 
-        AmongUsClient.Instance.SendOrDisconnect(writer);
-        writer.Recycle();
+        OfficialPacketBuilder.SendCompleted(writer);
     }
     public abstract IGameOptions BuildGameOptions();
 

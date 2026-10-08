@@ -15,7 +15,7 @@ namespace TOHE;
 
 enum CustomRPC : uint
 {
-    // 内层编号使用固定 uint32；外层原版 RPC ID 始终为 byte 123。
+    // 内层编号使用固定 uint32；外层使用 byte 123 或聚合 byte 124。
     // 新增 CustomRPC 直接在本枚举末尾 Append，不在中间插入或复用编号。
     // 不提供旧协议兼容分支；同一房间的模组客户端必须更新到相同版本。
     VersionCheck = 80,
@@ -155,6 +155,7 @@ internal class RPCHandlerPatch
     public static bool TrustedRpc(uint id)
     => (CustomRPC)id is CustomRPC.VersionCheck
         or CustomRPC.RequestRetryVersionCheck
+        or CustomRPC.ProtocolCapabilities
         or CustomRPC.AntiBlackout
         or CustomRPC.Judge
         or CustomRPC.CouncillorJudge
@@ -169,9 +170,9 @@ internal class RPCHandlerPatch
         or CustomRPC.MeetingAbilityRequest;
     public static bool Prefix(PlayerControl __instance, [HarmonyArgument(0)] byte callId, [HarmonyArgument(1)] MessageReader reader)
     {
-        if (callId == RpcPayloadSnapshot.OuterCallId)
+        if (callId is RpcPayloadSnapshot.OuterCallId or RpcPayloadSnapshot.PackedOuterCallId)
         {
-            CustomRpcReceiver.Receive(__instance, reader);
+            CustomRpcReceiver.Receive(__instance, reader, callId == RpcPayloadSnapshot.PackedOuterCallId);
             return false;
         }
         // Only the outer envelope enters custom dispatch. Native IDs stay byte.
@@ -196,7 +197,7 @@ internal class RPCHandlerPatch
             case RpcCalls.SetName: //SetNameRPC
                 subReader.ReadUInt32();
                 string name = subReader.ReadString();
-                if (subReader.BytesRemaining > 0 && subReader.ReadBoolean()) return false;
+                if (subReader.BytesRemaining != 0) return false;
                 Logger.Info("RPC Set Name For Player: " + __instance.GetNameWithRole() + " => " + name, "SetName");
                 break;
             case RpcCalls.SetRole: //SetRoleRPC
@@ -227,6 +228,9 @@ internal class RPCHandlerPatch
         var rpcType = (CustomRPC)callId;
         switch (rpcType)
         {
+            case CustomRPC.ProtocolCapabilities:
+                RpcCompatibility.ReceiveCapabilities(__instance, reader);
+                break;
             case CustomRPC.SyncExileText:
                 if (isLocalRecipient && __instance.OwnerId == AmongUsClient.Instance.HostId)
                     ExileText.Receive(__instance, reader);
@@ -829,6 +833,14 @@ internal static class RPC
         }
 
         var amount = OptionItem.AllOptions.Count;
+        if (OfficialAnticheatPolicy.Enabled)
+        {
+            // At most 32 five-byte values plus both packed indices fit inside
+            // one 200-byte RPC child even with a five-byte sender NetId.
+            for (int start = 0; start < amount; start += 32)
+                SyncOptionsBetween(start, Math.Min(start + 31, amount - 1), amount, targetId);
+            return;
+        }
         int divideBy = amount / 10;
 
         for (var i = 0; i <= 10; i++)
@@ -862,11 +874,6 @@ internal static class RPC
             amountAllOptions = OptionItem.AllOptions.Count;
         }
 
-        MessageWriter writer = CustomRpcTransport.Start(CustomRPC.SyncCustomSettings, SendOption.Reliable, targetId);
-
-        writer.WritePacked(startAmount);
-        writer.WritePacked(lastAmount);
-
         List<OptionItem> listOptions = [];
         List<OptionItem> allOptionsList = [.. OptionItem.AllOptions];
 
@@ -880,12 +887,12 @@ internal static class RPC
         //Logger.Msg($"StartAmount/LastAmount: {startAmount}/{lastAmount} :--: ListOptionsCount/AllOptions: {countListOptions}/{amountAllOptions}", "SyncOptionsBetween");
 
         // Sync Settings
-        foreach (var option in listOptions.ToArray())
+        CustomRpcTransport.SendPayload(CustomRPC.SyncCustomSettings, writer =>
         {
-            writer.WritePacked(option.GetValue());
-        }
-
-        CustomRpcTransport.Finish(writer);
+            writer.WritePacked(startAmount);
+            writer.WritePacked(lastAmount);
+            foreach (var option in listOptions.ToArray()) writer.WritePacked(option.GetValue());
+        }, targetId);
     }
 
     public static void PlaySoundRPC(byte PlayerID, Sounds sound)
@@ -900,28 +907,30 @@ internal static class RPC
     public static void SyncAllPlayerNames()
     {
         if (!AmongUsClient.Instance.AmHost) return;
-        MessageWriter writer = CustomRpcTransport.Start(CustomRPC.SyncAllPlayerNames, SendOption.Reliable, -1);
-        writer.WritePacked(Main.AllPlayerNames.Count);
-        foreach (var name in Main.AllPlayerNames)
+        CustomRpcTransport.SendPayload(CustomRPC.SyncAllPlayerNames, writer =>
         {
-            writer.Write(name.Key);
-            writer.Write(name.Value);
-        }
-        writer.WritePacked(Main.AllClientRealNames.Count);
-        foreach (var name in Main.AllClientRealNames)
-        {
-            writer.Write(name.Key);
-            writer.Write(name.Value);
-        }
-        CustomRpcTransport.Finish(writer);
+            writer.WritePacked(Main.AllPlayerNames.Count);
+            foreach (var name in Main.AllPlayerNames)
+            {
+                writer.Write(name.Key);
+                writer.Write(name.Value);
+            }
+            writer.WritePacked(Main.AllClientRealNames.Count);
+            foreach (var name in Main.AllClientRealNames)
+            {
+                writer.Write(name.Key);
+                writer.Write(name.Value);
+            }
+        });
     }
     public static void ShowPopUp(this PlayerControl pc, string message, string title = "")
     {
         if (!AmongUsClient.Instance.AmHost) return;
-        MessageWriter writer = CustomRpcTransport.Start(CustomRPC.ShowPopUp, SendOption.Reliable, pc.GetClientId());
-        writer.Write(message);
-        writer.Write(title);
-        CustomRpcTransport.Finish(writer);
+        CustomRpcTransport.SendPayload(CustomRPC.ShowPopUp, writer =>
+        {
+            writer.Write(message);
+            writer.Write(title);
+        }, pc.GetClientId());
     }
     public static void RpcSetFriendCode(string fc)
     {
@@ -977,14 +986,16 @@ internal static class RPC
                             if (Main.playerVersion.ContainsKey(hostId) || !Main.VersionCheat.Value)
                             {
                                 bool cheating = Main.VersionCheat.Value;
-                                var writer = CustomRpcTransport.Start(CustomRPC.VersionCheck, SendOption.Reliable);
-                                writer.Write(cheating ? Main.playerVersion[hostId].version.ToString() : Main.PluginVersion);
-                                writer.Write(cheating ? Main.playerVersion[hostId].tag : $"{ThisAssembly.Git.Commit}({ThisAssembly.Git.Branch})");
-                                writer.Write(cheating ? Main.playerVersion[hostId].forkId : Main.ForkId);
-                                writer.Write(cheating);
-                                CustomRpcTransport.Finish(writer);
+                                CustomRpcTransport.SendPayload(CustomRPC.VersionCheck, writer =>
+                                {
+                                    writer.Write(cheating ? Main.playerVersion[hostId].version.ToString() : Main.PluginVersion);
+                                    writer.Write(cheating ? Main.playerVersion[hostId].tag : $"{ThisAssembly.Git.Commit}({ThisAssembly.Git.Branch})");
+                                    writer.Write(cheating ? Main.playerVersion[hostId].forkId : Main.ForkId);
+                                    writer.Write(cheating);
+                                });
                             }
                             Main.playerVersion[player.GetClientId()] = new PlayerVersion(Main.PluginVersion, $"{ThisAssembly.Git.Commit}({ThisAssembly.Git.Branch})", Main.ForkId);
+                            RpcCompatibility.SendCapabilities();
                         }
                     }
                     catch (Exception ex)
@@ -1134,6 +1145,7 @@ internal static class RPC
     public static string GetRpcName(byte callId)
     {
         if (callId == RpcPayloadSnapshot.OuterCallId) return "TOHE custom envelope";
+        if (callId == RpcPayloadSnapshot.PackedOuterCallId) return "TOHE packed envelope";
         return Enum.GetName(typeof(RpcCalls), callId) ?? callId.ToString();
     }
     public static void SetRealKiller(byte targetId, byte killerId)

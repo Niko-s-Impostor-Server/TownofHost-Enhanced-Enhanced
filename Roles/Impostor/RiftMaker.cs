@@ -1,4 +1,4 @@
-﻿using AmongUs.GameOptions;
+using AmongUs.GameOptions;
 using Hazel;
 using TOHE.Roles.Neutral;
 using UnityEngine;
@@ -81,7 +81,7 @@ internal class RiftMaker : RoleBase
         {
             writer.Write(LastTP[riftID].ToString());
         }
-        AmongUsClient.Instance.FinishRpcImmediately(writer);
+        CustomRpcTransport.Finish(writer);
     }
     public static void ReceiveRPC(MessageReader reader)
     {
