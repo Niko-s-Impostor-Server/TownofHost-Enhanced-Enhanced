@@ -348,6 +348,8 @@ internal static class OfficialDirtyObjectsPatch
     public static bool Prefix(InnerNetClient __instance, NativeObjects streamCollection, SendOption sendOption, ref int trackingIndex)
     {
         if (!OfficialAnticheatPolicy.Enabled) return true;
+        // During the start mask only its immutable reliable snapshots may send.
+        if (RoleDistribution.IsMaskActive) return false;
         OfficialNativePacking.PackDirty(__instance, streamCollection, sendOption, ref trackingIndex);
         return false;
     }

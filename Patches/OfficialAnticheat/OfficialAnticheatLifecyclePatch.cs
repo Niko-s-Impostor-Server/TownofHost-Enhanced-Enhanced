@@ -11,10 +11,23 @@ namespace TOHE.Patches;
 [HarmonyPatch]
 internal static class OfficialAnticheatLifecyclePatch
 {
+    internal static void ResetOperations(bool preserveCapabilities = false)
+    {
+        RoleDistribution.Reset();
+        RpcSetRoleReplacer.RoleMap.Clear();
+        RpcSetRoleReplacer.StoragedData.Clear();
+        CustomRpcTransport.Reset(preserveCapabilities);
+        OfficialNativePacking.Reset();
+        OfficialNetworkSend.Reset();
+        Main.MessagesToSend.Clear();
+        TOHE.Modules.ChatManager.ChatManager.ResetHistory();
+    }
+
     [HarmonyPatch(typeof(AmongUsClient), nameof(AmongUsClient.OnGameJoined))]
     [HarmonyPostfix, HarmonyPriority(Priority.First)]
     private static void Joined()
     {
+        ResetOperations();
         OfficialSessionContext.BeginLobby();
         OfficialAnticheatPolicy.BeginLobby();
     }
@@ -25,6 +38,7 @@ internal static class OfficialAnticheatLifecyclePatch
     {
         OfficialSessionContext.Reset();
         OfficialAnticheatPolicy.Reset();
+        ResetOperations();
     }
 
     [HarmonyPatch(typeof(AmongUsClient), nameof(AmongUsClient.CoStartGame))]
@@ -40,10 +54,18 @@ internal static class OfficialAnticheatLifecyclePatch
     {
         // CoStartGame only constructs its native iterator. Freeze when Unity
         // actually advances it, and ignore an unstarted iterator from an old room.
-        if (!context.IsCurrent()) yield break;
-        OfficialAnticheatPolicy.FreezeRound();
-        OfficialSessionContext.BeginRound();
-        while (original.MoveNext()) yield return original.Current;
+        try
+        {
+            if (!context.IsCurrent()) yield break;
+            OfficialAnticheatPolicy.FreezeRound();
+            OfficialSessionContext.BeginRound();
+            // Initialize after the context changes, never at iterator construction:
+            // initialization sends must belong to the round they initialize.
+            ChangeRoleSettings.Initialize(AmongUsClient.Instance);
+            var round = OfficialSessionContext.Capture();
+            while (round.IsCurrent() && original.MoveNext()) yield return original.Current;
+        }
+        finally { original.TryCast<Il2CppSystem.IDisposable>()?.Dispose(); }
     }
 
     [HarmonyPatch(typeof(AmongUsClient), nameof(AmongUsClient.OnGameEnd))]
@@ -52,7 +74,7 @@ internal static class OfficialAnticheatLifecyclePatch
     {
         OfficialSessionContext.EndRound();
         OfficialAnticheatPolicy.EndRound();
-        CustomRpcTransport.Reset();
+        ResetOperations(preserveCapabilities: true);
     }
 
     [HarmonyPatch(typeof(AmongUsClient), nameof(AmongUsClient.OnBecomeHost))]
@@ -60,7 +82,7 @@ internal static class OfficialAnticheatLifecyclePatch
     private static void HostChanged()
     {
         OfficialSessionContext.Reset();
-        CustomRpcTransport.Reset();
+        ResetOperations();
     }
 
     // Both host and guest receive OnPlayerLeft after HostId is updated.
@@ -68,7 +90,7 @@ internal static class OfficialAnticheatLifecyclePatch
     [HarmonyPostfix]
     private static void AfterPlayerLeft()
     {
-        if (OfficialSessionContext.ObserveHostMigration()) CustomRpcTransport.Reset();
+        if (OfficialSessionContext.ObserveHostMigration()) ResetOperations();
     }
 
     [HarmonyPatch(typeof(GameOptionsManager), nameof(GameOptionsManager.GameHostOptions), MethodType.Setter)]

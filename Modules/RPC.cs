@@ -231,6 +231,10 @@ internal class RPCHandlerPatch
             case CustomRPC.ProtocolCapabilities:
                 RpcCompatibility.ReceiveCapabilities(__instance, reader);
                 break;
+            case CustomRPC.SetNativeRole:
+                if (isLocalRecipient && __instance.OwnerId == AmongUsClient.Instance.HostId)
+                    RoleDistribution.ReceiveNativeRole(__instance, reader);
+                break;
             case CustomRPC.SyncExileText:
                 if (isLocalRecipient && __instance.OwnerId == AmongUsClient.Instance.HostId)
                     ExileText.Receive(__instance, reader);

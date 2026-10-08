@@ -17,7 +17,25 @@ namespace TOHE;
 [HarmonyPatch(typeof(HudManager), nameof(HudManager.CoShowIntro))]
 class CoShowIntroPatch
 {
-    public static void Prefix()
+    public static void Postfix(ref Il2CppSystem.Collections.IEnumerator __result)
+    {
+        if (__result != null) __result = Run(__result, OfficialSessionContext.Capture()).WrapToIl2Cpp();
+    }
+
+    private static System.Collections.IEnumerator Run(Il2CppSystem.Collections.IEnumerator original, OfficialSessionContext context)
+    {
+        // Coroutine construction is not execution. Start the phase/timers on
+        // its first MoveNext, immediately before native intro execution.
+        try
+        {
+            if (!context.IsCurrent() || RoleDistribution.IsActive && !RoleDistribution.NotifyIntroStarted()) yield break;
+            ScheduleIntro();
+            while (context.IsCurrent() && original.MoveNext()) yield return original.Current;
+        }
+        finally { original.TryCast<Il2CppSystem.IDisposable>()?.Dispose(); }
+    }
+
+    private static void ScheduleIntro()
     {
         if (!AmongUsClient.Instance.AmHost || !GameStates.IsModHost || GameStates.IsHideNSeek) return;
         var generation = OnGameJoinedPatch.Generation;
@@ -25,6 +43,26 @@ class CoShowIntroPatch
         bool IsCurrentIntro() => OnGameJoinedPatch.IsCurrentSession(generation)
             && AmongUsClient.Instance.AmHost && currentGame != null && GameManager.Instance == currentGame
             && !GameStates.IsEnded && !GameStates.IsLobby;
+
+        if (RoleDistribution.IsActive)
+        {
+            AmongUsClient.Instance.StartCoroutine(RoleDistribution.AfterRestore(() =>
+            {
+                if (!IsCurrentIntro() || !DestroyableSingleton<HudManager>.InstanceExists) return;
+                DestroyableSingleton<HudManager>.Instance.SetHudActive(true);
+                foreach (var pc in Main.AllPlayerControls) pc.SetCustomIntro();
+            }).WrapToIl2Cpp());
+            AmongUsClient.Instance.StartCoroutine(RoleDistribution.AfterRestore(() =>
+            {
+                if (!IsCurrentIntro() || ShipStatus.Instance == null) return;
+                ShipStatus.Instance.Begin();
+                GameOptionsSender.AllSenders.Clear();
+                foreach (var pc in Main.AllPlayerControls)
+                    GameOptionsSender.AllSenders.Add(new PlayerGameOptionsSender(pc));
+                Utils.SyncAllSettings();
+            }, tasks: true).WrapToIl2Cpp());
+            return;
+        }
 
         _ = new LateTask(() =>
         {
@@ -580,6 +618,11 @@ class IntroCutsceneDestroyPatch
 {
     public static void Prefix()
     {
+        if (RoleDistribution.IsActive && !RoleDistribution.RestoreComplete)
+        {
+            AmongUsClient.Instance.StartCoroutine(RoleDistribution.AfterRestore(Prefix).WrapToIl2Cpp());
+            return;
+        }
         if (AmongUsClient.Instance.AmHost && !AmongUsClient.Instance.IsGameOver)
         {
             // Host is desync role
@@ -656,6 +699,17 @@ class IntroCutsceneDestroyPatch
         // Set roleAssigned as false for override role for modded players
         // For override role for vanilla clients we use "Data.Disconnected" while assign
         Main.AllPlayerControls.Do(pc => pc.roleAssigned = false);
+
+        if (RoleDistribution.IsActive && !RoleDistribution.RestoreComplete)
+        {
+            AmongUsClient.Instance.StartCoroutine(RoleDistribution.AfterRestore(AfterIntroDestroyed).WrapToIl2Cpp());
+            return;
+        }
+        AfterIntroDestroyed();
+    }
+
+    private static void AfterIntroDestroyed()
+    {
 
         if (!GameStates.AirshipIsActive)
         {

@@ -475,7 +475,7 @@ public class Main : BasePlugin
     {
         OfficialSessionContext.Reset();
         OfficialAnticheatPolicy.Reset();
-        CustomRpcTransport.Reset();
+        TOHE.Patches.OfficialAnticheatLifecyclePatch.ResetOperations();
         Harmony.UnpatchSelf();
         ModRegistration.Unregister();
         return true;

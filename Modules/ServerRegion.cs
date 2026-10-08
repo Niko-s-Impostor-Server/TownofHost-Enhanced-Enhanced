@@ -54,7 +54,7 @@ internal static class ServerRegion
         connectedAddress = address;
         OfficialSessionContext.Reset();
         OfficialAnticheatPolicy.Reset();
-        CustomRpcTransport.Reset();
+        TOHE.Patches.OfficialAnticheatLifecyclePatch.ResetOperations();
         ClearLookup();
     }
 

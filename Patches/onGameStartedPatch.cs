@@ -14,10 +14,9 @@ using static TOHE.Translator;
 
 namespace TOHE;
 
-[HarmonyPatch(typeof(AmongUsClient), nameof(AmongUsClient.CoStartGame))]
 internal class ChangeRoleSettings
 {
-    public static void Postfix(AmongUsClient __instance)
+    internal static void Initialize(AmongUsClient __instance)
     {
         if (AmongUsClient.Instance.AmHost)
             SetUpRoleTextPatch.IsInIntro = true;
@@ -241,8 +240,6 @@ internal class ChangeRoleSettings
 [HarmonyPatch]
 internal class StartGameHostPatch
 {
-    private static AmongUsClient thiz;
-
     private static RoleOptionsCollectionV11 RoleOpt => Main.NormalOptions.roleOptions;
     private static Dictionary<RoleTypes, int> RoleTypeNums = [];
     public static void UpdateRoleTypeNums()
@@ -269,13 +266,15 @@ internal class StartGameHostPatch
             return true;
         }
 
-        thiz = __instance;
-        __result = StartGameHost().WrapToIl2Cpp();
+        __result = StartGameHost(__instance).WrapToIl2Cpp();
         return false;
     }
 
-    public static System.Collections.IEnumerator StartGameHost()
+    public static System.Collections.IEnumerator StartGameHost(AmongUsClient thiz)
     {
+        var context = OfficialSessionContext.Capture();
+        bool Current() => context.IsCurrent() && thiz != null && thiz.AmHost;
+        if (!Current()) yield break;
         var generation = OnGameJoinedPatch.Generation;
         if (LobbyBehaviour.Instance)
         {
@@ -302,6 +301,7 @@ internal class StartGameHostPatch
             }*/
             thiz.ShipLoadingAsyncHandle = thiz.ShipPrefabs[num].InstantiateAsync(null, false);
             yield return thiz.ShipLoadingAsyncHandle;
+            if (!Current()) yield break;
             GameObject result = thiz.ShipLoadingAsyncHandle.Result;
             ShipStatus.Instance = result.GetComponent<ShipStatus>();
             thiz.Spawn(ShipStatus.Instance, -2, SpawnFlags.None);
@@ -337,6 +337,7 @@ internal class StartGameHostPatch
                 }
             }
             yield return null;
+            if (!Current()) yield break;
             if (stopWaiting)
             {
                 break;
@@ -345,7 +346,7 @@ internal class StartGameHostPatch
         }
         thiz.SendClientReady();
         yield return new WaitForSeconds(2f);
-        if (!OnGameJoinedPatch.IsCurrentSession(generation) || !SyncInitialGameOptions()) yield break;
+        if (!Current() || !OnGameJoinedPatch.IsCurrentSession(generation) || !SyncInitialGameOptions()) yield break;
         yield return AssignRoles();
         //ShipStatus.Instance.Begin(); // Tasks sets in IntroPatch
         yield break;
@@ -389,6 +390,23 @@ internal class StartGameHostPatch
     {
         if (GameStates.IsEnded) yield break;
 
+        bool officialDistribution = OfficialAnticheatPolicy.Enabled;
+        if (officialDistribution)
+        {
+            RoleDistribution.Prepare();
+            var readyContext = OfficialSessionContext.Capture();
+            float readyDeadline = Time.realtimeSinceStartup + 10f;
+            while (!RoleDistribution.ObjectsReady)
+            {
+                if (!readyContext.IsCurrent() || Time.realtimeSinceStartup > readyDeadline)
+                {
+                    RoleDistribution.Cancel("Native role readiness timeout", failed: true);
+                    yield break;
+                }
+                yield return null;
+            }
+        }
+
         try
         {
             // Block "RpcSetRole" for set desync roles for some players
@@ -426,8 +444,11 @@ internal class StartGameHostPatch
             // Send all Rpc
             RpcSetRoleReplacer.Release();
 
+            if (officialDistribution) RoleDistribution.FreezePlan();
+
             foreach (var pc in PlayerControl.AllPlayerControls.GetFastEnumerator())
             {
+                if (officialDistribution) continue;
                 if (Main.PlayerStates[pc.PlayerId].MainRole != CustomRoles.NotAssigned) continue;
                 var role = pc.Data.Role.Role switch
                 {
@@ -534,8 +555,15 @@ internal class StartGameHostPatch
         }
         catch (Exception ex)
         {
+            if (officialDistribution) RoleDistribution.Cancel("Role selection failed", failed: true);
             Utils.ErrorEnd("Select Role Prefix");
             Utils.ThrowException(ex);
+            yield break;
+        }
+
+        if (officialDistribution)
+        {
+            yield return RoleDistribution.Publish();
             yield break;
         }
 
@@ -584,7 +612,8 @@ internal class StartGameHostPatch
             rolesMap[(seer.PlayerId, player.PlayerId)] = (othersRole, role);
 
 
-        RpcSetRoleReplacer.OverriddenSenderList.Add(senders[player.PlayerId]);
+        if (!OfficialAnticheatPolicy.Enabled)
+            RpcSetRoleReplacer.OverriddenSenderList.Add(senders[player.PlayerId]);
         // Set role for host, but not self
         // canOverride should be false for the host during assign
         if (!isHost)
@@ -652,10 +681,10 @@ internal class StartGameHostPatch
         // owner-targeted SetRole for every player before it can finish Starting.
         if (targetClientId == client.ClientId && client.NetworkMode == NetworkModes.OnlineGame)
         {
-            var writer = client.StartRpcImmediately(target.NetId, (byte)RpcCalls.SetRole, SendOption.Reliable, targetClientId);
+            var writer = client.StartImmediate(target.NetId, (byte)RpcCalls.SetRole, SendOption.Reliable, targetClientId);
             writer.Write((ushort)roleType);
             writer.Write(true);
-            client.FinishRpcImmediately(writer);
+            client.FinishImmediate(writer);
         }
         target.RpcSetRoleDesync(roleType, targetClientId);
     }
@@ -663,6 +692,9 @@ internal class StartGameHostPatch
     public static readonly Dictionary<byte, bool> DataDisconnected = [];
     public static void RpcSetDisconnected(bool disconnected)
     {
+        // Official startup owns an identity-aware mask and restores IsDead
+        // separately. The legacy delayed callback must never race that restore.
+        if (OfficialAnticheatPolicy.Enabled && RoleDistribution.IsActive) return;
         foreach (var playerInfo in GameData.Instance.AllPlayers.GetFastEnumerator())
         {
             if (disconnected)
@@ -788,6 +820,7 @@ public static class RpcSetRoleReplacer
     }
     public static void StartReplace()
     {
+        if (OfficialAnticheatPolicy.Enabled) return;
         foreach (var pc in PlayerControl.AllPlayerControls.GetFastEnumerator())
         {
             Senders[pc.PlayerId] = new CustomRpcSender($"{pc.name}'s SetRole Sender", SendOption.Reliable, false)
@@ -801,6 +834,7 @@ public static class RpcSetRoleReplacer
     }
     public static void SendRpcForDesync()
     {
+        if (OfficialAnticheatPolicy.Enabled) return;
         StartGameHostPatch.MakeDesyncSender(Senders, RoleMap);
     }
     public static void AssignNormalRoles()
@@ -835,6 +869,7 @@ public static class RpcSetRoleReplacer
     }
     public static void SendRpcForNormal()
     {
+        if (OfficialAnticheatPolicy.Enabled) return;
         foreach (var (targetId, sender) in Senders)
         {
             var target = Utils.GetPlayerById(targetId);
@@ -868,12 +903,14 @@ public static class RpcSetRoleReplacer
     public static void Release()
     {
         BlockSetRole = false;
+        if (OfficialAnticheatPolicy.Enabled) return;
         Senders.Do(kvp => kvp.Value.SendMessage());
     }
     public static void EndReplace()
     {
         Senders = null;
         OverriddenSenderList = null;
-        StoragedData = null;
+        // Recovery uses both native defaults and the recipient/subject matrix
+        // throughout this round. Initialize replaces them at the next start.
     }
 }
