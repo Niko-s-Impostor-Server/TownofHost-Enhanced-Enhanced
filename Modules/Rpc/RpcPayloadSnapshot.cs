@@ -6,9 +6,12 @@ namespace TOHE;
 internal sealed class RpcPayloadSnapshot
 {
     internal const byte OuterCallId = 123;
+    internal const byte PackedOuterCallId = 124;
     private readonly byte[] payload;
     internal int Target { get; }
     internal uint RpcId { get; }
+    internal int Length => payload.Length;
+    internal byte[] CopyPayload() => (byte[])payload.Clone();
 
     internal static void ValidateTarget(int target)
     {

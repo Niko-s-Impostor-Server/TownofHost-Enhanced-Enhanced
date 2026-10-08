@@ -119,6 +119,9 @@ enum CustomRPC : uint
     // 189 was the removed presentation-only recovery RPC; do not reuse it.
     SyncExileText = 190,
     SyncAfkState,
+    ProtocolCapabilities,
+    Fragment,
+    SetNativeRole,
 }
 public enum Sounds
 {
