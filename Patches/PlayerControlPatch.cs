@@ -1840,7 +1840,7 @@ class PlayerControlSetRolePatch
         var targetName = __instance.GetNameWithRole().RemoveHtmlTags();
 
         // Ghost assign
-        if (roleType is RoleTypes.CrewmateGhost or RoleTypes.ImpostorGhost)
+        if (roleType is RoleTypes.CrewmateGhost or RoleTypes.ImpostorGhost or RoleTypes.SpiritGuide)
         {
             if (OfficialAnticheatPolicy.Enabled)
             {
@@ -1865,23 +1865,19 @@ class PlayerControlSetRolePatch
             {
                 if (target.HasGhostRole())
                 {
-                    GhostRoles[seer] = RoleTypes.GuardianAngel;
+                    GhostRoles[seer] = seer.PlayerId == target.PlayerId
+                        ? GhostRoleView.NativeCustomGhostRole(target)
+                        : RoleTypes.CrewmateGhost;
                 }
                 else
                 {
                     GhostRoles[seer] = GhostRoleView.ForRecipient(target, seer);
                 }
             }
-            // If all players see player as Guardian Angel
-            if (GhostRoles.All(kvp => kvp.Value == RoleTypes.GuardianAngel))
+            if (target.HasGhostRole())
             {
-                roleType = RoleTypes.GuardianAngel;
-                __instance.RpcSetRoleDesync(RoleTypes.GuardianAngel, __instance.GetClientId());
-                foreach (var seer in Main.AllPlayerControls)
-                {
-                    if (seer.PlayerId == __instance.PlayerId) continue;
-                    __instance.RpcSetRoleDesync(RoleTypes.CrewmateGhost, seer.GetClientId());
-                }
+                foreach (var (seer, ghostRole) in GhostRoles)
+                    target.RpcSetRoleDesync(ghostRole, seer.GetClientId());
                 GhostRoleAssign.CreateGAMessage(__instance);
                 return false;
             }
@@ -1948,6 +1944,7 @@ class PlayerControlLocalSetRolePatch
                 RoleTypes.Tracker => CustomRoles.TrackerTOHE,
                 RoleTypes.Detective => CustomRoles.DetectiveTOHE,
                 RoleTypes.Viper => CustomRoles.ViperTOHE,
+                RoleTypes.SpiritGuide => CustomRoles.SpiritGuideTOHE,
                 _ => CustomRoles.NotAssigned,
             };
             if (modRole != CustomRoles.NotAssigned)

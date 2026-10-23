@@ -391,6 +391,7 @@ public static class CustomRolesHelper
             CustomRoles.Scientist => RoleTypes.Scientist,
             CustomRoles.Engineer => RoleTypes.Engineer,
             CustomRoles.GuardianAngel => RoleTypes.GuardianAngel,
+            CustomRoles.SpiritGuide => RoleTypes.SpiritGuide,
             CustomRoles.Shapeshifter => RoleTypes.Shapeshifter,
             CustomRoles.Noisemaker => RoleTypes.Noisemaker,
             CustomRoles.Phantom => RoleTypes.Phantom,
@@ -432,6 +433,7 @@ public static class CustomRolesHelper
             CustomRoles.Scientist or
             CustomRoles.Engineer or
             CustomRoles.GuardianAngel or
+            CustomRoles.SpiritGuide or
             CustomRoles.Shapeshifter or
             CustomRoles.Noisemaker or
             CustomRoles.Phantom or
@@ -462,6 +464,7 @@ public static class CustomRolesHelper
                 CustomRoles.Scientist => roleOpt.GetNumPerGame(RoleTypes.Scientist),
                 CustomRoles.Engineer => roleOpt.GetNumPerGame(RoleTypes.Engineer),
                 CustomRoles.GuardianAngel => roleOpt.GetNumPerGame(RoleTypes.GuardianAngel),
+                CustomRoles.SpiritGuide => roleOpt.GetNumPerGame(RoleTypes.SpiritGuide),
                 CustomRoles.Shapeshifter => roleOpt.GetNumPerGame(RoleTypes.Shapeshifter),
                 CustomRoles.Noisemaker => roleOpt.GetNumPerGame(RoleTypes.Noisemaker),
                 CustomRoles.Phantom => roleOpt.GetNumPerGame(RoleTypes.Phantom),
@@ -488,6 +491,7 @@ public static class CustomRolesHelper
                 CustomRoles.Scientist => roleOpt.GetChancePerGame(RoleTypes.Scientist),
                 CustomRoles.Engineer => roleOpt.GetChancePerGame(RoleTypes.Engineer),
                 CustomRoles.GuardianAngel => roleOpt.GetChancePerGame(RoleTypes.GuardianAngel),
+                CustomRoles.SpiritGuide => roleOpt.GetChancePerGame(RoleTypes.SpiritGuide),
                 CustomRoles.Shapeshifter => roleOpt.GetChancePerGame(RoleTypes.Shapeshifter),
                 CustomRoles.Noisemaker => roleOpt.GetChancePerGame(RoleTypes.Noisemaker),
                 CustomRoles.Phantom => roleOpt.GetChancePerGame(RoleTypes.Phantom),

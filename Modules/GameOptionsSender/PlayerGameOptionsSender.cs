@@ -78,6 +78,10 @@ public class PlayerGameOptionsSender(PlayerControl player) : GameOptionsSender
         if (GameStates.IsNormalGame) AURoleOptions.SetOpt(opt);
         else if (GameStates.IsHideNSeek) return opt;
 
+        // Spirit Guide is selected by GhostRoleAssign, including its custom
+        // count/chance limits. Keep native death-time lottery disabled on every sync.
+        opt.RoleOptions.SetRoleRate(RoleTypes.SpiritGuide, 0, 0);
+
         var state = Main.PlayerStates[player.PlayerId];
         opt.BlackOut(state.IsBlackOut);
 

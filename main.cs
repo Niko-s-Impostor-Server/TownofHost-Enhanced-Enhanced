@@ -873,6 +873,8 @@ public enum CustomRoles
     Viper = 481,
     DetectiveTOHE = 482,
     ViperTOHE = 483,
+    SpiritGuide = 484,
+    SpiritGuideTOHE = 485,
 
     // Sub-role after 500
     NotAssigned = 500,

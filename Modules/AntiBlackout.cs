@@ -260,7 +260,7 @@ public static class AntiBlackout
                 {
                     target.RpcExile();
 
-                    if (target.HasGhostRole()) changedRoleType = RoleTypes.GuardianAngel;
+                    if (target.HasGhostRole()) changedRoleType = GhostRoleView.NativeCustomGhostRole(target);
                     else if (target.Is(Custom_Team.Impostor) || target.HasDesyncRole()) changedRoleType = RoleTypes.ImpostorGhost;
                     else changedRoleType = RoleTypes.CrewmateGhost;
                 }

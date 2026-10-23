@@ -367,6 +367,7 @@ internal class StartGameHostPatch
         opt.SetFloat(FloatOptionNames.GuardianAngelCooldown, 0f);
         opt.SetBool(BoolOptionNames.ImpostorsCanSeeProtect, false);
         opt.RoleOptions.SetRoleRate(RoleTypes.GuardianAngel, 0, 0);
+        opt.RoleOptions.SetRoleRate(RoleTypes.SpiritGuide, 0, 0);
         if (Options.DisableVanillaRoles.GetBool())
         {
             foreach (var role in new[] { RoleTypes.Scientist, RoleTypes.Engineer, RoleTypes.Shapeshifter,

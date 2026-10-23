@@ -14,18 +14,25 @@ internal static class GhostRoleView
     internal static bool SuppressNativeAssignment(PlayerControl player) => player != null && player == localExile;
 
     // Keep this decision free of RPCs and death side effects, so recovery and Phantom can reuse it.
-    internal static RoleTypes Resolve(bool self, bool targetImpostor, bool targetDesync, bool seerKiller, bool customGhost)
+    internal static RoleTypes Resolve(bool self, bool targetImpostor, bool targetDesync, bool seerKiller, bool customGhost,
+        RoleTypes customGhostRole = RoleTypes.GuardianAngel)
     {
-        if (customGhost) return self ? RoleTypes.GuardianAngel : RoleTypes.CrewmateGhost;
+        if (customGhost) return self ? customGhostRole : RoleTypes.CrewmateGhost;
         return self && (targetImpostor || targetDesync) || !seerKiller && targetImpostor
             ? RoleTypes.ImpostorGhost
             : RoleTypes.CrewmateGhost;
     }
 
+    internal static RoleTypes NativeCustomGhostRole(PlayerControl target)
+    {
+        var customRole = target.GetCustomRole();
+        return customRole.IsGhostRole() ? customRole.GetRoleTypes() : RoleTypes.GuardianAngel;
+    }
+
     internal static RoleTypes ForRecipient(PlayerControl target, PlayerControl seer) => Resolve(
         target.PlayerId == seer.PlayerId,
         target.Is(Custom_Team.Impostor), target.HasDesyncRole(),
-        seer.Is(Custom_Team.Impostor) || seer.HasDesyncRole(), target.HasGhostRole());
+        seer.Is(Custom_Team.Impostor) || seer.HasDesyncRole(), target.HasGhostRole(), NativeCustomGhostRole(target));
 
     internal static void AssignCustomGhost(PlayerControl target)
     {
