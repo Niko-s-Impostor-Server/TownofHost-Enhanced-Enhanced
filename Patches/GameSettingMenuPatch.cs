@@ -131,6 +131,7 @@ public class GameSettingMenuPatch
         __instance.ControllerSelectable.Add(gameSettingButton);
     }
     public static StringOption PresetBehaviour;
+    private static GameObject PresetSelectorRoot;
     private static TextMeshPro PresetLabel;
     public static FreeChatInputField InputField;
     public static List<OptionItem> HiddenBySearch = [];
@@ -253,6 +254,7 @@ public class GameSettingMenuPatch
         const float arrowWidth = 0.48f;
         float width = sidebarBounds.size.x;
         var root = new GameObject("TOHEPresetSelector");
+        PresetSelectorRoot = root;
         root.layer = menu.GamePresetsButton.gameObject.layer;
         root.transform.SetParent(parent, false);
         root.transform.localPosition = new Vector3(sidebarBounds.center.x,
@@ -530,6 +532,20 @@ public class GameSettingMenuPatch
         TemplateGameSettingsButton = null;
         if (TemplateRoot != null) Object.Destroy(TemplateRoot);
         TemplateRoot = null;
+        // The native menu can be reused after Close/OnDisable. Remove the
+        // controls we added before another OnEnable creates their replacements.
+        // Hide them immediately because Destroy is deferred until frame end.
+        if (PresetSelectorRoot != null)
+        {
+            PresetSelectorRoot.SetActive(false);
+            Object.Destroy(PresetSelectorRoot);
+        }
+        PresetSelectorRoot = null;
+        if (InputField != null)
+        {
+            InputField.gameObject.SetActive(false);
+            Object.Destroy(InputField.gameObject);
+        }
         PresetBehaviour = null;
         PresetLabel = null;
         InputField = null;
