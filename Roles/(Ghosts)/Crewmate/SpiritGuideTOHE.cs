@@ -6,7 +6,7 @@ namespace TOHE.Roles._Ghosts_.Crewmate;
 
 internal class SpiritGuideTOHE : RoleBase
 {
-    private const int Id = 21000;
+    private const int Id = 32300;
 
     public override CustomRoles ThisRoleBase => CustomRoles.SpiritGuide;
     public override Custom_RoleType ThisRoleType => Custom_RoleType.CrewmateVanillaGhosts;
