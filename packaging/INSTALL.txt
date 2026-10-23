@@ -1,0 +1,27 @@
+TOHEE @VERSION@ / Among Us @GAME_VERSION@
+
+本包适用于：@PLATFORMS@（@ARCH@）。
+Steam、Epic Games、Microsoft Store 的 19.0 客户端均使用 x64 包；
+只有 itch.io 的 Windows 客户端使用 x86 包。
+
+关闭游戏，将本压缩包内的全部文件解压到 Among Us.exe 所在目录。
+已有其他模组时，建议使用单独的干净游戏副本，避免混用加载器和插件。
+首次启动需要 BepInEx 生成该安装的 interop，可能需要等待和联网下载 Unity 库。
+以后仅更新模组时，在同一 BepInEx 755 环境中替换 BepInEx/plugins/TOHE.dll。
+本包中的 steam_appid.txt 供 Steam 使用，其他商店无需操作此文件。
+
+Extract all files beside Among Us.exe with the game closed.
+Use x64 for Steam / Epic Games / Microsoft Store; x86 for itch.io only.
+The first launch generates interop assemblies for your own game installation.
+Do not copy another store's generated interop directory.
+
+Bundled components / source:
+TOHEE (GPL-3.0): https://github.com/Niko-s-Impostor-Server/TownofHost-Enhanced-Enhanced
+Corresponding source: TOHEE.v@VERSION@_Source.zip, provided with this release.
+Source commit: @COMMIT@
+BepInEx 6.0.0-be.755: https://github.com/BepInEx/BepInEx/tree/3fab71a1914132a1ce3a545caf3192da603f2258
+Mini.RegionInstall 1.2.0 (GPL-3.0): https://github.com/miniduikboot/Mini.RegionInstall/tree/v1.2.0
+The BepInEx archive's original runtime files and changelog are retained.
+See LICENSE.TOHEE.txt for the GPL terms shared by TOHEE and Mini.RegionInstall.
+
+This package contains the mod and loader, and does not contain Among Us.

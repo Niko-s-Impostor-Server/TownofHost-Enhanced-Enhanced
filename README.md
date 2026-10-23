@@ -11,6 +11,14 @@ dotnet build TOHE.csproj -c Release -p:LocalAmongUsPath="D:\Game\20260929"
 Start that installation with BepInEx once to generate `BepInEx/interop`. The package-only build provides static compilation references; its older interop generator does not match the tested BepInEx 6.0.0-be.755 / Il2CppInterop 1.5.1 runtime. Deploying that package-only artifact to this runtime caused a CLR crash during Harmony initialization. Use `LocalAmongUsPath` for the plugin you run.
 The retired TOHE API and its login dependency have been removed. Gameplay migration and runtime verification are still in progress.
 
+To prepare local release assets from a clean committed checkout, use PowerShell 7:
+
+```powershell
+./tools/Prepare-Release.ps1 -LocalAmongUsPath "D:\Game\20260929"
+```
+
+This creates a standalone `TOHE.dll`, a **Steam / Epic Games / Microsoft Store x64** package, an **itch.io x86** package, corresponding source, release notes, a manifest and SHA256 checksums under `artifacts/releases/`. Both packages pin BepInEx 755 and Mini.RegionInstall 1.2.0 with verified download hashes. Only official runtime files and tracked release defaults are packaged; game files, generated interop, user settings and credentials are excluded. Existing release directories are preserved; use `-OutputDirectory` to choose a new destination. This command prepares files locally without publishing a GitHub Release.
+
 <br>
 
 <img align="left" alt="Cover" src="Resources/Background/TOHE-Background-Old.jpg" width="50%" height="300" /> 

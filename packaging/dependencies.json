@@ -1,0 +1,18 @@
+{
+  "bepinexVersion": "6.0.0-be.755+3fab71a",
+  "bepinex-x64": {
+    "file": "bepinex-755-x64.zip",
+    "url": "https://builds.bepinex.dev/projects/bepinex_be/755/BepInEx-Unity.IL2CPP-win-x64-6.0.0-be.755%2B3fab71a.zip",
+    "sha256": "3616D6A67F5F595973EC4AA7BD7EDAF7F799D5BB9926F7146A6DCC7B4ABF478F"
+  },
+  "bepinex-x86": {
+    "file": "bepinex-755-x86.zip",
+    "url": "https://builds.bepinex.dev/projects/bepinex_be/755/BepInEx-Unity.IL2CPP-win-x86-6.0.0-be.755%2B3fab71a.zip",
+    "sha256": "E63A39B2CE1F0F014C086B06BB4F3B045CA1EDEE41C94B72D9B0DD42E1C763AF"
+  },
+  "region-installer": {
+    "file": "Mini.RegionInstall.dll",
+    "url": "https://github.com/miniduikboot/Mini.RegionInstall/releases/download/v1.2.0/Mini.RegionInstall.dll",
+    "sha256": "9015448B849CBE5EDF71A62D77B32E16786E4515919751C2078062046F7DE98B"
+  }
+}
