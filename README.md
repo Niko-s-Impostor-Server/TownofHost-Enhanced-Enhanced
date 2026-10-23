@@ -1,7 +1,8 @@
 
 <h1 align="center">Town of Host: Enhanced (TOHE)</h1>
 
-This branch adapts the TOHE v2.1.1 stable baseline to **Among Us 2026.8.18 (Windows Itch)**.
+This branch adapts the TOHE v2.1.1 stable baseline to **Among Us 2026.9.29 (19.0)**.
+The 19.0 migration has static source and build validation; validation with the matching game installation is pending.
 The retired TOHE API and its login dependency have been removed. Gameplay migration and runtime verification are still in progress.
 
 <br>

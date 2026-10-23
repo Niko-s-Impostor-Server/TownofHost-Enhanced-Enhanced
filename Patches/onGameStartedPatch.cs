@@ -240,7 +240,7 @@ internal class ChangeRoleSettings
 [HarmonyPatch]
 internal class StartGameHostPatch
 {
-    private static RoleOptionsCollectionV11 RoleOpt => Main.NormalOptions.roleOptions;
+    private static RoleOptionsCollectionV12 RoleOpt => Main.NormalOptions.roleOptions;
     private static Dictionary<RoleTypes, int> RoleTypeNums = [];
     public static void UpdateRoleTypeNums()
     {
@@ -361,7 +361,7 @@ internal class StartGameHostPatch
 
         // SetRole initializes native ability timers from current game options.
         // Send the temporary values only after Started, on an independent clone.
-        var opt = Main.RealOptionsData.Restore(new NormalGameOptionsV11(new UnityLogger().Cast<Hazel.ILogger>()).Cast<IGameOptions>());
+        var opt = Main.RealOptionsData.Restore(new NormalGameOptionsV12(new UnityLogger().Cast<Hazel.ILogger>()).Cast<IGameOptions>());
         opt.SetFloat(FloatOptionNames.KillCooldown, 0f);
         opt.SetFloat(FloatOptionNames.ShapeshifterCooldown, 0f);
         opt.SetFloat(FloatOptionNames.GuardianAngelCooldown, 0f);
