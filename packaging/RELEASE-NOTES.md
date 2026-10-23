@@ -6,6 +6,7 @@
 - 修复游戏内模组设置菜单首次打开、标签切换及关闭重开的问题。
 - 修复 Spirit Guide 技能按钮的 Message / Cancel 提示被普通幽灵文字覆盖的问题。
 - 更新至 V12 游戏设置格式。
+- 整合上游 Remove GC Max Time Slice 1.0.0 插件。
 
 | 平台 | 下载 |
 | --- | --- |
@@ -25,6 +26,7 @@
 Supports **Among Us 2026.9.29 / 19.0**, based on TOHE 2.1.1.
 
 Adds the native Spirit Guide ghost role with spawn chance, count and cooldown options, fixes the in-game mod settings menu and Spirit Guide ability labels, and updates game settings to V12.
+Both packages include the upstream Remove GC Max Time Slice 1.0.0 plugin.
 
 Use the **x64** package for Steam, Epic Games and Microsoft Store. Use **x86** only for itch.io. Extract beside `Among Us.exe` with the game closed. First launch generates interop assemblies for your installation.
 

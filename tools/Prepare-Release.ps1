@@ -75,6 +75,7 @@ try {
     New-Item -ItemType Directory -Path $CacheDirectory -Force | Out-Null
     $runtimeArchives = @{ x64 = Get-Dependency 'bepinex-x64'; x86 = Get-Dependency 'bepinex-x86' }
     $regionDll = Get-Dependency 'region-installer'
+    $gcMaxTimeSliceDll = Get-Dependency 'remove-gc-max-time-slice'
     $work = Join-Path $repoRoot ('artifacts/release-staging/' + [guid]::NewGuid().ToString('N'))
     New-Item -ItemType Directory -Path $work | Out-Null
     $build = Join-Path $work 'build'
@@ -85,6 +86,9 @@ try {
     if (!$pluginPe.managed -or !$pluginPe.ilOnly -or $pluginPe.requires32Bit) { throw 'TOHE.dll must be AnyCPU IL.' }
     if ([Reflection.AssemblyName]::GetAssemblyName($dll).Version.ToString() -ne $assemblyVersion) { throw 'Plugin assembly version mismatch.' }
     $dllHash = (Get-FileHash -LiteralPath $dll).Hash
+    $gcPluginPe = Get-PeInfo $gcMaxTimeSliceDll
+    if (!$gcPluginPe.managed -or !$gcPluginPe.ilOnly -or $gcPluginPe.requires32Bit) { throw 'RemoveGcMaxTimeSlice.Plugin.dll must be AnyCPU IL for both release architectures.' }
+    $gcPluginHash = (Get-FileHash -LiteralPath $gcMaxTimeSliceDll).Hash
     $packages = @()
     New-Item -ItemType Directory -Path $OutputDirectory | Out-Null
     Copy-Item -LiteralPath $dll -Destination (Join-Path $OutputDirectory 'TOHE.dll')
@@ -105,9 +109,10 @@ try {
         $plugins = Join-Path $stage 'BepInEx/plugins'
         $config = Join-Path $stage 'BepInEx/config'
         New-Item -ItemType Directory -Path $plugins, $config -Force | Out-Null
-        Copy-Item -LiteralPath $dll, $regionDll -Destination $plugins
+        Copy-Item -LiteralPath $dll, $regionDll, $gcMaxTimeSliceDll -Destination $plugins
         Copy-Item -LiteralPath (Join-Path $packaging 'BepInEx.cfg'), (Join-Path $packaging 'at.duikbo.regioninstall.cfg') -Destination $config
         Copy-Item -LiteralPath (Join-Path $repoRoot 'LICENSE') -Destination (Join-Path $stage 'LICENSE.TOHEE.txt')
+        Copy-Item -LiteralPath (Join-Path $packaging 'LICENSE.RemoveGcMaxTimeSlice.txt') -Destination (Join-Path $stage 'LICENSE.RemoveGcMaxTimeSlice.txt')
         $platforms = if ($arch -eq 'x64') { 'Steam / Epic Games / Microsoft Store' } else { 'itch.io' }
         $suffix = if ($arch -eq 'x64') { 'Steam-Epic-Games-Microsoft-Store_x64' } else { 'itch.io_x86' }
         if ($arch -eq 'x64') { [IO.File]::WriteAllText((Join-Path $stage 'steam_appid.txt'), "945360`n") }
@@ -121,14 +126,14 @@ try {
         $archive = [IO.Compression.ZipFile]::OpenRead($zipPath)
         try {
             $names = @($archive.Entries | ForEach-Object FullName)
-            foreach ($required in @('.doorstop_version', 'doorstop_config.ini', 'winhttp.dll', 'dotnet/coreclr.dll', 'BepInEx/plugins/TOHE.dll', 'BepInEx/plugins/Mini.RegionInstall.dll', 'BepInEx/config/BepInEx.cfg')) {
+            foreach ($required in @('.doorstop_version', 'doorstop_config.ini', 'winhttp.dll', 'dotnet/coreclr.dll', 'BepInEx/plugins/TOHE.dll', 'BepInEx/plugins/Mini.RegionInstall.dll', 'BepInEx/plugins/RemoveGcMaxTimeSlice.Plugin.dll', 'BepInEx/config/BepInEx.cfg', 'LICENSE.RemoveGcMaxTimeSlice.txt')) {
                 if ($names -notcontains $required) { throw "Missing release file: $required" }
             }
             if ($names -match '(^|/)(interop|TOHE-DATA|Among Us_Data|requests|responses|captures)/|\.log$|RuntimeProbe|GameAssembly\.dll|Assembly-CSharp\.dll|Among Us\.exe') {
                 throw 'Generated interop, game, private data or probe files found in release archive.'
             }
         } finally { $archive.Dispose() }
-        $packages += [ordered]@{ file = [IO.Path]::GetFileName($zipPath); platforms = $platforms; architecture = $arch; nativeMachine = $machine; pluginSHA256 = $dllHash }
+        $packages += [ordered]@{ file = [IO.Path]::GetFileName($zipPath); platforms = $platforms; architecture = $arch; nativeMachine = $machine; pluginSHA256 = $dllHash; removeGcMaxTimeSliceSHA256 = $gcPluginHash }
     }
     $sourceZip = Join-Path $OutputDirectory "TOHEE.v${version}_Source.zip"
     & git archive --format=zip "--prefix=TOHEE-$version/" "--output=$sourceZip" HEAD
@@ -139,6 +144,7 @@ try {
         sourceCommit = $commit; sourceDirty = $false; builtAtUtc = [DateTime]::UtcNow.ToString('o')
         plugin = [ordered]@{ file = 'TOHE.dll'; sha256 = $dllHash; pe = $pluginPe }
         runtimeVersion = $dependencies.bepinexVersion; dependencies = $dependencies; packages = $packages
+        bundledPlugin = [ordered]@{ file = 'RemoveGcMaxTimeSlice.Plugin.dll'; version = $dependencies.'remove-gc-max-time-slice'.version; sha256 = $gcPluginHash; pe = $gcPluginPe; source = $dependencies.'remove-gc-max-time-slice'.repository; license = $dependencies.'remove-gc-max-time-slice'.license }
         referenceInteropSHA256 = (Get-FileHash -LiteralPath (Join-Path $gameRoot 'BepInEx/interop/Assembly-CSharp.dll')).Hash
         inputGameVersion = $versionMarkers[0]
     } | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $OutputDirectory 'release-manifest.json') -Encoding utf8NoBOM

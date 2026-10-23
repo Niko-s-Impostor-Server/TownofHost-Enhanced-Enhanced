@@ -17,7 +17,7 @@ To prepare local release assets from a clean committed checkout, use PowerShell 
 ./tools/Prepare-Release.ps1 -LocalAmongUsPath "D:\Game\20260929"
 ```
 
-This creates a standalone `TOHE.dll`, a **Steam / Epic Games / Microsoft Store x64** package, an **itch.io x86** package, corresponding source, release notes, a manifest and SHA256 checksums under `artifacts/releases/`. Both packages pin BepInEx 755 and Mini.RegionInstall 1.2.0 with verified download hashes. Only official runtime files and tracked release defaults are packaged; game files, generated interop, user settings and credentials are excluded. Existing release directories are preserved; use `-OutputDirectory` to choose a new destination. This command prepares files locally without publishing a GitHub Release.
+This creates a standalone `TOHE.dll`, a **Steam / Epic Games / Microsoft Store x64** package, an **itch.io x86** package, corresponding source, release notes, a manifest and SHA256 checksums under `artifacts/releases/`. Both packages pin BepInEx 755, Mini.RegionInstall 1.2.0 and the upstream Remove GC Max Time Slice 1.0.0 DLL with verified download hashes. Only official runtime files and tracked release defaults are packaged; game files, generated interop, user settings and credentials are excluded. Existing release directories are preserved; use `-OutputDirectory` to choose a new destination. This command prepares files locally without publishing a GitHub Release.
 
 <br>
 
