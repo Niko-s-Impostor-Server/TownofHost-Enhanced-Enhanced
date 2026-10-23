@@ -1,3 +1,4 @@
+using AmongUs.GameOptions;
 using System;
 using System.Text;
 using TMPro;
@@ -134,8 +135,12 @@ class HudManagerPatch
                 __instance.ReportButton.Hide();
                 __instance.ImpostorVentButton.Hide();
                 __instance.KillButton.Hide();
-                __instance.AbilityButton.Show();
-                __instance.AbilityButton.OverrideText(GetString(StringNames.HauntAbilityName));
+                // Spirit Guide owns its Message/Cancel text while the image panel is open.
+                if (player.Data.Role.Role != RoleTypes.SpiritGuide)
+                {
+                    __instance.AbilityButton.Show();
+                    __instance.AbilityButton.OverrideText(GetString(StringNames.HauntAbilityName));
+                }
             }
         }
 
