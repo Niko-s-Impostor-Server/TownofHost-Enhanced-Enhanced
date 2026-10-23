@@ -2,7 +2,13 @@
 <h1 align="center">Town of Host: Enhanced (TOHE)</h1>
 
 This branch adapts the TOHE v2.1.1 stable baseline to **Among Us 2026.9.29 (19.0)**.
-The 19.0 migration has static source and build validation; validation with the matching game installation is pending.
+Build against the target game's generated interop and installed BepInEx core before deploying:
+
+```powershell
+dotnet build TOHE.csproj -c Release -p:LocalAmongUsPath="D:\Game\20260929"
+```
+
+Start that installation with BepInEx once to generate `BepInEx/interop`. The package-only build provides static compilation references; its older interop generator does not match the tested BepInEx 6.0.0-be.755 / Il2CppInterop 1.5.1 runtime. Deploying that package-only artifact to this runtime caused a CLR crash during Harmony initialization. Use `LocalAmongUsPath` for the plugin you run.
 The retired TOHE API and its login dependency have been removed. Gameplay migration and runtime verification are still in progress.
 
 <br>
