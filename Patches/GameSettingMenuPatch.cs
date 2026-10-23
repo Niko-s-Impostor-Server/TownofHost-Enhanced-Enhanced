@@ -17,14 +17,13 @@ public class GameSettingMenuPatch
 
     private static GameOptionsMenu TemplateGameOptionsMenu;
     private static PassiveButton TemplateGameSettingsButton;
+    private static GameObject TemplateRoot;
 
     static Dictionary<TabGroup, PassiveButton> ModSettingsButtons = [];
     static Dictionary<TabGroup, GameOptionsMenu> ModSettingsTabs = [];
     public static GameSettingMenu Instance;
 
-    [HarmonyPatch(nameof(GameSettingMenu.Start)), HarmonyPrefix]
-    [HarmonyPriority(Priority.First)]
-    public static void StartPostfix(GameSettingMenu __instance)
+    private static void CreateModTabs(GameSettingMenu __instance)
     {
         Instance = __instance;
 
@@ -70,6 +69,9 @@ public class GameSettingMenuPatch
 
             var buttonComponent = button.GetComponent<PassiveButton>();
             buttonComponent.OnClick = new();
+            buttonComponent.OnMouseOver = new();
+            buttonComponent.OnMouseOver.AddListener(
+                (UnityEngine.Events.UnityAction)(() => __instance.ChangeTab((int)tab + 3, true)));
             buttonComponent.OnClick.AddListener(
                 (UnityEngine.Events.UnityAction)(() => __instance.ChangeTab((int)tab + 3, false)));
 
@@ -457,7 +459,12 @@ public class GameSettingMenuPatch
 
         if (TemplateGameOptionsMenu == null)
         {
-            TemplateGameOptionsMenu = Object.Instantiate(__instance.GameSettingsTab, __instance.GameSettingsTab.transform.parent);
+            // Instantiate below an inactive parent: cloning an active native tab
+            // otherwise runs OnEnable/Initialize before its copied rows are cleaned.
+            TemplateRoot = new GameObject("TOHESettingsTemplates");
+            TemplateRoot.SetActive(false);
+            TemplateRoot.transform.SetParent(__instance.transform, false);
+            TemplateGameOptionsMenu = Object.Instantiate(__instance.GameSettingsTab, TemplateRoot.transform);
             TemplateGameOptionsMenu.gameObject.SetActive(false);
             // The vanilla tab can already contain runtime rows. Unity clones their
             // objects but not OptionBehaviour's nonserialized data binding.
@@ -484,7 +491,7 @@ public class GameSettingMenuPatch
         }
         if (TemplateGameSettingsButton == null)
         {
-            TemplateGameSettingsButton = Object.Instantiate(__instance.GameSettingsButton, __instance.GameSettingsButton.transform.parent);
+            TemplateGameSettingsButton = Object.Instantiate(__instance.GameSettingsButton, TemplateRoot.transform);
             TemplateGameSettingsButton.gameObject.SetActive(false);
         }
         ModGameOptionsMenu.OptionList = new();
@@ -492,6 +499,9 @@ public class GameSettingMenuPatch
         ModGameOptionsMenu.CategoryHeaderList = new();
 
         SetDefaultButton(__instance);
+        // Unity calls OnEnable before Start, and Start is not repeated after a
+        // disable/re-enable. Build/register every custom tab before any selection.
+        CreateModTabs(__instance);
 
         ControllerManager.Instance.OpenOverlayMenu(__instance.name, __instance.BackButton, __instance.DefaultButtonSelected, __instance.ControllerSelectable, false);
         DestroyableSingleton<HudManager>.Instance.menuNavigationPrompts.SetActive(false);
@@ -508,16 +518,18 @@ public class GameSettingMenuPatch
     {
         if (Instance != null && Instance != __instance) return;
         foreach (var button in ModSettingsButtons.Values)
-            Object.Destroy(button);
+            if (button != null) Object.Destroy(button.gameObject);
         foreach (var tab in ModSettingsTabs.Values)
         {
             GameOptionsMenuPatch.CancelBuild(tab);
-            Object.Destroy(tab);
+            if (tab != null) Object.Destroy(tab.gameObject);
         }
         ModSettingsButtons = [];
         ModSettingsTabs = [];
         TemplateGameOptionsMenu = null;
         TemplateGameSettingsButton = null;
+        if (TemplateRoot != null) Object.Destroy(TemplateRoot);
+        TemplateRoot = null;
         PresetBehaviour = null;
         PresetLabel = null;
         InputField = null;
