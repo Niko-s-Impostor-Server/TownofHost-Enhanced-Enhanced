@@ -99,26 +99,31 @@ internal class InnerNetClientCanBanPatch
 [HarmonyPatch(typeof(InnerNetClient), nameof(InnerNetClient.KickPlayer))]
 internal class KickPlayerPatch
 {
-    public static Dictionary<string, int> AttemptedKickPlayerList = [];
-    public static bool Prefix(InnerNetClient __instance, int clientId, bool ban)
+    // Rate-limit a connection, not an account: a banned account may reconnect immediately.
+    public static Dictionary<int, int> AttemptedKickPlayerList = [];
+    public static bool Prefix(InnerNetClient __instance, [HarmonyArgument(0)] int clientId, [HarmonyArgument(1)] bool ban)
     {
-        if (!AmongUsClient.Instance.AmHost) return true;
-        if (AmongUsClient.Instance.ClientId == clientId)
+        if (!__instance.AmHost) return true;
+        if (__instance.ClientId == clientId)
         {
             Logger.SendInGame(string.Format("Game Attempting to {0} Host, Blocked the attempt.", ban ? "Ban" : "Kick"));
             Logger.Info("How the fuck host are kicking it self", "KickPlayerPatch");
             return false;
         }
 
-        var HashedPuid = AmongUsClient.Instance.GetClient(clientId).GetHashedPuid();
-        if (!AttemptedKickPlayerList.ContainsKey(HashedPuid))
-            AttemptedKickPlayerList.Add(HashedPuid, 0);
-        else if (AttemptedKickPlayerList[HashedPuid] < 10)
+        if (!AttemptedKickPlayerList.ContainsKey(clientId))
+            AttemptedKickPlayerList.Add(clientId, 0);
+        else if (AttemptedKickPlayerList[clientId] < 10)
         {
             Logger.Fatal($"Kick player Request too fast! Canceled.", "KickPlayerPatch");
             return false;
         }
-        if (ban) BanManager.AddBanPlayer(AmongUsClient.Instance.GetRecentClient(clientId));
+        if (ban)
+        {
+            var player = __instance.GetClient(clientId) ?? __instance.GetRecentClient(clientId);
+            BanManager.AddSessionBan(player);
+            BanManager.AddBanPlayer(player);
+        }
 
         return true;
     }

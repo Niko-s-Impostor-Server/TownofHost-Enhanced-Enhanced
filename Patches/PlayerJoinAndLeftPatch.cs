@@ -183,8 +183,10 @@ class OnGameJoinedPatch
 [HarmonyPatch(typeof(InnerNetClient), nameof(InnerNetClient.DisconnectInternal))]
 class DisconnectInternalPatch
 {
-    public static void Prefix(InnerNetClient __instance, DisconnectReasons reason, string stringReason)
+    public static void Prefix(InnerNetClient __instance, [HarmonyArgument(0)] DisconnectReasons reason, [HarmonyArgument(1)] string stringReason)
     {
+        // ExitGame calls DisconnectInternal directly, without OnDisconnected.
+        BanManager.ClearSessionBans();
         Logger.Info($"Disconnect (Reason:{reason}:{stringReason}, ping:{__instance.Ping})", "Reason Disconnect");
         RehostManager.OnDisconnectInternal(reason);
     }
@@ -235,6 +237,12 @@ public static class OnPlayerJoinedPatch
     public static void Postfix(/*AmongUsClient __instance,*/ [HarmonyArgument(0)] ClientData client)
     {
         if (client == null) return;
+        if (AmongUsClient.Instance.AmHost && BanManager.IsSessionBanned(client.ProductUserId))
+        {
+            AmongUsClient.Instance.KickPlayer(client.Id, true);
+            Logger.Info($"Client {client.Id} rejoined with a PUID banned in this room", "BAN");
+            return;
+        }
         var generation = OnGameJoinedPatch.Generation;
         Logger.Info($"{client.PlayerName}(ClientID:{client.Id}/FriendCode:{client.FriendCode}/HashPuid:{client.GetHashedPuid()}/Platform:{client.PlatformData.Platform}) Joining room", "Session: OnPlayerJoined");
 

@@ -16,6 +16,28 @@ public static class BanManager
     private const string ModeratorListPath = "./TOHE-DATA/Moderators.txt";
     private const string VIPListPath = "./TOHE-DATA/VIP-List.txt";
     private const string WhiteListListPath = "./TOHE-DATA/WhiteList.txt";
+    // Full PUIDs stay banned for this room even if the client reconnects from another IP.
+    private static readonly HashSet<string> SessionBannedPuids = new(StringComparer.Ordinal);
+    private static readonly object SessionBanLock = new();
+
+    internal static void AddSessionBan(ClientData player)
+    {
+        var puid = player?.ProductUserId;
+        if (string.IsNullOrWhiteSpace(puid)) return;
+        lock (SessionBanLock) SessionBannedPuids.Add(puid);
+    }
+
+    internal static bool IsSessionBanned(string puid)
+    {
+        if (string.IsNullOrWhiteSpace(puid)) return false;
+        lock (SessionBanLock) return SessionBannedPuids.Contains(puid);
+    }
+
+    internal static void ClearSessionBans()
+    {
+        lock (SessionBanLock) SessionBannedPuids.Clear();
+    }
+
     //private static List<string> EACList = []; // Don't make it read-only
     public static List<string> TempBanWhiteList = []; //To prevent writing to ban list
     public static List<Dictionary<string, System.Text.Json.JsonElement>> EACDict = [];
@@ -91,7 +113,7 @@ public static class BanManager
     }
     public static void AddBanPlayer(ClientData player)
     {
-        if (!AmongUsClient.Instance.AmHost || player == null) return;
+        if (!AmongUsClient.Instance.AmHost || player == null || string.IsNullOrWhiteSpace(player.ProductUserId)) return;
         if (!CheckBanList(player?.FriendCode, player?.GetHashedPuid()) && !TempBanWhiteList.Contains(player?.GetHashedPuid()))
         {
             if (player?.GetHashedPuid() != "" && player?.GetHashedPuid() != null && player?.GetHashedPuid() != "e3b0cb855")
