@@ -32,22 +32,23 @@ class ExileControllerWrapUpPatch
         }
     }
 
-    [HarmonyPatch(typeof(AirshipExileController), nameof(AirshipExileController.WrapUpAndSpawn))]
-    class AirshipExileControllerPatch
+    [HarmonyPatch(typeof(ExileController), nameof(ExileController.ReEnableGameplay))]
+    class AirshipReEnableGameplayPatch
     {
-        public static void Prefix()
+        public static void Postfix(ExileController __instance)
         {
-            CheckAndDoRandomSpawn();
-        }
-        public static void Postfix(AirshipExileController __instance)
-        {
+            // WrapUpAndSpawn is an iterator factory and can be inlined by IL2CPP.
+            // This native call runs after PrespawnStep finishes and resets the
+            // controller/camera, so meeting tasks cannot race the spawn picker.
+            if (!__instance.TryCast<AirshipExileController>()) return;
+
             try
             {
                 WrapUpPostfix(__instance.initData.networkedPlayer);
             }
             catch (Exception error)
             {
-                Logger.Error($"Error after exiled: {error}", "WrapUpAndSpawn");
+                Logger.Error($"Error after airship spawn: {error}", "ReEnableGameplay");
             }
             finally
             {
