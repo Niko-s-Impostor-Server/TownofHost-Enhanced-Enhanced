@@ -10,7 +10,10 @@ namespace TOHE;
 class PingTrackerUpdatePatch
 {
     public static PingTracker Instance;
-    private static int DelayUpdate = 0;
+    private const float StatusUpdateInterval = 0.25f;
+    private static float nextStatusUpdate;
+    private static float fpsSampleTime;
+    private static int fpsSampleFrames;
     private static readonly StringBuilder sb = new();
     private static readonly List<HudStatusRect> layoutObstacles = [];
     private static readonly List<HudStatusRect> previousLayoutObstacles = [];
@@ -37,17 +40,29 @@ class PingTrackerUpdatePatch
     {
         try
         {
-            Instance ??= __instance;
+            if (Instance != __instance)
+            {
+                Instance = __instance;
+                nextStatusUpdate = 0f;
+                fpsSampleTime = 0f;
+                fpsSampleFrames = 0;
+                sb.Clear();
+                layoutCached = false;
+            }
 
-            DelayUpdate--;
-
-            if (DelayUpdate > 0 && sb.Length > 0)
+            fpsSampleTime += Time.unscaledDeltaTime;
+            fpsSampleFrames++;
+            float now = Time.realtimeSinceStartup;
+            if (now < nextStatusUpdate && sb.Length > 0)
             {
                 ApplyStatusText(__instance);
                 return false;
             }
 
-            DelayUpdate = 500;
+            nextStatusUpdate = now + StatusUpdateInterval;
+            float sampledFps = fpsSampleTime > 0f ? fpsSampleFrames / fpsSampleTime : 0f;
+            fpsSampleTime = 0f;
+            fpsSampleFrames = 0;
 
             sb.Clear();
 
@@ -69,7 +84,7 @@ class PingTrackerUpdatePatch
 
             if (Main.ShowFPS.Value)
             {
-                var FPSGame = 1.0f / Time.deltaTime;
+                var FPSGame = sampledFps;
                 Color fpscolor = Color.green;
 
                 if (FPSGame < 20f) fpscolor = Color.red;
@@ -98,7 +113,9 @@ class PingTrackerUpdatePatch
         }
         catch
         {
-            DelayUpdate = 0;
+            nextStatusUpdate = 0f;
+            fpsSampleTime = 0f;
+            fpsSampleFrames = 0;
             sb.Clear();
             layoutCached = false;
 
