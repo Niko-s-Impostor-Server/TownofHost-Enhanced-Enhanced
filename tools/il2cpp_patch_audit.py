@@ -30,7 +30,7 @@ def read_source(path):
     try:
         return path.read_text(encoding="utf-8-sig")
     except UnicodeDecodeError:
-        # Existing TOHEOnlySearch.cs uses the legacy Chinese code page.
+        # Allow legacy sources encoded with the Chinese code page.
         return path.read_text(encoding="gb18030")
 
 
