@@ -51,8 +51,6 @@ public class Main : BasePlugin
     public static readonly bool canaryRelease = false; // Latest: V2.1.0 Beta 3
     public static readonly bool fullRelease = true; // Latest: V2.1.1
 
-    public static readonly bool ShowUpdateButton = false;
-
     public static readonly bool ShowGitHubButton = true;
     public static readonly string GitHubInviteUrl = "https://github.com/Niko-s-Impostor-Server/TownofHost-Enhanced-Enhanced";
 

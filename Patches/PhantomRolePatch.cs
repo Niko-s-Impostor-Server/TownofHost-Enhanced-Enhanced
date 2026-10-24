@@ -1,6 +1,5 @@
 ﻿using AmongUs.GameOptions;
 using Hazel;
-using Il2CppInterop.Runtime.InteropTypes.Arrays;
 using TOHE.Roles.Core;
 using UnityEngine;
 
@@ -257,7 +256,7 @@ public static class PhantomRolePatch
         }
     }
 }
-// Fixed vanilla bug for host (from TOH-Y)
+// Route custom Phantom abilities through TOHE; retain vanilla native abilities.
 [HarmonyPatch(typeof(PhantomRole), nameof(PhantomRole.UseAbility))]
 public static class PhantomRoleUseAbilityPatch
 {
@@ -272,24 +271,6 @@ public static class PhantomRoleUseAbilityPatch
             }
             return false;
         }
-        if (!AmongUsClient.Instance.AmHost) return true;
-
-        if (__instance.Player.AmOwner && !__instance.Player.Data.IsDead && __instance.Player.moveable && !Minigame.Instance && !__instance.IsCoolingDown && !__instance.fading)
-        {
-            System.Func<RoleEffectAnimation, bool> roleEffectAnimation = x => x.effectType == RoleEffectAnimation.EffectType.Vanish_Charge;
-            if (!__instance.Player.currentRoleAnimations.Find(roleEffectAnimation) && !__instance.Player.walkingToVent && !__instance.Player.inMovingPlat)
-            {
-                if (__instance.isInvisible)
-                {
-                    __instance.MakePlayerVisible(true, true);
-                    return false;
-                }
-                DestroyableSingleton<HudManager>.Instance.AbilityButton.SetSecondImage(__instance.Ability);
-                DestroyableSingleton<HudManager>.Instance.AbilityButton.OverrideText(DestroyableSingleton<TranslationController>.Instance.GetString(StringNames.PhantomAbilityUndo, new Il2CppReferenceArray<Il2CppSystem.Object>(0)));
-                __instance.Player.CmdCheckVanish(GameManager.Instance.LogicOptions.GetRoleFloat(AmongUs.GameOptions.FloatOptionNames.PhantomDuration));
-                return false;
-            }
-        }
-        return false;
+        return true;
     }
 }

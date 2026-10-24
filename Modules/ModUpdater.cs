@@ -11,7 +11,6 @@ using IEnumerator = System.Collections.IEnumerator;
 
 namespace TOHE;
 
-[HarmonyPatch]
 public class ModUpdater
 {
     private static readonly string URL_Github = "https://api.github.com/repos/0xDrMoe/TownofHost-Enhanced";
@@ -27,18 +26,6 @@ public class ModUpdater
     public static string notice = null;
     public static GenericPopup InfoPopup;
     public static PassiveButton updateButton;
-
-    [HarmonyPatch(typeof(MainMenuManager), nameof(MainMenuManager.Start)), HarmonyPostfix, HarmonyPriority(Priority.VeryLow)]
-    public static void Start_Postfix(/*MainMenuManager __instance*/)
-    {
-        // Upstream releases are incompatible with this private-server fork.
-        if (!Main.ShowUpdateButton) return;
-        ResetUpdateButton();
-        if (isChecked) return;
-        //If we are not using it for now, just freaking disable it.
-
-        Main.Instance.StartCoroutine(PrefixCoroutine());
-    }
 
     public static IEnumerator PrefixCoroutine()
     {
