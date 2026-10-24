@@ -121,7 +121,8 @@ enum CustomRPC : uint
     SyncAfkState,
     ProtocolCapabilities,
     Fragment,
-    // 194 was the removed SetNativeRole RPC; next append must explicitly start at 195.
+    // 194 was the removed SetNativeRole RPC; do not reuse it.
+    SystemChat = 195,
 }
 public enum Sounds
 {
@@ -508,6 +509,13 @@ internal class RPCHandlerPatch
                 {
                     HudManager.Instance.Chat.SetVisible(show);
                 }
+                break;
+            case CustomRPC.SystemChat:
+                byte speakerId = reader.ReadByte();
+                string heading = reader.ReadString();
+                string body = reader.ReadString();
+                if (reader.BytesRemaining != 0) throw new System.IO.InvalidDataException("Invalid system chat payload");
+                if (isLocalRecipient) OfficialChat.ShowLocal(Utils.GetPlayerById(speakerId) ?? __instance, body, heading);
                 break;
             case CustomRPC.SetDrawPlayer:
                 Revolutionist.ReceiveDrawPlayerRPC(reader);

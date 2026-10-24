@@ -4,15 +4,18 @@ using System;
 using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
+using UnityEngine;
 
 namespace TOHE;
 
-/// <summary>Host-generated output. Temporary names and their restoration travel in one reliable root.</summary>
+/// <summary>Host output uses custom RPCs for mod clients and a reliable name transaction for vanilla.</summary>
 internal static class OfficialChat
 {
     private static readonly object TransactionLock = new();
     private const int SoftPacketBytes = 1000;
     private const int HardPacketBytes = 1200;
+    internal static PlayerControl DisplayActor { get; private set; }
+    internal static string DisplayTitle { get; private set; }
 
     public static void Send(PlayerControl actor, string text, byte recipient = byte.MaxValue, string title = null)
     {
@@ -43,6 +46,25 @@ internal static class OfficialChat
                 }
                 int target = seer.GetClientId();
                 if (target < 0) continue; // A missing private recipient must never become a broadcast.
+                if (seer.IsModded())
+                {
+                    // The transport already bounds and fragments large logical payloads. Never send
+                    // native SetName/QuickChat to mod clients, including in a mixed broadcast.
+                    try
+                    {
+                        CustomRpcTransport.SendPayload(CustomRPC.SystemChat, writer =>
+                        {
+                            writer.Write(actor.PlayerId);
+                            writer.Write(title ?? string.Empty);
+                            writer.Write(text ?? string.Empty);
+                        }, target);
+                    }
+                    catch (Exception error)
+                    {
+                        Logger.Error($"Custom chat aborted for recipient {seer.PlayerId}: {error.GetType().Name}", "OfficialChat");
+                    }
+                    continue;
+                }
                 string actorRestore = VisibleName(actor, seer), carrierRestore = VisibleName(carrier, seer);
                 string heading = title ?? string.Empty, body = text ?? string.Empty;
                 try
@@ -65,10 +87,14 @@ internal static class OfficialChat
                     int budget = SoftPacketBytes - overhead;
                     if (budget <= 0) budget = HardPacketBytes - overhead;
                     if (budget <= 0) throw new InvalidOperationException("The name restoration leaves no message budget.");
-                    foreach (string page in Paginate(body, budget))
+                    string padding = TitlePadding(heading);
+                    // Materialize all pages before sending so a later invalid token cannot leave
+                    // a partially delivered message. Padding is repeated, outside the rich text.
+                    var pages = Paginate(body, budget - Encoding.UTF8.GetByteCount(padding)).ToArray();
+                    foreach (string page in pages)
                     {
                         if (!Current()) return;
-                        using var packet = BuildTransaction(actor, carrier, target, heading, page, actorRestore, carrierRestore);
+                        using var packet = BuildTransaction(actor, carrier, target, heading, padding + page, actorRestore, carrierRestore);
                         if (packet.Writer.Length > HardPacketBytes)
                             throw new InvalidOperationException("The complete chat transaction exceeds 1200 bytes.");
                         OfficialNetworkSend.Send(client, packet.Writer);
@@ -89,15 +115,33 @@ internal static class OfficialChat
     internal static void ShowLocal(PlayerControl actor, string text, string title)
     {
         if (actor?.Data == null || !DestroyableSingleton<HudManager>.Instance) return;
-        string original = actor.Data.PlayerName;
+        title ??= actor.Data.PlayerName;
+        text ??= string.Empty;
+        if (Encoding.UTF8.GetByteCount(title) > 256)
+        {
+            text = title + "\n" + text;
+            title = "TOHE";
+        }
+        string padding = TitlePadding(title);
+        var pages = Paginate(text, SoftPacketBytes - Encoding.UTF8.GetByteCount(padding)).ToArray();
+        var previousActor = DisplayActor;
+        string previousTitle = DisplayTitle;
         try
         {
-            // AddChat reads Data.PlayerName synchronously. Avoid CoSetName and cosmetics/name caches.
-            actor.Data.PlayerName = title ?? original;
-            DestroyableSingleton<HudManager>.Instance.Chat.AddChat(actor, text, false);
+            // Override only the bubble's name at the native presentation boundary. Player data,
+            // cosmetics, notifications and name caches continue to see the real player name.
+            DisplayActor = actor;
+            DisplayTitle = title;
+            foreach (string page in pages)
+                DestroyableSingleton<HudManager>.Instance.Chat.AddChat(actor, padding + page, false);
         }
-        finally { actor.Data.PlayerName = original; }
+        finally { DisplayActor = previousActor; DisplayTitle = previousTitle; }
     }
+
+    // Vanilla positions the body at a fixed Y even though its background includes the full
+    // name height. Reserve body lines for explicit multi-line tags/names on both client types.
+    private static string TitlePadding(string title)
+        => new('\n', Regex.Matches(title ?? string.Empty, @"\n|<br\s*/?>", RegexOptions.IgnoreCase).Count);
 
     private static OfficialPacketBuilder.BoundedWriter BuildTransaction(PlayerControl actor, PlayerControl carrier, int target, string heading,
         string body, string actorRestore, string carrierRestore)
@@ -192,5 +236,18 @@ internal static class OfficialChat
             yield return element;
             i += element.Length;
         }
+    }
+}
+
+[HarmonyPatch(typeof(ChatController), nameof(ChatController.SetChatBubbleName))]
+internal static class OfficialChatNamePatch
+{
+    private static bool Prefix([HarmonyArgument(0)] ChatBubble bubble,
+        [HarmonyArgument(1)] NetworkedPlayerInfo playerInfo, [HarmonyArgument(2)] bool isDead,
+        [HarmonyArgument(3)] bool didVote, [HarmonyArgument(4)] Color nameColor)
+    {
+        if (OfficialChat.DisplayActor == null || OfficialChat.DisplayActor.Data != playerInfo) return true;
+        bubble.SetName(OfficialChat.DisplayTitle, isDead, didVote, nameColor);
+        return false;
     }
 }
