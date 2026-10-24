@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Text;
 
 namespace TOHE.Patches;
 
@@ -7,9 +8,14 @@ namespace TOHE.Patches;
 [HarmonyPatch(typeof(TextBoxTMP), nameof(TextBoxTMP.SetText))]
 class TextBoxTMPSetTextPatch
 {
-    // The only characters to treat specially are \r, \n and \b, allow all other characters to be written
+    // Allow Unicode text, but keep non-text control characters out of the TMP output.
     public static bool Prefix(TextBoxTMP __instance, [HarmonyArgument(0)] string input, [HarmonyArgument(1)] string inputCompo = "")
     {
+        // Match the live chat field itself; other text boxes (including cloned search fields) stay vanilla.
+        if (!HudManager.InstanceExists) return true;
+        var chat = HudManager.Instance.Chat;
+        if (!chat || !chat.freeChatField || chat.freeChatField.textArea != __instance) return true;
+
         bool flag = false;
         char ch = ' ';
         __instance.AdjustCaretPosition(input.Length - __instance.text.Length);
@@ -29,19 +35,23 @@ class TextBoxTMPSetTextPatch
                     case '\r':
                     case '\n':
                         flag = true;
-                        break;
+                        __instance.AdjustCaretPosition(-1);
+                        continue;
                     case '\b':
                         __instance.tempTxt.Length = Math.Max(__instance.tempTxt.Length - 1, 0);
                         __instance.AdjustCaretPosition(-2);
-                        break;
+                        continue;
+                }
+
+                if (char.IsControl(upperInvariant))
+                {
+                    __instance.AdjustCaretPosition(-1);
+                    continue;
                 }
 
                 if (__instance.ForceUppercase) upperInvariant = char.ToUpperInvariant(upperInvariant);
-                if (upperInvariant is not '\r' and not '\n' and not '\b')
-                {
-                    __instance.tempTxt.Append(upperInvariant);
-                    ch = upperInvariant;
-                }
+                __instance.tempTxt.Append(upperInvariant);
+                ch = upperInvariant;
             }
         }
 
@@ -53,6 +63,17 @@ class TextBoxTMPSetTextPatch
         }
 
         input = __instance.tempTxt.ToString();
+        if (!string.IsNullOrEmpty(inputCompo))
+        {
+            // IME composition is displayed separately and must not move the committed-text caret.
+            var composition = new StringBuilder(inputCompo.Length);
+            foreach (char c in inputCompo)
+            {
+                if (!char.IsControl(c)) composition.Append(c);
+            }
+            inputCompo = composition.ToString();
+        }
+
         if (!input.Equals(__instance.text) || !inputCompo.Equals(__instance.compoText))
         {
             __instance.text = input;
