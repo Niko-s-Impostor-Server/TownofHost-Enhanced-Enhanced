@@ -1,8 +1,7 @@
 using Hazel;
+using Il2CppInterop.Runtime.InteropTypes.Arrays;
 using System;
 using System.IO;
-using Il2CppInterop.Runtime.InteropTypes.Arrays;
-using TOHE.Modules;
 
 namespace TOHE;
 

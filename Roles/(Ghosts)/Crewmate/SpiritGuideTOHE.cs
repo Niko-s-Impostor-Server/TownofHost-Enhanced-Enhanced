@@ -1,5 +1,4 @@
 using AmongUs.GameOptions;
-using TOHE.Roles.Core;
 using static TOHE.Options;
 
 namespace TOHE.Roles._Ghosts_.Crewmate;

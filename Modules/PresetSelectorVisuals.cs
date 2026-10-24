@@ -68,16 +68,16 @@ internal static class PresetSelectorVisuals
         const float radius = 7f;
         var pixels = new Color[resolution * resolution];
         for (int y = 0; y < resolution; y++)
-        for (int x = 0; x < resolution; x++)
-        {
-            float dx = Mathf.Abs(x + 0.5f - resolution / 2f) - (resolution / 2f - 1f - radius);
-            float dy = Mathf.Abs(y + 0.5f - resolution / 2f) - (resolution / 2f - 1f - radius);
-            float distance = new Vector2(Mathf.Max(dx, 0f), Mathf.Max(dy, 0f)).magnitude
-                + Mathf.Min(Mathf.Max(dx, dy), 0f) - radius;
-            var color = Color.Lerp(border, fill, Mathf.Clamp01(-distance - 0.75f));
-            color.a *= Mathf.Clamp01(0.5f - distance);
-            pixels[y * resolution + x] = color;
-        }
+            for (int x = 0; x < resolution; x++)
+            {
+                float dx = Mathf.Abs(x + 0.5f - resolution / 2f) - (resolution / 2f - 1f - radius);
+                float dy = Mathf.Abs(y + 0.5f - resolution / 2f) - (resolution / 2f - 1f - radius);
+                float distance = new Vector2(Mathf.Max(dx, 0f), Mathf.Max(dy, 0f)).magnitude
+                    + Mathf.Min(Mathf.Max(dx, dy), 0f) - radius;
+                var color = Color.Lerp(border, fill, Mathf.Clamp01(-distance - 0.75f));
+                color.a *= Mathf.Clamp01(0.5f - distance);
+                pixels[y * resolution + x] = color;
+            }
         var texture = new Texture2D(resolution, resolution, TextureFormat.RGBA32, false)
         {
             filterMode = FilterMode.Bilinear,

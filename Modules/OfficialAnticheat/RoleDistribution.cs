@@ -209,21 +209,21 @@ internal static class RoleDistribution
         bool wrote = false;
         try
         {
-        foreach (var recipient in players.Values.Where(player => !player.AmOwner &&
-            (!moddedOnly.HasValue || RpcCompatibility.SupportsPackedRpc(player) == moddedOnly.Value)).OrderBy(player => player.PlayerId))
-        foreach (var subject in Plan.PlayerIds.Where(id => (id == Plan.HostPlayerId) == hostOnly))
-        {
-            RequireCurrent();
-            if (RpcCompatibility.SupportsPackedRpc(recipient)) SendNative(recipient, subject, hostOnly ? (byte)1 : (byte)0);
-            else
-            {
-                if (recipient.IsModded()) throw new InvalidOperationException("Unsupported mod protocol in initial role distribution");
-                vanilla.AutoStartRpc(players[subject].NetId, (byte)RpcCalls.SetRole, recipient.OwnerId)
-                    .Write((ushort)Plan.DesiredNativeRole[(recipient.PlayerId, subject)]).Write(true).EndRpc();
-                wrote = true;
-            }
-        }
-        if (wrote) vanilla.SendMessage();
+            foreach (var recipient in players.Values.Where(player => !player.AmOwner &&
+                (!moddedOnly.HasValue || RpcCompatibility.SupportsPackedRpc(player) == moddedOnly.Value)).OrderBy(player => player.PlayerId))
+                foreach (var subject in Plan.PlayerIds.Where(id => (id == Plan.HostPlayerId) == hostOnly))
+                {
+                    RequireCurrent();
+                    if (RpcCompatibility.SupportsPackedRpc(recipient)) SendNative(recipient, subject, hostOnly ? (byte)1 : (byte)0);
+                    else
+                    {
+                        if (recipient.IsModded()) throw new InvalidOperationException("Unsupported mod protocol in initial role distribution");
+                        vanilla.AutoStartRpc(players[subject].NetId, (byte)RpcCalls.SetRole, recipient.OwnerId)
+                            .Write((ushort)Plan.DesiredNativeRole[(recipient.PlayerId, subject)]).Write(true).EndRpc();
+                        wrote = true;
+                    }
+                }
+            if (wrote) vanilla.SendMessage();
         }
         finally { vanilla.Dispose(); }
     }

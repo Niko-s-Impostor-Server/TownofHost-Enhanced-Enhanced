@@ -20,26 +20,26 @@ internal sealed class RoleDistributionPlan
         PlayerIds = ordered.Select(actor => actor.Id).ToArray();
         HostPlayerId = hostPlayerId;
         foreach (var recipient in ordered)
-        foreach (var subject in ordered)
-        {
-            RoleTypes role;
-            if (recipient.Id == hostPlayerId)
+            foreach (var subject in ordered)
             {
-                role = recipient.Id == subject.Id && recipient.Desync
-                    ? recipient.SelfRole == RoleTypes.Shapeshifter ? RoleTypes.Shapeshifter : RoleTypes.Crewmate
-                    : subject.Desync ? RoleTypes.Scientist : subject.NativeRole;
+                RoleTypes role;
+                if (recipient.Id == hostPlayerId)
+                {
+                    role = recipient.Id == subject.Id && recipient.Desync
+                        ? recipient.SelfRole == RoleTypes.Shapeshifter ? RoleTypes.Shapeshifter : RoleTypes.Crewmate
+                        : subject.Desync ? RoleTypes.Scientist : subject.NativeRole;
+                }
+                else if (recipient.Desync)
+                {
+                    role = recipient.Id == subject.Id
+                        ? recipient.SelfRole
+                        : subject.Noisemaker ? RoleTypes.Noisemaker
+                            : RoleTypes.Scientist;
+                }
+                else role = subject.Desync
+                    ? subject.Id == hostPlayerId ? RoleTypes.Crewmate : RoleTypes.Scientist
+                    : subject.NativeRole;
+                DesiredNativeRole.Add((recipient.Id, subject.Id), role);
             }
-            else if (recipient.Desync)
-            {
-                role = recipient.Id == subject.Id
-                    ? recipient.SelfRole
-                    : subject.Noisemaker ? RoleTypes.Noisemaker
-                        : RoleTypes.Scientist;
-            }
-            else role = subject.Desync
-                ? subject.Id == hostPlayerId ? RoleTypes.Crewmate : RoleTypes.Scientist
-                : subject.NativeRole;
-            DesiredNativeRole.Add((recipient.Id, subject.Id), role);
-        }
     }
 }

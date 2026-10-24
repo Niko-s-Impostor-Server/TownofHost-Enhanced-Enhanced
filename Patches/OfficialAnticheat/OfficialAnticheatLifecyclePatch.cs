@@ -1,4 +1,3 @@
-using System;
 using AmongUs.GameOptions;
 using AmongUs.HTTP;
 using BepInEx.Unity.IL2CPP.Utils.Collections;

@@ -1,7 +1,7 @@
-using System;
 using Hazel;
 using Il2CppInterop.Runtime.InteropTypes.Arrays;
 using InnerNet;
+using System;
 using System.IO;
 using System.Runtime.CompilerServices;
 
