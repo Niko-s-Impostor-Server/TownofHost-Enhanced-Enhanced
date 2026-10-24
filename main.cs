@@ -485,6 +485,9 @@ public class Main : BasePlugin
     {
         Instance = this;
 
+        DisconnectPopup.ErrorMessages[DisconnectReasons.Hacking] = StringNames.ErrorHacking;
+        InnerNet.InnerNetClient.DontBotherLoggingTheseDisconnectReasons.Clear();
+
         //Client Options
         HideName = Config.Bind("Client Options", "Hide Game Code Name", "TOHE");
         HideColor = Config.Bind("Client Options", "Hide Game Code Color", $"{ModColor}");
