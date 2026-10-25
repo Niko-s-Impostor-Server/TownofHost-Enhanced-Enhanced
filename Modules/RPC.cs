@@ -990,6 +990,9 @@ internal static class RPC
                 {
                     try
                     {
+                        // Reannounce on each exchange, including requests from a new
+                        // peer, before version traffic can depend on packed framing.
+                        RpcCompatibility.SendCapabilities();
                         if (retry)
                         {
                             var writer = CustomRpcTransport.Start(CustomRPC.RequestRetryVersionCheck, SendOption.Reliable, hostId);
@@ -1009,7 +1012,6 @@ internal static class RPC
                                 });
                             }
                             Main.playerVersion[player.GetClientId()] = new PlayerVersion(Main.PluginVersion, $"{ThisAssembly.Git.Commit}({ThisAssembly.Git.Branch})", Main.ForkId);
-                            RpcCompatibility.SendCapabilities();
                         }
                     }
                     catch (Exception ex)

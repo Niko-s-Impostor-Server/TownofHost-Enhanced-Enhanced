@@ -636,25 +636,17 @@ class InnerNetClientSpawnPatch
             {
                 _ = Schedule(() =>
                 {
-                    if (GameStates.IsLobby && client.Character != null && LobbyBehaviour.Instance != null && GameStates.IsVanillaServer)
+                    if (GameStates.IsLobby && ServerRegion.IsOfficialConnection
+                        && client.Character != null && LobbyBehaviour.Instance != null
+                        && client.Character.IsNonHostModdedClient())
                     {
-                        // Only for vanilla
-                        if (!client.Character.IsModded())
-                        {
-                            MessageWriter writer = AmongUsClient.Instance.StartImmediate(LobbyBehaviour.Instance.NetId, (byte)RpcCalls.LobbyTimeExpiring, SendOption.None, client.Id);
-                            writer.WritePacked((int)GameStartManagerPatch.timer);
-                            writer.Write(false);
-                            AmongUsClient.Instance.FinishImmediate(writer);
-                        }
-                        // Non-host modded client
-                        else if (client.Character.IsNonHostModdedClient())
-                        {
-                            MessageWriter writer = CustomRpcTransport.Start(CustomRPC.SyncLobbyTimer, SendOption.Reliable, client.Id);
-                            writer.WritePacked((int)GameStartManagerPatch.timer);
-                            CustomRpcTransport.Finish(writer);
-                        }
+                        // Official servers notify vanilla clients themselves;
+                        // private servers have no lobby expiry to synchronize.
+                        MessageWriter writer = CustomRpcTransport.Start(CustomRPC.SyncLobbyTimer, SendOption.Reliable, client.Id);
+                        writer.WritePacked((int)GameStartManagerPatch.timer);
+                        CustomRpcTransport.Finish(writer);
                     }
-                }, 3.1f, "Send RPC or Sync Lobby Timer");
+                }, 3.1f, "Sync Official Lobby Timer");
             }
 
             if (Options.GradientTagsOpt.GetBool())

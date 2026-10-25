@@ -152,8 +152,11 @@ internal static class CustomRpcTransport
         message.ValidateContext(client, player);
         var option = message.GetSendOption();
         ValidateOption(option);
+        // The handshake must remain readable before either peer knows the other's
+        // capabilities. A later joiner did not receive the room's first declaration.
         if (OfficialAnticheatPolicy.Enabled && message is CustomRpcPayloadMessage payload &&
-            payload.Snapshot.RpcId != (uint)CustomRPC.ProtocolCapabilities)
+            (CustomRPC)payload.Snapshot.RpcId is not (CustomRPC.ProtocolCapabilities
+                or CustomRPC.VersionCheck or CustomRPC.RequestRetryVersionCheck))
         {
             RpcCompatibility.EnsureDeclared();
             RpcCompatibility.ValidateRecipient(payload.Snapshot.Target);
@@ -233,7 +236,14 @@ internal static class CustomRpcTransport
         catch { Reset(); throw; }
         var message = new PackedTOHERpcMessage(player.NetId, client.GameId, player.OwnerId,
             player.GetInstanceID(), Pending);
+        // A peer may join after the previous declaration was broadcast. Keep
+        // the declaration adjacent to each packed batch on the reliable queue,
+        // including a batch already pending when a new handshake starts.
+        var declaration = new CustomRpcPayloadMessage(player.NetId, client.GameId, player.OwnerId,
+            player.GetInstanceID(), CustomRPC.ProtocolCapabilities, -1, SendOption.Reliable,
+            RpcCompatibility.CreateDeclarationPayload());
         Pending.Clear(); pendingBytes = 0; pendingContext = null;
+        Enqueue(declaration, client, SendOption.Reliable);
         Enqueue(message, client, SendOption.Reliable);
     }
 

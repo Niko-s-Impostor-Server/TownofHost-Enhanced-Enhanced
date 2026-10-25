@@ -49,7 +49,6 @@ internal static class RoleDistribution
         players = Main.AllPlayerControls.Where(player => player != null && player.Data != null && !player.Data.Disconnected)
             .OrderBy(player => player.PlayerId).ToDictionary(player => player.PlayerId);
         identities = players.ToDictionary(pair => pair.Key, pair => pair.Value.Pointer);
-        customRoles = players.Keys.ToDictionary(id => id, id => Main.PlayerStates[id].MainRole);
         Plan = new RoleDistributionPlan(players.Values.Select(player =>
         {
             var role = RoleAssign.RoleResult[player.PlayerId];
@@ -119,6 +118,12 @@ internal static class RoleDistribution
     private static IEnumerator PublishCore()
     {
         RequireCurrent();
+        // FreezePlan runs before AssignCustomRole installs normal-role metadata.
+        // Capture the completed assignments that were just synchronized instead
+        // of sending the earlier NotAssigned placeholders in native views.
+        customRoles = players.Keys.ToDictionary(id => id, id => Main.PlayerStates[id].MainRole);
+        if (customRoles.Values.Any(role => role >= CustomRoles.NotAssigned))
+            throw new InvalidOperationException("Native role publication requires completed custom role assignments");
         // Custom roles, add-ons and initial options are causal dependencies of
         // direct vanilla publication, so flush and await their actual sends.
         var settingsBarrier = CustomRpcTransport.CaptureBarrier();

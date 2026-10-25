@@ -9,6 +9,13 @@ internal static class RpcCompatibility
         $"{Main.PluginVersion}\n{Main.ForkId}\n{ThisAssembly.Git.Commit}\n{ThisAssembly.Git.Branch}"));
     internal static void ResetCapabilities() { PackedClients.Clear(); IncompatibleClients.Clear(); declared = false; }
     internal static void ResetDeclaration() => declared = false;
+    internal static byte[] CreateDeclarationPayload()
+    {
+        var payload = new byte[33];
+        payload[0] = 1;
+        BuildFingerprint.CopyTo(payload, 1);
+        return payload;
+    }
     internal static bool SupportsPackedRpc(PlayerControl player)
         => player != null && (player.AmOwner ||
             PackedClients.TryGetValue(player.OwnerId, out var identity) && identity == player.GetInstanceID());
