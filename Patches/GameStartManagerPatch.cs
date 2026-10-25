@@ -32,6 +32,7 @@ public class GameStartManagerPatch
         public static void Postfix(GameStartManager __instance)
         {
             GameStartManagerUpdatePatch.AlredyBegin = false;
+            Main.DoBlockNameChange = false;
             __instance.GameRoomNameCode.text = GameCode.IntToGameName(AmongUsClient.Instance.GameId);
             // Reset lobby countdown timer
             timer = 600f;

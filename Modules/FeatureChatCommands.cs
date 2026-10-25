@@ -16,15 +16,25 @@ internal static class FeatureChatCommands
         var client = AmongUsClient.Instance;
         if (!client || !client.AmConnected || !client.AmHost)
         {
-            if (loadedHost != -1) { LocalPlayerTags.Reset(); loadedHost = -1; }
+            if (loadedHost != -1)
+            {
+                LocalPlayerTags.Reset();
+                LegacyLobbyTags.Reset();
+                loadedHost = -1;
+            }
             return;
         }
         if (loadedHost != client.HostId || loadedGeneration != OnGameJoinedPatch.Generation)
-        { LocalPlayerTags.Reset(); loadedHost = -1; }
+        {
+            LocalPlayerTags.Reset();
+            LegacyLobbyTags.Reset();
+            loadedHost = -1;
+        }
         if (!Options.IsLoaded || (loadedHost == client.HostId && loadedGeneration == OnGameJoinedPatch.Generation)) return;
         loadedHost = client.HostId;
         loadedGeneration = OnGameJoinedPatch.Generation;
         if (!LocalPlayerTags.Reload(out _)) Logger.Warn("Local player tags could not be loaded; local grants revoked", "LocalPlayerTags");
+        LegacyLobbyTags.Reload();
     }
 
     internal static bool TryHandle(PlayerControl sender, string text)
@@ -79,6 +89,7 @@ internal static class FeatureChatCommands
                 if (!host || !sender.AmOwner) { Denied(); return true; }
                 if (args.Length != 2 || args[1] != "reload") { Reply(GetString("LocalTagsUsage")); return true; }
                 bool loaded = LocalPlayerTags.Reload(out _);
+                LegacyLobbyTags.Reload();
                 if (GameStates.IsLobby) foreach (var player in Main.AllPlayerControls) Utils.ApplySuffix(player);
                 Reply(GetString(loaded ? "LocalTagsReloaded" : "LocalTagsFailed"));
                 return true;

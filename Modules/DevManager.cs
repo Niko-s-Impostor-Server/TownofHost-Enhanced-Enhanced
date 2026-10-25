@@ -26,7 +26,7 @@ public class DevUser(string code = "", string color = "null", string userType = 
 
         if (File.Exists(tagColorFilePath))
         {
-            var ColorCode = File.ReadAllText(tagColorFilePath);
+            var ColorCode = File.ReadAllText(tagColorFilePath).Trim();
             if (Utils.CheckColorHex(ColorCode)) startColor = ColorCode;
         }
         string t1;

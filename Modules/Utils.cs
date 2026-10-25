@@ -1647,7 +1647,9 @@ public static class Utils
         }
 
         bool hasLocalTag = TOHE.Modules.LocalPlayerTags.TryGetRenderedTag(player, Options.GradientTagsOpt.GetBool(), out var localTag);
-        if (!(player.AmOwner || hasLocalTag || player.FriendCode.GetDevUser().HasTag()))
+        string legacyTag = string.Empty;
+        bool hasLegacyTag = LegacyLobbyTags.TryGetRenderedTag(player.FriendCode, Options.GradientTagsOpt.GetBool(), out legacyTag);
+        if (!(player.AmOwner || hasLocalTag || hasLegacyTag || player.FriendCode.GetDevUser().HasTag()))
         {
             if (!IsPlayerModerator(player.FriendCode) && !IsPlayerVIP(player.FriendCode))
             {
@@ -1690,8 +1692,7 @@ public static class Utils
                     string startColorCode = "ffff00";
                     if (File.Exists(colorFilePath))
                     {
-                        string ColorCode = File.ReadAllText(colorFilePath);
-                        _ = ColorCode.Trim();
+                        string ColorCode = File.ReadAllText(colorFilePath).Trim();
                         if (CheckColorHex(ColorCode)) startColorCode = ColorCode;
                     }
                     //"ffff00"
@@ -1704,7 +1705,7 @@ public static class Utils
                     string ColorCode = "";
                     if (File.Exists(colorFilePath))
                     {
-                        ColorCode = File.ReadAllText(colorFilePath);
+                        ColorCode = File.ReadAllText(colorFilePath).Trim();
                         if (ColorCode.Split(" ").Length == 2)
                         {
                             startColorCode = ColorCode.Split(" ")[0];
@@ -1734,8 +1735,7 @@ public static class Utils
                     string startColorCode = "8bbee0";
                     if (File.Exists(colorFilePath))
                     {
-                        string ColorCode = File.ReadAllText(colorFilePath);
-                        _ = ColorCode.Trim();
+                        string ColorCode = File.ReadAllText(colorFilePath).Trim();
                         if (CheckColorHex(ColorCode)) startColorCode = ColorCode;
                     }
                     //"33ccff", "ff99cc"
@@ -1748,7 +1748,7 @@ public static class Utils
                     string ColorCode = "";
                     if (File.Exists(colorFilePath))
                     {
-                        ColorCode = File.ReadAllText(colorFilePath);
+                        ColorCode = File.ReadAllText(colorFilePath).Trim();
                         if (ColorCode.Split(" ").Length == 2)
                         {
                             startColorCode = ColorCode.Split(" ")[0];
@@ -1784,6 +1784,9 @@ public static class Utils
         }
 
         if (hasLocalTag) name = $"<size=1.5>{localTag}</size>\r\n" + name;
+        else if (hasLegacyTag && player.FriendCode.GetDevUser().HasTag() && player.IsModded())
+            name = player.FriendCode.GetDevUser().GetTag() + $"<size=1.5>{legacyTag}</size>" + name;
+        else if (hasLegacyTag) name = legacyTag + name;
         else if (!name.Contains($"\r\r") && player.FriendCode.GetDevUser().HasTag() && player.IsModded())
         {
             name = player.FriendCode.GetDevUser().GetTag() + "<size=1.5>" + modtag + "</size>" + name;
