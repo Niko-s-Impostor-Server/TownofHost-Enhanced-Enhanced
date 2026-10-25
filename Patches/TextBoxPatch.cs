@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Text;
+using Il2CppInterop.Runtime;
 
 namespace TOHE.Patches;
 
@@ -8,6 +9,9 @@ namespace TOHE.Patches;
 [HarmonyPatch(typeof(TextBoxTMP), nameof(TextBoxTMP.SetText))]
 class TextBoxTMPSetTextPatch
 {
+    private static readonly IntPtr TextField = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<TextBoxTMP>.NativeClassPtr, "text");
+    private static readonly IntPtr CompositionField = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<TextBoxTMP>.NativeClassPtr, "compoText");
+
     // Allow Unicode text, but keep non-text control characters out of the TMP output.
     public static bool Prefix(TextBoxTMP __instance, [HarmonyArgument(0)] string input, [HarmonyArgument(1)] string inputCompo = "")
     {
@@ -15,6 +19,9 @@ class TextBoxTMPSetTextPatch
         if (!HudManager.InstanceExists) return true;
         var chat = HudManager.Instance.Chat;
         if (!chat || !chat.freeChatField || chat.freeChatField.textArea != __instance) return true;
+
+        input ??= "";
+        inputCompo ??= "";
 
         bool flag = false;
         char ch = ' ';
@@ -76,8 +83,11 @@ class TextBoxTMPSetTextPatch
 
         if (!input.Equals(__instance.text) || !inputCompo.Equals(__instance.compoText))
         {
-            __instance.text = input;
-            __instance.compoText = inputCompo;
+            // The generated interop string setters use a raw pointer store in 1.5.1.
+            // Use IL2CPP's reference-field API so incremental GC tracks both writes.
+            var nativeInput = IL2CPP.Il2CppObjectBaseToPtrNotNull(__instance);
+            IL2CPP.il2cpp_field_set_value_object(nativeInput, TextField, IL2CPP.ManagedStringToIl2Cpp(input));
+            IL2CPP.il2cpp_field_set_value_object(nativeInput, CompositionField, IL2CPP.ManagedStringToIl2Cpp(inputCompo));
             string str = __instance.text;
             string compoText = __instance.compoText;
 
