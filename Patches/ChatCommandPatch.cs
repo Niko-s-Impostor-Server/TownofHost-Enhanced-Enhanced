@@ -38,7 +38,9 @@ internal class ChatCommands
     public static bool Prefix(ChatController __instance)
     {
         if (__instance.quickChatField.visible == false && __instance.freeChatField.textArea.text == "") return false;
-        if (OfficialAnticheatPolicy.Enabled && __instance.quickChatField.visible) return true;
+        // Quick Chat submissions are native phrase-builder sends. The hidden free-chat
+        // field can retain stale text, so never let it enter command dispatch.
+        if (__instance.quickChatField.visible) return true;
         if (!GameStates.IsModHost && !AmongUsClient.Instance.AmHost) return true;
         var text = __instance.freeChatField.textArea.text;
         var historyText = text;
