@@ -800,6 +800,10 @@ class IntroCutsceneDestroyPatch
             Utils.CheckAndSetVentInteractions();
         }
 
+        // ShowRole's iterator factory can be inlined by IL2CPP. The native intro
+        // has now ended and any start mask has been restored, so release the
+        // name-update gate even if the ShowRole postfix did not run.
+        if (AmongUsClient.Instance.AmHost) SetUpRoleTextPatch.IsInIntro = false;
         Utils.DoNotifyRoles(NoCache: true);
         Logger.Info("OnDestroy", "IntroCutscene");
     }
