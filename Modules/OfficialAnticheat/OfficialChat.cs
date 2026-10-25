@@ -110,7 +110,9 @@ internal static class OfficialChat
     }
 
     private static string VisibleName(PlayerControl actor, PlayerControl seer)
-        => Main.LastNotifyNames.TryGetValue((actor.PlayerId, seer.PlayerId), out var name) ? name : actor.Data.PlayerName;
+        // Role-name views can survive the round; lobby chat must restore current tags.
+        => !GameStates.IsLobby && Main.LastNotifyNames.TryGetValue((actor.PlayerId, seer.PlayerId), out var name)
+            ? name : actor.Data.PlayerName;
 
     internal static void ShowLocal(PlayerControl actor, string text, string title)
     {
