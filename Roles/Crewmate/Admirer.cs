@@ -14,7 +14,7 @@ internal class Admirer : RoleBase
 {
     //===========================SETUP================================\\
     private const int Id = 24800;
-    public static bool HasEnabled => CustomRoleManager.HasEnabled(CustomRoles.Admired);
+    public static bool HasEnabled => CustomRoleManager.HasEnabled(CustomRoles.Admirer);
     public override bool IsDesyncRole => true;
     public override CustomRoles ThisRoleBase => CustomRoles.Impostor;
     public override Custom_RoleType ThisRoleType => Custom_RoleType.CrewmatePower;
@@ -78,7 +78,7 @@ internal class Admirer : RoleBase
             targetId = reader.ReadByte();
             if (!AdmiredList.ContainsKey(playerId))
                 AdmiredList.Add(playerId, []);
-            else AdmiredList[playerId].Add(targetId);
+            AdmiredList[playerId].Add(targetId);
         }
     }
 
@@ -165,6 +165,12 @@ internal class Admirer : RoleBase
 
             Logger.Info("设置职业:" + target?.Data?.PlayerName + " = " + target.GetCustomRole().ToString() + " + " + CustomRoles.Admirer.ToString(), "Assign " + CustomRoles.Admirer.ToString());
             Logger.Info($"{killer.GetNameWithRole()} : 剩余{AbilityLimit}次仰慕机会", "Admirer");
+
+            if (target.Is(CustomRoles.Admired))
+            {
+                Utils.NotifyRoles(SpecifyTarget: target, ForceLoop: true);
+                Utils.NotifyRoles(SpecifySeer: target, SpecifyTarget: killer, ForceLoop: true);
+            }
 
             return false;
         }
