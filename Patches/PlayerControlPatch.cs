@@ -516,6 +516,9 @@ class MurderPlayerPatch
     public static void AfterPlayerDeathTasks(PlayerControl killer, PlayerControl target, bool inMeeting)
     {
         CustomRoleManager.OnMurderPlayer(killer, target, inMeeting);
+
+        if (!inMeeting && !GameStates.IsMeeting && !Main.MeetingIsStarted && target != null)
+            Utils.NotifyRoles(SpecifyTarget: target, ForceLoop: true);
     }
 }
 [HarmonyPatch(typeof(PlayerControl), nameof(PlayerControl.RpcMurderPlayer))]
