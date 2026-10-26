@@ -27,8 +27,16 @@ public class PlayerGameOptionsSender(PlayerControl player) : GameOptionsSender
         }
     }
 
-    public override IGameOptions BasedGameOptions => GameStates.IsNormalGame ?
-            Main.RealOptionsData.Restore(new NormalGameOptionsV12(new UnityLogger().Cast<ILogger>()).Cast<IGameOptions>()) : Main.RealOptionsData.Restore(new HideNSeekGameOptionsV12(new UnityLogger().Cast<ILogger>()).Cast<IGameOptions>());
+    public override IGameOptions BasedGameOptions
+    {
+        get
+        {
+            var manager = GameOptionsManager.Instance;
+            var current = manager.CurrentGameOptions;
+            var copy = manager.gameOptionsFactory.FromBytes(manager.gameOptionsFactory.ToBytes(current, false));
+            return Main.RealOptionsData.Restore(copy);
+        }
+    }
     public override bool IsDirty { get; protected set; }
 
     public PlayerControl player = player;

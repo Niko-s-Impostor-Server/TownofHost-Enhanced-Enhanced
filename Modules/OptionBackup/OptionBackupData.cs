@@ -6,6 +6,13 @@ namespace TOHE;
 
 public class OptionBackupData
 {
+    internal static readonly RoleTypes[] RoleTypesToBackup =
+    [
+        RoleTypes.Scientist, RoleTypes.Engineer, RoleTypes.GuardianAngel,
+        RoleTypes.Shapeshifter, RoleTypes.Noisemaker, RoleTypes.Phantom,
+        RoleTypes.Tracker, RoleTypes.Detective, RoleTypes.Viper,
+        RoleTypes.Judge, RoleTypes.SpiritGuide
+    ];
     public List<OptionBackupValue> AllValues;
     public OptionBackupData(IGameOptions option)
     {
@@ -33,17 +40,15 @@ public class OptionBackupData
         }
         foreach (Int32OptionNames name in EnumHelper.GetAllValues<Int32OptionNames>())
         {
+            if (name == Int32OptionNames.MaxPlayers) continue;
             if (option.TryGetInt(name, out var value))
                 AllValues.Add(new IntOptionBackupValue(name, value));
         }
 
-        // [Vanilla bug] Only the number of people in the room cannot be obtained with GetInt, so obtain it separately.
-        AllValues.Add(new IntOptionBackupValue(Int32OptionNames.MaxPlayers, option.MaxPlayers));
-
         // TryGetUInt is not implemented, so get it separately
         AllValues.Add(new UIntOptionBackupValue(UInt32OptionNames.Keywords, (uint)option.Keywords));
 
-        foreach (RoleTypes role in new RoleTypes[] { RoleTypes.Scientist, RoleTypes.Engineer, RoleTypes.GuardianAngel, RoleTypes.Shapeshifter, RoleTypes.Noisemaker, RoleTypes.Phantom, RoleTypes.Tracker, RoleTypes.Detective, RoleTypes.Viper, RoleTypes.Judge, RoleTypes.SpiritGuide })
+        foreach (RoleTypes role in RoleTypesToBackup)
         {
             AllValues.Add(new RoleRateBackupValue(role, option.RoleOptions.GetNumPerGame(role), option.RoleOptions.GetChancePerGame(role)));
         }

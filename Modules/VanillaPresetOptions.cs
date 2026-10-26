@@ -7,8 +7,81 @@ public static class VanillaPresetOptions
 {
     public sealed class SavedData
     {
-        public Dictionary<int, byte[]> Normal { get; init; } = [];
-        public Dictionary<int, byte[]> HideNSeek { get; init; } = [];
+        public Dictionary<int, Snapshot> Normal { get; init; } = [];
+        public Dictionary<int, Snapshot> HideNSeek { get; init; } = [];
+    }
+
+    public sealed class Snapshot
+    {
+        public byte Version { get; init; }
+        public GameModes GameMode { get; init; }
+        public SpecialGameModes SpecialMode { get; init; }
+        public RulesPresets RulesPreset { get; init; }
+        public uint Keywords { get; init; }
+        public Dictionary<int, byte> Bytes { get; init; } = [];
+        public Dictionary<int, bool> Bools { get; init; } = [];
+        public Dictionary<int, float> Floats { get; init; } = [];
+        public Dictionary<int, int> Ints { get; init; } = [];
+        public Dictionary<int, RoleRate> Roles { get; init; } = [];
+
+        public static Snapshot Capture(IGameOptions options)
+        {
+            var snapshot = new Snapshot
+            {
+                Version = options.Version,
+                GameMode = options.GameMode,
+                SpecialMode = options.SpecialMode,
+                RulesPreset = options.RulesPreset,
+                Keywords = (uint)options.Keywords
+            };
+            foreach (var name in EnumHelper.GetAllValues<ByteOptionNames>())
+                if (options.TryGetByte(name, out var value)) snapshot.Bytes[(int)name] = value;
+            foreach (var name in EnumHelper.GetAllValues<BoolOptionNames>())
+                if (name is not (BoolOptionNames.GhostsDoTasks or BoolOptionNames.Roles) &&
+                    options.TryGetBool(name, out var value)) snapshot.Bools[(int)name] = value;
+            foreach (var name in EnumHelper.GetAllValues<FloatOptionNames>())
+                if (options.TryGetFloat(name, out var value)) snapshot.Floats[(int)name] = value;
+            foreach (var name in EnumHelper.GetAllValues<Int32OptionNames>())
+                if (name != Int32OptionNames.MaxPlayers && options.TryGetInt(name, out var value))
+                    snapshot.Ints[(int)name] = value;
+            foreach (var role in OptionBackupData.RoleTypesToBackup)
+                snapshot.Roles[(int)role] = new RoleRate
+                {
+                    Count = options.RoleOptions.GetNumPerGame(role),
+                    Chance = options.RoleOptions.GetChancePerGame(role)
+                };
+            return snapshot;
+        }
+
+        public void Restore(IGameOptions options)
+        {
+            if (GameMode is GameModes.Normal or GameModes.NormalFools)
+            {
+                var normal = options.Cast<NormalGameOptionsV12>();
+                normal.SpecialMode = SpecialMode;
+                normal.RulesPreset = RulesPreset;
+            }
+            else if (GameMode is GameModes.HideNSeek or GameModes.SeekFools)
+            {
+                var hideNSeek = options.Cast<HideNSeekGameOptionsV12>();
+                hideNSeek.SpecialMode = SpecialMode;
+                hideNSeek.RulesPreset = RulesPreset;
+            }
+            foreach (var (name, value) in Bytes) options.SetByte((ByteOptionNames)name, value);
+            foreach (var (name, value) in Bools) options.SetBool((BoolOptionNames)name, value);
+            foreach (var (name, value) in Floats) options.SetFloat((FloatOptionNames)name, value);
+            foreach (var (name, value) in Ints)
+                if (name != (int)Int32OptionNames.MaxPlayers) options.SetInt((Int32OptionNames)name, value);
+            options.SetUInt(UInt32OptionNames.Keywords, Keywords);
+            foreach (var (role, rate) in Roles)
+                options.RoleOptions.SetRoleRate((RoleTypes)role, rate.Count, rate.Chance);
+        }
+    }
+
+    public sealed class RoleRate
+    {
+        public int Count { get; init; }
+        public int Chance { get; init; }
     }
 
     public static SavedData Data { get; private set; } = new();
@@ -47,7 +120,7 @@ public static class VanillaPresetOptions
         return !lobbyRestoreFailed;
     }
 
-    private static Dictionary<int, byte[]> ForMode(GameModes mode) => mode switch
+    private static Dictionary<int, Snapshot> ForMode(GameModes mode) => mode switch
     {
         GameModes.Normal or GameModes.NormalFools => Data.Normal,
         GameModes.HideNSeek or GameModes.SeekFools => Data.HideNSeek,
@@ -61,7 +134,7 @@ public static class VanillaPresetOptions
         // On host migration, CurrentGameOptions contains the inherited lobby
         // settings; GameHostOptions can still contain unrelated local settings.
         var options = manager.CurrentGameOptions;
-        ForMode(options.GameMode)[OptionItem.CurrentPreset] = manager.gameOptionsFactory.ToBytes(options, false).ToArray();
+        ForMode(options.GameMode)[OptionItem.CurrentPreset] = Snapshot.Capture(options);
     }
 
     public static bool TrySwitch(int previous, int next)
@@ -82,15 +155,17 @@ public static class VanillaPresetOptions
         try
         {
             var slots = ForMode(oldCurrent.GameMode);
-            var outgoing = manager.gameOptionsFactory.ToBytes(oldCurrent, false).ToArray();
+            var outgoing = Snapshot.Capture(oldCurrent);
             // Old config files have no vanilla snapshots. An unused slot starts
             // from the present host settings; subsequent edits are independent.
             var incoming = slots.TryGetValue(next, out var saved) ? saved : outgoing;
-            var restored = manager.gameOptionsFactory.FromBytes(incoming);
-            if (restored == null || restored.Version != oldCurrent.Version ||
-                ForMode(restored.GameMode) != slots)
+            if (incoming == null || incoming.Version != oldCurrent.Version ||
+                ForMode(incoming.GameMode) != slots)
                 throw new InvalidOperationException("Saved vanilla preset has an incompatible mode or version");
 
+            var restored = manager.gameOptionsFactory.FromBytes(manager.gameOptionsFactory.ToBytes(oldCurrent, false));
+            if (restored == null) throw new InvalidOperationException("Unable to clone current game options");
+            incoming.Restore(restored);
             restored.SetBool(BoolOptionNames.IsDefaults, false);
             if (previous.HasValue) slots[previous.Value] = outgoing;
             changed = true;

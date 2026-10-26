@@ -361,7 +361,10 @@ internal class StartGameHostPatch
 
         // SetRole initializes native ability timers from current game options.
         // Send the temporary values only after Started, on an independent clone.
-        var opt = Main.RealOptionsData.Restore(new NormalGameOptionsV12(new UnityLogger().Cast<Hazel.ILogger>()).Cast<IGameOptions>());
+        var optionsManager = GameOptionsManager.Instance;
+        var current = optionsManager.CurrentGameOptions;
+        var opt = Main.RealOptionsData.Restore(
+            optionsManager.gameOptionsFactory.FromBytes(optionsManager.gameOptionsFactory.ToBytes(current, false)));
         opt.SetFloat(FloatOptionNames.KillCooldown, 0f);
         opt.SetFloat(FloatOptionNames.ShapeshifterCooldown, 0f);
         opt.SetFloat(FloatOptionNames.GuardianAngelCooldown, 0f);
