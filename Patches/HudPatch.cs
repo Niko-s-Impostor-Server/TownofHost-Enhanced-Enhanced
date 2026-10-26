@@ -272,6 +272,22 @@ class MapBehaviourShowPatch
         }
     }
 }
+[HarmonyPatch(typeof(MatchInfoHudButton), "Update")]
+class MatchInfoHudButtonPatch
+{
+    public static void Postfix(MatchInfoHudButton __instance)
+    {
+        if (!GameStates.IsInTask || !HudManager.Instance.Chat.gameObject.activeInHierarchy) return;
+
+        // The game's wider meeting/death spacing also fits chat when it is enabled during play.
+        var position = __instance.GetComponent<AspectPosition>();
+        var distance = position.DistanceFromEdge;
+        distance.x = 2.75f;
+        position.DistanceFromEdge = distance;
+        position.AdjustPosition();
+    }
+}
+
 [HarmonyPatch(typeof(TaskPanelBehaviour), nameof(TaskPanelBehaviour.SetTaskText))]
 class TaskPanelBehaviourPatch
 {
