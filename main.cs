@@ -60,6 +60,7 @@ public class Main : BasePlugin
     public Harmony Harmony { get; } = new Harmony(PluginGuid);
     public static Version version = Version.Parse(PluginVersion);
     public static BepInEx.Logging.ManualLogSource Logger;
+    private static readonly UnityLogBridge UnityLogs = new();
     public static bool hasArgumentException = false;
     public static string ExceptionMessage;
     public static bool ExceptionMessageIsShown = false;
@@ -513,6 +514,9 @@ public class Main : BasePlugin
         AutoRehost = Config.Bind("Client Options", "AutoRehost", false);
 
         Logger = BepInEx.Logging.Logger.CreateLogSource("TOHE");
+        if (Config.Bind("Logging", "Include Unity Logs", true,
+                "Forward Unity log messages to the TOHE logger source and LogOutput.log.").Value)
+            BepInEx.Logging.Logger.Listeners.Add(UnityLogs);
         Logger.LogInfo($"AU MCI GUID: {ModRegistration.Register(PluginVersion)}");
         coroutines = AddComponent<Coroutines>();
         TOHE.Logger.Enable();

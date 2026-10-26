@@ -9,6 +9,9 @@ dotnet build TOHE.csproj -c Release -p:LocalAmongUsPath="D:\Game\20260929"
 ```
 
 Start that installation with BepInEx once to generate `BepInEx/interop`. The package-only build provides static compilation references; its older interop generator does not match the tested BepInEx 6.0.0-be.755 / Il2CppInterop 1.5.1 runtime. Deploying that package-only artifact to this runtime caused a CLR crash during Harmony initialization. Use `LocalAmongUsPath` for the plugin you run.
+
+Unity messages are forwarded to the `TOHE` BepInEx log source and `BepInEx/LogOutput.log` by default. To turn this off, set `Include Unity Logs = false` under `[Logging]` in the TOHE plugin config. This requires BepInEx's `UnityLogListening = true`; keep `WriteUnityLog = false` in the BepInEx disk settings to avoid duplicate Unity entries. The release log level filter excludes Debug messages.
+
 The retired TOHE API and its login dependency have been removed. Gameplay migration and runtime verification are still in progress.
 
 To prepare local release assets from a clean committed checkout, use PowerShell 7:

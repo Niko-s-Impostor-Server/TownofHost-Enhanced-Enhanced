@@ -109,10 +109,10 @@ class Logger
                 log_text.Split("\\n").Do(logger.LogMessage);
                 break;
             case LogLevel.Debug when !multiLine:
-                logger.LogFatal(log_text);
+                logger.LogDebug(log_text);
                 break;
             case LogLevel.Debug:
-                log_text.Split("\\n").Do(logger.LogFatal);
+                log_text.Split("\\n").Do(logger.LogDebug);
                 break;
             default:
                 logger.LogWarning("Error: Invalid LogLevel");
