@@ -1646,10 +1646,8 @@ public static class Utils
             return;
         }
 
-        bool hasLocalTag = TOHE.Modules.LocalPlayerTags.TryGetRenderedTag(player, Options.GradientTagsOpt.GetBool(), out var localTag);
-        string legacyTag = string.Empty;
-        bool hasLegacyTag = LegacyLobbyTags.TryGetRenderedTag(player.FriendCode, Options.GradientTagsOpt.GetBool(), out legacyTag);
-        if (!(player.AmOwner || hasLocalTag || hasLegacyTag || player.FriendCode.GetDevUser().HasTag()))
+        bool hasPrivateTag = PrivateTagManager.TryGetTag(player, out var privateTag);
+        if (!(player.AmOwner || hasPrivateTag || player.FriendCode.GetDevUser().HasTag()))
         {
             if (!IsPlayerModerator(player.FriendCode) && !IsPlayerVIP(player.FriendCode))
             {
@@ -1783,15 +1781,11 @@ public static class Utils
             };
         }
 
-        if (hasLocalTag) name = $"<size=1.5>{localTag}</size>\r\n" + name;
-        else if (hasLegacyTag && player.FriendCode.GetDevUser().HasTag() && player.IsModded())
-            name = player.FriendCode.GetDevUser().GetTag() + $"<size=1.5>{legacyTag}</size>" + name;
-        else if (hasLegacyTag) name = legacyTag + name;
-        else if (!name.Contains($"\r\r") && player.FriendCode.GetDevUser().HasTag() && player.IsModded())
+        if (!name.Contains($"\r\r") && player.FriendCode.GetDevUser().HasTag() && player.IsModded())
         {
-            name = player.FriendCode.GetDevUser().GetTag() + "<size=1.5>" + modtag + "</size>" + name;
+            name = player.FriendCode.GetDevUser().GetTag() + "<size=1.5>" + modtag + "</size>" + (hasPrivateTag ? privateTag : "") + name;
         }
-        else name = modtag + name;
+        else name = modtag + (hasPrivateTag ? privateTag : "") + name;
 
         // Set name
         if (name != player.name && player.CurrentOutfitType == PlayerOutfitType.Default)

@@ -1,5 +1,3 @@
-using TOHE.Modules;
-
 namespace TOHE;
 
 internal enum ManagementAction { Rename, Color, Warn, Start, Kick, Ban, Chat, End, Execute, List }
@@ -19,20 +17,6 @@ internal static class ManagementCommandPolicy
         "/exe" or "/уничтожить" or "/повесить" or "/казнить" or "/казнь" or "/мут" or "/驱逐" or "/驱赶" => ManagementAction.Execute,
         "/mid" or "/玩家列表" or "/玩家信息" or "/玩家编号列表" => ManagementAction.List,
         _ => null
-    };
-
-    internal static LocalPlayerPermission Permission(ManagementAction action) => action switch
-    {
-        ManagementAction.Rename => LocalPlayerPermission.Rename,
-        ManagementAction.Color => LocalPlayerPermission.Color,
-        ManagementAction.Warn => LocalPlayerPermission.Warn,
-        ManagementAction.Start => LocalPlayerPermission.Start,
-        ManagementAction.Kick => LocalPlayerPermission.Kick,
-        ManagementAction.Ban => LocalPlayerPermission.Ban,
-        ManagementAction.Chat => LocalPlayerPermission.Chat,
-        ManagementAction.End => LocalPlayerPermission.End,
-        ManagementAction.Execute => LocalPlayerPermission.Execute,
-        _ => LocalPlayerPermission.None
     };
 
     internal static bool LegacyGrant(ManagementAction action, bool enabledModerator, bool allowSay) =>

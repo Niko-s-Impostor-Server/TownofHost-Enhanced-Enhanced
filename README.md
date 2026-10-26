@@ -14,6 +14,12 @@ Unity messages are forwarded to the `TOHE` BepInEx log source with timestamps by
 
 The retired TOHE API and its login dependency have been removed. Gameplay migration and runtime verification are still in progress.
 
+### Host-local player tags
+
+The host can use `/addtag <player id> <RRGGBB> <tag text>` to add a tag before a player's name, or `/deletetag <player id>` in the lobby to remove it. Tags are saved in `TOHE-DATA/tags.txt` as `friendcode=formatted tag` lines, following Endless Host Roles' local tag format. Tags with `=` in their formatting or text load correctly. Edit this file and use `/tags reload` to refresh a lobby. See [the player-tag guide](docs/player-tags.md) for examples.
+
+The obsolete `TOHE-DATA/LocalPlayerTags.json` is no longer read or created. Tags do not grant command permissions or GM status.
+
 To prepare local release assets from a clean committed checkout, use PowerShell 7:
 
 ```powershell

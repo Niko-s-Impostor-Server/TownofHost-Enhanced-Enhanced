@@ -8,10 +8,10 @@ namespace TOHE;
 internal static class ManagementCommands
 {
     internal static bool IsLegacyModerator(PlayerControl player) => player && player.Data != null
-        && Options.ApplyModeratorList?.GetBool() == true && Utils.IsPlayerModerator(LocalPlayerTags.GetOwnerFriendCode(player));
+        && Options.ApplyModeratorList?.GetBool() == true && Utils.IsPlayerModerator(PlayerFriendCode.FromOwner(player));
 
     internal static bool IsAdministrator(PlayerControl player) => player && player.Data != null
-        && (Utils.IsPlayerModerator(LocalPlayerTags.GetOwnerFriendCode(player)) || LocalPlayerTags.IsAdministrator(player));
+        && Utils.IsPlayerModerator(PlayerFriendCode.FromOwner(player));
 
     internal static bool TryHandle(PlayerControl sender, string text)
     {
@@ -22,11 +22,9 @@ internal static class ManagementCommands
         var client = AmongUsClient.Instance;
         var host = sender.OwnerId == client.HostId;
         var legacy = IsLegacyModerator(sender);
-        var friendCode = LocalPlayerTags.GetOwnerFriendCode(sender);
+        var friendCode = PlayerFriendCode.FromOwner(sender);
         var dev = friendCode.GetDevUser();
-        var permitted = host || LocalPlayerTags.HasPermission(sender, ManagementCommandPolicy.Permission(action))
-            || ManagementCommandPolicy.LegacyGrant(action, legacy, Options.AllowSayCommand?.GetBool() == true);
-        if (action == ManagementAction.List) permitted |= LocalPlayerTags.IsAdministrator(sender);
+        var permitted = host || ManagementCommandPolicy.LegacyGrant(action, legacy, Options.AllowSayCommand?.GetBool() == true);
         if (action == ManagementAction.Chat) permitted |= dev.IsDev;
         if (action == ManagementAction.Rename) permitted |= Options.PlayerCanSetName.GetBool() || dev.IsDev || dev.NameCmd || Utils.IsPlayerVIP(friendCode);
         if (action == ManagementAction.Color) permitted |= Options.PlayerCanSetColor.GetBool() || dev.IsDev || dev.ColorCmd || Utils.IsPlayerVIP(friendCode);
@@ -112,7 +110,7 @@ internal static class ManagementCommands
         return true;
     }
 
-    private static string Identity(PlayerControl player) => $"{player.PlayerId},{SingleLine(LocalPlayerTags.GetOwnerFriendCode(player))},{player.GetClient()?.GetHashedPuid() ?? ""},{SingleLine(player.GetRealName().RemoveHtmlTags())}";
+    private static string Identity(PlayerControl player) => $"{player.PlayerId},{SingleLine(PlayerFriendCode.FromOwner(player))},{player.GetClient()?.GetHashedPuid() ?? ""},{SingleLine(player.GetRealName().RemoveHtmlTags())}";
     private static string SingleLine(string text) => (text ?? "").Replace('\r', ' ').Replace('\n', ' ');
     private static void WriteLog(string message, Action<string> reply)
     {
