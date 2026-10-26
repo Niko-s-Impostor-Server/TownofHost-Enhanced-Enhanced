@@ -8,6 +8,7 @@
 *.log
 /.editorconfig
 /.vscode
+/.codex/
 /.idea
 
 TOHE.sln
