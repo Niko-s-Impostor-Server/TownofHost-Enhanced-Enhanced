@@ -14,6 +14,8 @@ namespace TOHE.Patches;
 internal static class RoomBrowserPatch
 {
     private const string LabelName = "TOHE.HostAndCode";
+    private const float MapLabelGap = 0.08f;
+    private const float MaxMapLabelWidth = 1.8f;
 
     [HarmonyPostfix]
     private static void AfterList(FindAGameManager __instance)
@@ -22,7 +24,12 @@ internal static class RoomBrowserPatch
         {
             if (!container || !container.gameObject.activeSelf || !container.capacity || !container.tag1) continue;
 
-            var parent = container.capacity.transform.parent;
+            var mapLogo = container.transform.Find("Container/MapLogo");
+            var mapRenderer = mapLogo ? mapLogo.GetComponent<Renderer>() : null;
+            var tagRenderer = container.tag1.transform.parent.GetComponent<Renderer>();
+            if (!mapLogo || !mapRenderer || !tagRenderer) continue;
+
+            var parent = mapLogo.parent;
             if (!parent) continue;
 
             var existing = parent.Find(LabelName);
@@ -35,19 +42,34 @@ internal static class RoomBrowserPatch
             string platform = GetPlatformName(listing.Platform);
             string details = string.IsNullOrEmpty(platform) ? code : $"{platform} ({code})";
             label.text = RoomBrowserLayout.HostDisplay(listing.TrueHostName, listing.HostName) + "\n" + details;
+
+            Bounds mapBounds = mapRenderer.bounds;
+            Bounds tagBounds = tagRenderer.bounds;
+            float labelLeft = mapBounds.max.x + MapLabelGap;
+            float labelRight = tagBounds.min.x - MapLabelGap;
+            float width = Mathf.Min(MaxMapLabelWidth, labelRight - labelLeft);
+            if (width <= 0f)
+            {
+                label.gameObject.SetActive(false);
+                continue;
+            }
+
+            label.gameObject.SetActive(true);
+            Vector2 size = label.rectTransform.sizeDelta;
+            size.x = width / Mathf.Abs(label.transform.lossyScale.x);
+            label.rectTransform.sizeDelta = size;
+            label.transform.position = new Vector3(
+                labelLeft + width * 0.5f,
+                mapLogo.position.y,
+                container.capacity.transform.position.z);
         }
     }
 
     private static TextMeshPro CreateLabel(GameContainer container, Transform parent)
     {
-        // Match the row's own font/material while placing the extra text over
-        // the tag area. The native prefab is not guaranteed to have a child
-        // called "Container" as in EHR's layout.
+        // Clone the native TMP label so the row keeps its font and material.
         var label = Object.Instantiate(container.capacity, parent);
         label.name = LabelName;
-        var anchor = label.transform.localPosition;
-        anchor.y = parent.InverseTransformPoint(container.tag1.transform.position).y;
-        label.transform.localPosition = anchor;
         label.rectTransform.sizeDelta = new Vector2(
             Mathf.Max(container.tag1.rectTransform.rect.width, label.rectTransform.rect.width),
             Mathf.Max(container.tag1.rectTransform.rect.height * 2f, label.rectTransform.rect.height));
