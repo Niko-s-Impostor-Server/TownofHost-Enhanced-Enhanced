@@ -24,6 +24,13 @@ namespace TOHE;
 
 [BepInPlugin(PluginGuid, "TOHE", PluginVersion)]
 [BepInIncompatibility("jp.ykundesu.supernewroles")]
+[BepInIncompatibility("com.ten.betteramongus")]
+[BepInIncompatibility("com.ten.thebetterroles")]
+[BepInIncompatibility("com.slushiegoose.townofus")]
+[BepInIncompatibility("com.gurge44.endlesshostroles")]
+[BepInIncompatibility("com.emptybottle.townofhost")]
+[BepInIncompatibility("me.eisbison.theotherroles")]
+[BepInIncompatibility("com.discussions.LotusContinued")]
 [BepInProcess("Among Us.exe")]
 public class Main : BasePlugin
 {
@@ -42,14 +49,14 @@ public class Main : BasePlugin
     public static ConfigEntry<string> DebugKeyInput { get; private set; }
 
     public const string PluginGuid = "com.0xdrmoe.townofhostenhanced";
-    public const string PluginVersion = "2026.1026.211.0";
-    public const string PluginDisplayVersion = "2.1.1-20261026";
+    public const string PluginVersion = "2026.1027.211.0";
+    public const string PluginDisplayVersion = "2.1.1-20261027";
     public const string SupportedVersionAU = "2026.9.29";
 
     /******************* Change one of the three variables to true before making a release. *******************/
-    public static readonly bool devRelease = false; // Latest: V2.1.0 Alpha 16 Hotfix 1
+    public static readonly bool devRelease = true; // Latest: V2.1.0 Alpha 16 Hotfix 1
     public static readonly bool canaryRelease = false; // Latest: V2.1.0 Beta 3
-    public static readonly bool fullRelease = true; // Latest: V2.1.1
+    public static readonly bool fullRelease = false; // Latest: V2.1.1
 
     public static readonly bool ShowGitHubButton = true;
     public static readonly string GitHubInviteUrl = "https://github.com/Niko-s-Impostor-Server/TownofHost-Enhanced-Enhanced";
