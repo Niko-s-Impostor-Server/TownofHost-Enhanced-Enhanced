@@ -14,6 +14,12 @@ Unity messages are forwarded to the `TOHE` BepInEx log source with timestamps by
 
 The retired TOHE API and its login dependency have been removed. Gameplay migration and runtime verification are still in progress.
 
+### Host-local player tags
+
+TOHE's `TOHE-DATA/Tags/<friendcode>.txt` files have first priority for player tags and command/GM grants. The host can also use `/addtag <player id> <RRGGBB> <tag text>` to save a lower-priority appearance tag in `TOHE-DATA/tags.txt`; `/deletetag <player id>` removes that fallback in the lobby. Edit either format and use `/tags reload` to refresh a lobby. See [the player-tag guide](docs/player-tags.md) for fields, examples, and precedence.
+
+The obsolete `TOHE-DATA/LocalPlayerTags.json` is no longer read or created. Only the structured per-player TXT files can grant command access or GM status; `tags.txt` is appearance-only.
+
 To prepare local release assets from a clean committed checkout, use PowerShell 7:
 
 ```powershell

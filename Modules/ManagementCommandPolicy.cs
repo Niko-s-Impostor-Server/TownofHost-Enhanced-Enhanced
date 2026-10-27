@@ -1,5 +1,3 @@
-using TOHE.Modules;
-
 namespace TOHE;
 
 internal enum ManagementAction { Rename, Color, Warn, Start, Kick, Ban, Chat, End, Execute, List }
@@ -21,23 +19,30 @@ internal static class ManagementCommandPolicy
         _ => null
     };
 
-    internal static LocalPlayerPermission Permission(ManagementAction action) => action switch
-    {
-        ManagementAction.Rename => LocalPlayerPermission.Rename,
-        ManagementAction.Color => LocalPlayerPermission.Color,
-        ManagementAction.Warn => LocalPlayerPermission.Warn,
-        ManagementAction.Start => LocalPlayerPermission.Start,
-        ManagementAction.Kick => LocalPlayerPermission.Kick,
-        ManagementAction.Ban => LocalPlayerPermission.Ban,
-        ManagementAction.Chat => LocalPlayerPermission.Chat,
-        ManagementAction.End => LocalPlayerPermission.End,
-        ManagementAction.Execute => LocalPlayerPermission.Execute,
-        _ => LocalPlayerPermission.None
-    };
-
     internal static bool LegacyGrant(ManagementAction action, bool enabledModerator, bool allowSay) =>
         enabledModerator && (action is ManagementAction.Kick or ManagementAction.Ban or ManagementAction.Warn or ManagementAction.List
             || action == ManagementAction.Chat && allowSay);
+
+    internal static bool TagGrant(ManagementAction action, int level, bool say, bool end, bool execute) => action switch
+    {
+        ManagementAction.Rename or ManagementAction.Color => level >= 1,
+        ManagementAction.Warn or ManagementAction.List => level >= 2,
+        ManagementAction.Start => level >= 3,
+        ManagementAction.Kick => level >= 4,
+        ManagementAction.Ban => level >= 5,
+        ManagementAction.Chat => say,
+        ManagementAction.End => end,
+        ManagementAction.Execute => execute,
+        _ => false
+    };
+
+    internal static bool TagProtectsTarget(ManagementAction action, int level) => action switch
+    {
+        ManagementAction.Warn => level >= 2,
+        ManagementAction.Kick => level >= 4,
+        ManagementAction.Ban => level >= 5,
+        _ => false
+    };
 
     internal static bool CanModerateTarget(bool actorIsHost, bool targetIsHost, bool targetIsAdministrator) =>
         !targetIsHost && (actorIsHost || !targetIsAdministrator);

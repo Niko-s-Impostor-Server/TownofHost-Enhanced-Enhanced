@@ -27,7 +27,7 @@ internal static class RoleAssignmentCatalog
         var roster = players.Select(pc =>
         {
             CustomRoles? preset = null;
-            if ((pc.AmOwner && Main.EnableGM.Value) || TOHE.Modules.LocalPlayerTags.IsDesignatedGameMaster(pc))
+            if ((pc.AmOwner && Main.EnableGM.Value) || TOHE.Modules.PlayerTagFiles.IsGameMaster(pc))
                 preset = CustomRoles.GM;
             else if (RoleAssign.SetRoles.TryGetValue(pc.PlayerId, out var role) && IsValidPreset(role)) preset = role;
             return new RoleAssignmentPlayer(pc.PlayerId, preset, preset.HasValue ? TeamOf(preset.Value) : AssignmentTeam.None);

@@ -18,23 +18,23 @@ internal static class FeatureChatCommands
         {
             if (loadedHost != -1)
             {
-                LocalPlayerTags.Reset();
-                LegacyLobbyTags.Reset();
+                PrivateTagManager.Reset();
+                PlayerTagFiles.Reset();
                 loadedHost = -1;
             }
             return;
         }
         if (loadedHost != client.HostId || loadedGeneration != OnGameJoinedPatch.Generation)
         {
-            LocalPlayerTags.Reset();
-            LegacyLobbyTags.Reset();
+            PrivateTagManager.Reset();
+            PlayerTagFiles.Reset();
             loadedHost = -1;
         }
         if (!Options.IsLoaded || (loadedHost == client.HostId && loadedGeneration == OnGameJoinedPatch.Generation)) return;
         loadedHost = client.HostId;
         loadedGeneration = OnGameJoinedPatch.Generation;
-        if (!LocalPlayerTags.Reload(out _)) Logger.Warn("Local player tags could not be loaded; local grants revoked", "LocalPlayerTags");
-        LegacyLobbyTags.Reload();
+        if (!PrivateTagManager.Reload(out _)) Logger.Warn("Private tags could not be loaded", "PrivateTagManager");
+        PlayerTagFiles.Reload();
     }
 
     internal static bool TryHandle(PlayerControl sender, string text)
@@ -46,7 +46,6 @@ internal static class FeatureChatCommands
         var args = text.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
         var command = args[0].ToLowerInvariant();
         bool host = sender.OwnerId == client.HostId;
-        bool Granted(LocalPlayerPermission permission) => host || LocalPlayerTags.HasPermission(sender, permission);
         void Reply(string message) => Utils.SendMessage(message, sender.PlayerId, noReplay: true);
         void Denied() => Reply(GetString("FeatureCommandNoAccess"));
         PlayerControl Target(int index) => args.Length > index && byte.TryParse(args[index], out var id) ? Utils.GetPlayerById(id) : null;
@@ -77,7 +76,7 @@ internal static class FeatureChatCommands
                 return true;
             case "/save":
             case "/load":
-                // A granted administrator still cannot read/write the host filesystem.
+                // Only the host may read or write local presets.
                 if (!host || !sender.AmOwner) { Denied(); return true; }
                 if (args.Length < 2) { Reply(GetString("PresetSharingUsage")); return true; }
                 var name = string.Join(" ", args.Skip(1));
@@ -88,10 +87,36 @@ internal static class FeatureChatCommands
             case "/tags":
                 if (!host || !sender.AmOwner) { Denied(); return true; }
                 if (args.Length != 2 || args[1] != "reload") { Reply(GetString("LocalTagsUsage")); return true; }
-                bool loaded = LocalPlayerTags.Reload(out _);
-                LegacyLobbyTags.Reload();
+                bool loaded = PlayerTagFiles.Reload();
+                loaded &= PrivateTagManager.Reload(out _);
                 if (GameStates.IsLobby) foreach (var player in Main.AllPlayerControls) Utils.ApplySuffix(player);
                 Reply(GetString(loaded ? "LocalTagsReloaded" : "LocalTagsFailed"));
+                return true;
+            case "/addtag":
+            case "/createtag":
+                if (!host || !sender.AmOwner) { Denied(); return true; }
+                var tagTarget = Target(1);
+                if (args.Length < 4 || !tagTarget || tagTarget.Data == null || tagTarget.Data.Disconnected
+                    || !Utils.CheckColorHex(args[2])) { Reply(GetString("PrivateTagAddUsage")); return true; }
+                var tagText = string.Join(" ", args.Skip(3)).Replace('\r', ' ').Replace('\n', ' ');
+                if (string.IsNullOrWhiteSpace(tagText)) { Reply(GetString("PrivateTagAddUsage")); return true; }
+                UnityEngine.ColorUtility.TryParseHtmlString($"#{args[2]}", out var tagColor);
+                string renderedTag = Utils.ColorString((UnityEngine.Color32)tagColor, tagText + " ");
+                if (!PrivateTagManager.AddTag(tagTarget, renderedTag, out _))
+                { Reply(GetString("PrivateTagFailed")); return true; }
+                if (GameStates.IsLobby) Utils.ApplySuffix(tagTarget);
+                Reply(GetString("PrivateTagAdded"));
+                return true;
+            case "/deletetag":
+                if (!host || !sender.AmOwner) { Denied(); return true; }
+                if (!GameStates.IsLobby) { Reply(GetString("Message.OnlyCanUseInLobby")); return true; }
+                var deletedTagTarget = Target(1);
+                if (args.Length != 2 || !deletedTagTarget || deletedTagTarget.Data == null || deletedTagTarget.Data.Disconnected)
+                { Reply(GetString("PrivateTagDeleteUsage")); return true; }
+                if (!PrivateTagManager.DeleteTag(deletedTagTarget, out _))
+                { Reply(GetString("PrivateTagFailed")); return true; }
+                if (GameStates.IsLobby) Utils.ApplySuffix(deletedTagTarget);
+                Reply(GetString("PrivateTagDeleted"));
                 return true;
             case "/afk":
                 if (!host) { Denied(); return true; }
@@ -108,8 +133,8 @@ internal static class FeatureChatCommands
             case "/blackscreenfix":
             case "/fixblackscreen":
             case "/fixblack":
-                bool canFixOthers = Granted(LocalPlayerPermission.Moderate)
-                    || ManagementCommands.IsLegacyModerator(sender);
+                bool canFixOthers = host || ManagementCommands.IsLegacyModerator(sender)
+                    || PlayerTagFiles.PermissionLevel(sender) >= 2;
                 // AntiBlackout temporarily clears Data.IsDead; use the host's actual player state.
                 bool deadSelfFix = GameStates.IsInGame && !sender.IsAlive();
                 if (!canFixOthers && !deadSelfFix)

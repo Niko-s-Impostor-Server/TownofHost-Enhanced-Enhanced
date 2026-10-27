@@ -741,7 +741,7 @@ internal class StartGameHostPatch
 internal class SelectRolesPatch
 {
     internal static bool IsGameMaster(PlayerControl player) => player && player.Data != null && !player.Data.Disconnected
-        && (player.OwnerId == AmongUsClient.Instance.HostId && Main.EnableGM.Value || LocalPlayerTags.IsDesignatedGameMaster(player));
+        && (player.OwnerId == AmongUsClient.Instance.HostId && Main.EnableGM.Value || PlayerTagFiles.IsGameMaster(player));
 
     public static void Prefix()
     {
