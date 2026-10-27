@@ -10,6 +10,7 @@ namespace TOHE;
 [HarmonyPatch(typeof(GameSettingMenu))]
 public class GameSettingMenuPatch
 {
+    private const float TabRowSpacing = 0.5f;
     private static readonly Vector3 ButtonPositionLeft = new(-3.9f, -0.4f, 0f);
     private static readonly Vector3 ButtonPositionRight = new(-2.4f, -0.4f, 0f);
 
@@ -63,7 +64,7 @@ public class GameSettingMenuPatch
             button.activeSprites.GetComponent<SpriteRenderer>().color = tabColor;
             button.selectedSprites.GetComponent<SpriteRenderer>().color = tabColor;
 
-            Vector3 offset = new(0.0f, 0.5f * (((int)tab + 1) / 2), 0.0f);
+            Vector3 offset = new(0.0f, TabRowSpacing * (((int)tab + 1) / 2), 0.0f);
             button.transform.localPosition = ((((int)tab + 1) % 2 == 0) ? ButtonPositionLeft : ButtonPositionRight) - offset;
             button.transform.localScale = ButtonSize;
 
@@ -253,12 +254,16 @@ public class GameSettingMenuPatch
         const float height = 0.5f;
         const float arrowWidth = 0.48f;
         float width = sidebarBounds.size.x;
+        int lastRow = Enum.GetValues<TabGroup>().Max(tab => ((int)tab + 1) / 2);
+        int visibleLastRow = ModSettingsButtons.Keys.Max(tab => ((int)tab + 1) / 2);
+        // Keep the preset/search row at the same bottom position in every game mode.
+        float sidebarBottom = sidebarBounds.min.y - TabRowSpacing * (lastRow - visibleLastRow);
         var root = new GameObject("TOHEPresetSelector");
         PresetSelectorRoot = root;
         root.layer = menu.GamePresetsButton.gameObject.layer;
         root.transform.SetParent(parent, false);
         root.transform.localPosition = new Vector3(sidebarBounds.center.x,
-            sidebarBounds.min.y - 0.08f - height / 2f, -2f);
+            sidebarBottom - 0.08f - height / 2f, -2f);
 
         var backgroundObject = new GameObject("Background");
         backgroundObject.layer = root.layer;
