@@ -80,10 +80,10 @@ public static class TemplateManager
 
     public static void Init()
     {
-        CreateIfNotExists();
+        CreateIfNotExists(refreshDefault: true);
     }
 
-    public static void CreateIfNotExists()
+    public static void CreateIfNotExists(bool refreshDefault = false)
     {
 
         try
@@ -108,25 +108,20 @@ public static class TemplateManager
             else fileName = "English";
             if (!Directory.Exists(@"TOHE-DATA")) Directory.CreateDirectory(@"TOHE-DATA");
             var defaultTemplateMsg = GetResourcesTxt($"TOHE.Resources.Config.template.{fileName}.txt");
-            if (!File.Exists(@"./TOHE-DATA/Default_Teamplate.txt")) //default template
-            {
+            const string defaultTemplatePath = @"./TOHE-DATA/Default_Teamplate.txt";
+            var defaultTemplateExists = File.Exists(defaultTemplatePath);
+            if (!defaultTemplateExists)
                 Logger.Warn("Creating Default_Template.txt", "TemplateManager");
-                using FileStream fs = File.Create(@"./TOHE-DATA/Default_Teamplate.txt");
-            }
-            File.WriteAllText(@"./TOHE-DATA/Default_Teamplate.txt", defaultTemplateMsg); //overwriting default template
+            if (refreshDefault || !defaultTemplateExists)
+                File.WriteAllText(defaultTemplatePath, defaultTemplateMsg);
             if (!File.Exists(TEMPLATE_FILE_PATH))
             {
-                if (File.Exists(@"./template.txt")) File.Move(@"./template.txt", TEMPLATE_FILE_PATH);
+                if (File.Exists(@"./template.txt")) File.Copy(@"./template.txt", TEMPLATE_FILE_PATH);
                 else
                 {
                     Logger.Warn($"Creating a new Template file from: {fileName}", "TemplateManager");
                     File.WriteAllText(TEMPLATE_FILE_PATH, defaultTemplateMsg);
                 }
-            }
-            else
-            {
-                var text = File.ReadAllText(TEMPLATE_FILE_PATH, Encoding.GetEncoding("UTF-8"));
-                File.WriteAllText(TEMPLATE_FILE_PATH, text.Replace("5PNwUaN5", "hkk2p9ggv4"));
             }
         }
         catch (Exception ex)

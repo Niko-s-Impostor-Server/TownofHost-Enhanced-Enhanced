@@ -229,7 +229,6 @@ public static class Translator
     public static bool TryGetStrings(string strItem, out string[] s)
     {
         // Basically if you wanna let the user infinitely expand a function to their liking
-        // I need to test if this shit works lol, I plan a usecase for it in 2.1.0 (see: https://discord.com/channels/1094344790910455908/1251264307052675134)
 
         var langId = TranslationController.InstanceExists ? TranslationController.Instance.currentLanguage.languageID : SupportedLangs.English;
         if (Main.ForceOwnLanguage.Value) langId = GetUserTrueLang();

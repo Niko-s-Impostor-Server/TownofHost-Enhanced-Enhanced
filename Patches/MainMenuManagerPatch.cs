@@ -48,6 +48,7 @@ public static class MainMenuManagerPatch
 {
     private static PassiveButton template;
     private static PassiveButton gitHubButton;
+    private static PassiveButton websiteButton;
     private static PassiveButton discordButton;
     //private static PassiveButton patreonButton;
 
@@ -196,9 +197,22 @@ public static class MainMenuManagerPatch
                 new(88, 101, 242, byte.MaxValue),
                 new(148, 161, byte.MaxValue, byte.MaxValue),
                 (UnityEngine.Events.UnityAction)(() => Application.OpenURL(Main.DiscordInviteUrl)),
-                GetString("Discord")); //"Discord"
+                GetString("Discord"));
         }
         discordButton.gameObject.SetActive(Main.ShowDiscordButton);
+
+        // Website Button
+        if (websiteButton == null)
+        {
+            websiteButton = CreateButton(
+                "WebsiteButton",
+                new(-1.8f, -1.9f, 1f),
+                new(58, 166, 117, byte.MaxValue),
+                new(118, 216, 167, byte.MaxValue),
+                (UnityEngine.Events.UnityAction)(() => Application.OpenURL(Main.WebsiteUrl)),
+                GetString("Website"));
+        }
+        websiteButton.gameObject.SetActive(Main.ShowWebsiteButton);
 
         var howToPlayButton = __instance.howToPlayButton;
         var freeplayButton = howToPlayButton.transform.parent.Find("FreePlayButton");

@@ -54,6 +54,9 @@ public class Main : BasePlugin
     public static readonly bool ShowGitHubButton = true;
     public static readonly string GitHubInviteUrl = "https://github.com/Niko-s-Impostor-Server/TownofHost-Enhanced-Enhanced";
 
+    public static readonly bool ShowWebsiteButton = true;
+    public static readonly string WebsiteUrl = "https://au.niko233.top";
+
     public static readonly bool ShowDiscordButton = true;
     public static readonly string DiscordInviteUrl = "https://au.niko233.top/discord";
 

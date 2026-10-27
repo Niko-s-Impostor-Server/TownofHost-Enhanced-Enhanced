@@ -14,6 +14,8 @@ Unity messages are forwarded to the `TOHE` BepInEx log source with timestamps by
 
 The retired TOHE API and its login dependency have been removed. Gameplay migration and runtime verification are still in progress.
 
+At startup, `TOHE-DATA/Default_Teamplate.txt` is refreshed from the built-in default. Existing `TOHE-DATA/template.txt` files are not rewritten; edit them manually to update their links. If no active template exists, the mod copies a legacy root `template.txt` or creates one from the default.
+
 ### Host-local player tags
 
 TOHE's `TOHE-DATA/Tags/<friendcode>.txt` files have first priority for player tags and command/GM grants. The host can also use `/addtag <player id> <RRGGBB> <tag text>` to save a lower-priority appearance tag in `TOHE-DATA/tags.txt`; `/deletetag <player id>` removes that fallback in the lobby. Edit either format and use `/tags reload` to refresh a lobby. See the player-tag guide ([English](docs/player-tags.en.md) / [中文](docs/player-tags.md)) for fields, examples, and precedence.
@@ -43,9 +45,9 @@ This creates a standalone `TOHE.dll`, a **Steam / Epic Games / Microsoft Store x
 <p align="center">
 
 <center>
-<a href="https://weareten.ca/" target="_blank"><img src="https://img.shields.io/badge/Website%20-%231DA1F2.svg?&style=for-the-badge&logo=vuedotjs&logoColor=white&color=3aa675"/></a>
-<a href="https://discord.gg/tohe" target="_blank"><img src="https://img.shields.io/badge/Discord%20-%231DA1F2.svg?&style=for-the-badge&logo=discord&logoColor=white&color=5662f6"/></a>
-<a href="https://github.com/0xDrMoe/TownofHost-Enhanced/releases/latest" target="_blank"><img src="https://img.shields.io/badge/Latest Version%20-%231DA1F2.svg?&style=for-the-badge&logo=github&logoColor=white&color=181717"/></a>
+<a href="https://au.niko233.top" target="_blank"><img src="https://img.shields.io/badge/Website%20-%231DA1F2.svg?&style=for-the-badge&logo=vuedotjs&logoColor=white&color=3aa675"/></a>
+<a href="https://au.niko233.top/discord" target="_blank"><img src="https://img.shields.io/badge/Discord%20-%231DA1F2.svg?&style=for-the-badge&logo=discord&logoColor=white&color=5662f6"/></a>
+<a href="https://github.com/Niko-s-Impostor-Server/TownofHost-Enhanced-Enhanced/releases/latest" target="_blank"><img src="https://img.shields.io/badge/Latest Version%20-%231DA1F2.svg?&style=for-the-badge&logo=github&logoColor=white&color=181717"/></a>
 </center>
 
 
