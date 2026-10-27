@@ -223,6 +223,39 @@ public static class MainMenuManagerPatch
 
     }
 
+    [HarmonyPatch("LateUpdate"), HarmonyPostfix]
+    public static void LateUpdate_Postfix(MainMenuManager __instance)
+    {
+        if (MainMenuManagerStartPatch.ToheLogo == null || !MainMenuManagerStartPatch.ToheLogo.gameObject.activeInHierarchy
+            || gitHubButton == null || discordButton == null || websiteButton == null) return;
+
+        AlignLinkButton(gitHubButton, __instance.newsButton);
+        AlignLinkButton(discordButton, __instance.myAccountButton);
+        AlignLinkButton(websiteButton, __instance.settingsButton);
+    }
+
+    private static void AlignLinkButton(PassiveButton button, PassiveButton anchor)
+    {
+        if (!button.gameObject.activeInHierarchy) return;
+
+        var anchorBounds = anchor.inactiveSprites.GetComponent<SpriteRenderer>().bounds;
+        var buttonSprite = button.inactiveSprites.GetComponent<SpriteRenderer>();
+        var buttonBounds = buttonSprite.bounds;
+        var targetWidth = anchorBounds.size.x * 0.6f;
+        if (Mathf.Abs(buttonBounds.size.x - targetWidth) > 0.001f)
+        {
+            var scale = button.transform.localScale;
+            scale.x *= targetWidth / buttonBounds.size.x;
+            button.transform.localScale = scale;
+            buttonBounds = buttonSprite.bounds;
+        }
+
+        var position = button.transform.position;
+        position.x += anchorBounds.max.x + 0.25f - buttonBounds.min.x;
+        position.y += anchorBounds.center.y - buttonBounds.center.y;
+        button.transform.position = position;
+    }
+
     public static PassiveButton CreateButton(string name, Vector3 localPosition, Color32 normalColor, Color32 hoverColor, UnityEngine.Events.UnityAction action, string label, Vector2? scale = null)
     {
         var button = Object.Instantiate(template, MainMenuManagerStartPatch.ToheLogo.transform);
