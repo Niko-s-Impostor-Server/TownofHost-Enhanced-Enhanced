@@ -15,6 +15,7 @@
   <ItemGroup>
     <!-- Translator reads language resources from the main assembly. -->
     <EmbeddedResource Include="Resources/**" WithCulture="false" />
+    <EmbeddedResource Update="Resources/Sounds/*.raw" LogicalName="TOHE.Resources.Sounds.%(Filename).raw" />
   </ItemGroup>
   <!-- Use the interop assemblies generated for the actual IL2CPP installation. -->
   <ItemGroup Condition="'$(LocalAmongUsPath)' != ''">

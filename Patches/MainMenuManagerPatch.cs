@@ -221,11 +221,14 @@ public static class MainMenuManagerPatch
 
         howToPlayButton.transform.SetLocalX(0);
 
+        CustomSoundMenu.Create(__instance);
+
     }
 
     [HarmonyPatch("LateUpdate"), HarmonyPostfix]
     public static void LateUpdate_Postfix(MainMenuManager __instance)
     {
+        CustomSoundMenu.Update();
         if (MainMenuManagerStartPatch.ToheLogo == null || !MainMenuManagerStartPatch.ToheLogo.gameObject.activeInHierarchy
             || gitHubButton == null || discordButton == null || websiteButton == null) return;
 
@@ -329,11 +332,16 @@ public static class MainMenuManagerPatch
     [HarmonyPostfix]
     public static void OpenMenu_Postfix()
     {
+        CustomSoundMenu.SetMenuVisible(false);
         if (MainMenuManagerStartPatch.ToheLogo != null) MainMenuManagerStartPatch.ToheLogo.gameObject.SetActive(false);
     }
     [HarmonyPatch(nameof(MainMenuManager.ResetScreen)), HarmonyPostfix]
     public static void ResetScreen_Postfix()
     {
         if (MainMenuManagerStartPatch.ToheLogo != null) MainMenuManagerStartPatch.ToheLogo.gameObject.SetActive(true);
+        CustomSoundMenu.SyncMenuVisibility(MainMenuManagerStartPatch.ToheLogo != null && MainMenuManagerStartPatch.ToheLogo.gameObject.activeInHierarchy);
     }
+
+    [HarmonyPatch("DeactivateMainMenuUI"), HarmonyPostfix]
+    public static void DeactivateMainMenuUI_Postfix() => CustomSoundMenu.SetMenuVisible(false);
 }

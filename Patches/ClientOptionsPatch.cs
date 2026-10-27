@@ -2,6 +2,19 @@ using UnityEngine;
 
 namespace TOHE;
 
+[HarmonyPatch(typeof(OptionsMenuBehaviour), nameof(OptionsMenuBehaviour.Open))]
+public static class CustomSoundOptionsMenuOpenPatch
+{
+    public static void Postfix() => CustomSoundMenu.SetMenuVisible(false);
+}
+
+[HarmonyPatch(typeof(OptionsMenuBehaviour), nameof(OptionsMenuBehaviour.Close))]
+public static class CustomSoundOptionsMenuClosePatch
+{
+    public static void Postfix() => CustomSoundMenu.SyncMenuVisibility(
+        MainMenuManagerStartPatch.ToheLogo != null && MainMenuManagerStartPatch.ToheLogo.gameObject.activeInHierarchy);
+}
+
 //��Դ��https://github.com/tukasa0001/TownOfHost/pull/1265
 [HarmonyPatch(typeof(OptionsMenuBehaviour), nameof(OptionsMenuBehaviour.Start))]
 public static class OptionsMenuBehaviourStartPatch
@@ -122,7 +135,7 @@ public static class OptionsMenuBehaviourStartPatch
         }
         if (EnableCustomSoundEffect == null || EnableCustomSoundEffect.ToggleButton == null)
         {
-            EnableCustomSoundEffect = ClientOptionItem.Create("EnableCustomSoundEffect", Main.EnableCustomSoundEffect, __instance);
+            EnableCustomSoundEffect = ClientOptionItem.Create("EnableCustomSoundEffect", Main.EnableCustomSoundEffect, __instance, CustomSoundMenu.RefreshEnabled);
         }
         if (EnableCustomDecorations == null || EnableCustomDecorations.ToggleButton == null)
         {

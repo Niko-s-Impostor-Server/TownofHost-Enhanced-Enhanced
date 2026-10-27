@@ -22,6 +22,8 @@ TOHE's `TOHE-DATA/Tags/<friendcode>.txt` files have first priority for player ta
 
 The obsolete `TOHE-DATA/LocalPlayerTags.json`, `Moderators.txt`, and `VIP-List.txt` are no longer read or created. Existing files are not automatically migrated or deleted. Only the structured per-player TXT files grant local file-based command access or GM status; `tags.txt` is appearance-only. Host, built-in developer, and global option permissions still apply.
 
+For adding custom sound resources, playback authority, and client-local volume controls, see the [custom sounds guide](docs/custom-sounds.md).
+
 To prepare local release assets from a clean committed checkout, use PowerShell 7:
 
 ```powershell
