@@ -20,9 +20,7 @@ namespace TOHE;
 [HarmonyPatch(typeof(ChatController), nameof(ChatController.SendChat))]
 internal class ChatCommands
 {
-    private static readonly string modTagsFiles = @"./TOHE-DATA/Tags/MOD_TAGS";
     private static readonly string sponsorTagsFiles = @"./TOHE-DATA/Tags/SPONSOR_TAGS";
-    private static readonly string vipTagsFiles = @"./TOHE-DATA/Tags/VIP_TAGS";
 
     private static readonly Dictionary<char, int> Pollvotes = [];
     private static readonly Dictionary<char, string> PollQuestions = [];
@@ -83,8 +81,6 @@ internal class ChatCommands
         if (Retributionist.RetributionistMsgCheck(PlayerControl.LocalPlayer, text)) goto Canceled;
         if (Medium.MsMsg(PlayerControl.LocalPlayer, text)) goto Canceled;
         if (PlayerControl.LocalPlayer.GetRoleClass() is Swapper sw && sw.SwapMsg(PlayerControl.LocalPlayer, text)) goto Canceled;
-        Directory.CreateDirectory(modTagsFiles);
-        Directory.CreateDirectory(vipTagsFiles);
         Directory.CreateDirectory(sponsorTagsFiles);
 
         if (Blackmailer.CheckBlackmaile(PlayerControl.LocalPlayer) && PlayerControl.LocalPlayer.IsAlive())
@@ -1747,8 +1743,6 @@ internal class ChatCommands
         if (Nemesis.NemesisMsgCheck(player, text)) { Logger.Info($"Is Nemesis Revenge command", "OnReceiveChat"); return; }
         if (Retributionist.RetributionistMsgCheck(player, text)) { Logger.Info($"Is Retributionist Revenge command", "OnReceiveChat"); return; }
 
-        Directory.CreateDirectory(modTagsFiles);
-        Directory.CreateDirectory(vipTagsFiles);
         Directory.CreateDirectory(sponsorTagsFiles);
 
         if (Blackmailer.CheckBlackmaile(player) && player.IsAlive() && !player.IsHost())
@@ -2116,8 +2110,7 @@ internal class ChatCommands
             case "/айди":
             case "/编号":
             case "/玩家编号":
-                if ((Options.ApplyModeratorList.GetValue() == 0 || !Utils.IsPlayerModerator(player.FriendCode))
-                    && !Options.EnableVoteCommand.GetBool()) break;
+                if (PlayerTagFiles.PermissionLevel(player) < 2 && !Options.EnableVoteCommand.GetBool()) break;
 
                 string msgText = GetString("PlayerIdList");
                 foreach (var pc in Main.AllPlayerControls)
@@ -2128,124 +2121,6 @@ internal class ChatCommands
                 Utils.SendMessage(msgText, player.PlayerId);
                 break;
 
-            case "/modcolor":
-            case "/modcolour":
-            case "/模组端颜色":
-            case "/模组颜色":
-                if (Options.ApplyModeratorList.GetValue() == 0)
-                {
-                    Utils.SendMessage(GetString("ColorCommandDisabled"), player.PlayerId);
-                    break;
-                }
-                if (!Utils.IsPlayerModerator(player.FriendCode))
-                {
-                    Utils.SendMessage(GetString("ColorCommandNoAccess"), player.PlayerId);
-                    break;
-                }
-                if (!GameStates.IsLobby)
-                {
-                    Utils.SendMessage(GetString("ColorCommandNoLobby"), player.PlayerId);
-                    break;
-                }
-                if (!Options.GradientTagsOpt.GetBool())
-                {
-                    subArgs = args.Length != 2 ? "" : args[1];
-                    if (string.IsNullOrEmpty(subArgs) || !Utils.CheckColorHex(subArgs))
-                    {
-                        Logger.Msg($"{subArgs}", "modcolor");
-                        Utils.SendMessage(GetString("ColorInvalidHexCode"), player.PlayerId);
-                        break;
-                    }
-                    string colorFilePath = $"{modTagsFiles}/{player.FriendCode}.txt";
-                    if (!File.Exists(colorFilePath))
-                    {
-                        Logger.Warn($"File Not exist, creating file at {modTagsFiles}/{player.FriendCode}.txt", "modcolor");
-                        File.Create(colorFilePath).Close();
-                    }
-
-                    File.WriteAllText(colorFilePath, $"{subArgs}");
-                    break;
-                }
-                else
-                {
-                    subArgs = args.Length < 3 ? "" : args[1] + " " + args[2];
-                    Regex regex = new(@"^[0-9A-Fa-f]{6}\s[0-9A-Fa-f]{6}$");
-                    if (string.IsNullOrEmpty(subArgs) || !regex.IsMatch(subArgs))
-                    {
-                        Logger.Msg($"{subArgs}", "modcolor");
-                        Utils.SendMessage(GetString("ColorInvalidGradientCode"), player.PlayerId);
-                        break;
-                    }
-                    string colorFilePath = $"{modTagsFiles}/{player.FriendCode}.txt";
-                    if (!File.Exists(colorFilePath))
-                    {
-                        Logger.Msg($"File Not exist, creating file at {modTagsFiles}/{player.FriendCode}.txt", "modcolor");
-                        File.Create(colorFilePath).Close();
-                    }
-                    //Logger.Msg($"File exists, creating file at {modTagsFiles}/{player.FriendCode}.txt", "modcolor");
-                    //Logger.Msg($"{subArgs}","modcolor");
-                    File.WriteAllText(colorFilePath, $"{subArgs}");
-                    break;
-                }
-            case "/vipcolor":
-            case "/vipcolour":
-            case "/VIP玩家颜色":
-            case "/VIP颜色":
-                if (Options.ApplyVipList.GetValue() == 0)
-                {
-                    Utils.SendMessage(GetString("VipColorCommandDisabled"), player.PlayerId);
-                    break;
-                }
-                if (!Utils.IsPlayerVIP(player.FriendCode))
-                {
-                    Utils.SendMessage(GetString("VipColorCommandNoAccess"), player.PlayerId);
-                    break;
-                }
-                if (!GameStates.IsLobby)
-                {
-                    Utils.SendMessage(GetString("VipColorCommandNoLobby"), player.PlayerId);
-                    break;
-                }
-                if (!Options.GradientTagsOpt.GetBool())
-                {
-                    subArgs = args.Length != 2 ? "" : args[1];
-                    if (string.IsNullOrEmpty(subArgs) || !Utils.CheckColorHex(subArgs))
-                    {
-                        Logger.Msg($"{subArgs}", "vipcolor");
-                        Utils.SendMessage(GetString("VipColorInvalidHexCode"), player.PlayerId);
-                        break;
-                    }
-                    string colorFilePathh = $"{vipTagsFiles}/{player.FriendCode}.txt";
-                    if (!File.Exists(colorFilePathh))
-                    {
-                        Logger.Warn($"File Not exist, creating file at {vipTagsFiles}/{player.FriendCode}.txt", "vipcolor");
-                        File.Create(colorFilePathh).Close();
-                    }
-
-                    File.WriteAllText(colorFilePathh, $"{subArgs}");
-                    break;
-                }
-                else
-                {
-                    subArgs = args.Length < 3 ? "" : args[1] + " " + args[2];
-                    Regex regexx = new(@"^[0-9A-Fa-f]{6}\s[0-9A-Fa-f]{6}$");
-                    if (string.IsNullOrEmpty(subArgs) || !regexx.IsMatch(subArgs))
-                    {
-                        Logger.Msg($"{subArgs}", "vipcolor");
-                        Utils.SendMessage(GetString("VipColorInvalidGradientCode"), player.PlayerId);
-                        break;
-                    }
-                    string colorFilePathh = $"{vipTagsFiles}/{player.FriendCode}.txt";
-                    if (!File.Exists(colorFilePathh))
-                    {
-                        Logger.Msg($"File Not exist, creating file at {vipTagsFiles}/{player.FriendCode}.txt", "vipcolor");
-                        File.Create(colorFilePathh).Close();
-                    }
-                    //Logger.Msg($"File exists, creating file at {vipTagsFiles}/{player.FriendCode}.txt", "vipcolor");
-                    //Logger.Msg($"{subArgs}","modcolor");
-                    File.WriteAllText(colorFilePathh, $"{subArgs}");
-                    break;
-                }
             case "/tagcolor":
             case "/tagcolour":
             case "/标签颜色":
@@ -2604,7 +2479,7 @@ internal class ChatCommands
                 }
                 else
                 {
-                    if (Options.ApplyModeratorList.GetValue() == 0 || !Utils.IsPlayerModerator(player.FriendCode))
+                    if (PlayerTagFiles.PermissionLevel(player) < 2)
                     {
                         Utils.SendMessage(GetString("Message.MeCommandNoPermission"), player.PlayerId);
                         break;

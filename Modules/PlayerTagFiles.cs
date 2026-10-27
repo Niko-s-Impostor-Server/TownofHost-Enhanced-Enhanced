@@ -12,23 +12,46 @@ internal static class PlayerTagFiles
 #else
     private static string TagsDirectory => Path.Combine("TOHE-DATA", "Tags");
 #endif
-    private static readonly string[] ReservedDirectories = ["MOD_TAGS", "VIP_TAGS", "SPONSOR_TAGS"];
     private static Dictionary<string, Entry> entries = new(StringComparer.Ordinal);
 
     internal static void Reset() => entries = new(StringComparer.Ordinal);
 
-    internal static bool Reload()
+    internal static bool EnsureTemplate()
     {
-        var loaded = new Dictionary<string, Entry>(StringComparer.Ordinal);
         try
         {
             Directory.CreateDirectory(TagsDirectory);
-            string template = Path.Combine(TagsDirectory, "Tag_Template.txt");
-            if (!File.Exists(template))
-                File.WriteAllText(template, "TagName: \nTagColor: \nPermissionLevel: 0\nSayCommandAccess: false\nEndCommandAccess: false\nExecuteCommandAccess: false\nAssignGameMaster: false\n");
+            foreach (var (fileName, name, color, level) in new[]
+            {
+                ("Tag_Template.txt", "", "FFFF00", 0),
+                ("Moderator_Template.txt", "Moderator", "8BBEE0", 5),
+                ("VIP_Template.txt", "VIP", "FFFF00", 1)
+            })
+            {
+                string template = Path.Combine(TagsDirectory, fileName);
+                if (!File.Exists(template))
+                    File.WriteAllText(template, $"TagName: {name}\nTagColor: {color}\nPermissionLevel: {level}\nSayCommandAccess: false\nEndCommandAccess: false\nExecuteCommandAccess: false\nAssignGameMaster: false\n");
+            }
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Logger.Warn("Local player tag template could not be created", "PlayerTagFiles");
+            return false;
+        }
+    }
 
+    internal static bool Reload()
+    {
+        if (!EnsureTemplate())
+        {
+            Reset();
+            return false;
+        }
+        var loaded = new Dictionary<string, Entry>(StringComparer.Ordinal);
+        try
+        {
             foreach (string directory in Directory.GetDirectories(TagsDirectory)
-                .Where(path => !ReservedDirectories.Contains(Path.GetFileName(path), StringComparer.OrdinalIgnoreCase))
                 .OrderBy(path => path, StringComparer.OrdinalIgnoreCase))
                 ReadDirectory(directory, loaded);
             ReadDirectory(TagsDirectory, loaded);
@@ -61,6 +84,7 @@ internal static class PlayerTagFiles
                 else if (line.StartsWith("ExecuteCommandAccess:", StringComparison.Ordinal)) fields.TryAdd("ExecuteCommandAccess", line[21..].Trim());
                 else if (line.StartsWith("AssignGameMaster:", StringComparison.Ordinal)) fields.TryAdd("AssignGameMaster", line[17..].Trim());
             }
+            if (fields.Count == 0) continue;
             string name = fields.GetValueOrDefault("TagName") ?? string.Empty;
             string color = fields.GetValueOrDefault("TagColor")?.Trim() ?? string.Empty;
             string level = fields.GetValueOrDefault("PermissionLevel")?.Trim() ?? string.Empty;
@@ -68,7 +92,6 @@ internal static class PlayerTagFiles
             string end = fields.GetValueOrDefault("EndCommandAccess")?.Trim() ?? string.Empty;
             string execute = fields.GetValueOrDefault("ExecuteCommandAccess")?.Trim() ?? string.Empty;
             string gm = fields.GetValueOrDefault("AssignGameMaster")?.Trim() ?? string.Empty;
-            if (name.Length > 128) name = string.Empty;
             if (!int.TryParse(level, out int permissionLevel) || permissionLevel is < 0 or > 5) permissionLevel = 0;
             loaded.Add(friendCode, new(name, color, permissionLevel, IsTrue(say), IsTrue(end), IsTrue(execute), IsTrue(gm)));
         }
@@ -96,23 +119,24 @@ internal static class PlayerTagFiles
         var entry = Find(player);
         if (entry == null || entry.Name.Length == 0) return false;
         tag = entry.Render(gradient);
-        return true;
+        return gradient || tag.RemoveHtmlTags().Length > 0;
     }
 
     private sealed record Entry(string Name, string Color, int Level, bool Say, bool End, bool Execute, bool GameMaster)
     {
         internal string Render(bool gradient)
         {
-            if (Color.Length == 0) return Name;
+            string name = gradient ? Name : Name.RemoveHtmlTags();
+            if (Color.Length == 0) return name;
             if (gradient && Regex.IsMatch(Color, @"^[0-9A-Fa-f]{6}\s[0-9A-Fa-f]{6}$"))
             {
                 string[] colors = Regex.Split(Color, @"\s+");
                 return colors[0] == colors[1]
-                    ? $"<color=#{colors[0]}>{Name}</color>"
-                    : Utils.GradientColorText(colors[0], colors[1], Name);
+                    ? $"<color=#{colors[0]}>{name}</color>"
+                    : Utils.GradientColorText(colors[0], colors[1], name);
             }
             string color = Utils.CheckColorHex(Color) ? Color : "ffff00";
-            return $"<color=#{color}>{Name}</color>";
+            return $"<color=#{color}>{name}</color>";
         }
     }
 }

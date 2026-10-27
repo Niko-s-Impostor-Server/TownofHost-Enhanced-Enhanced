@@ -13,8 +13,6 @@ public static class BanManager
 {
     private const string DenyNameListPath = "./TOHE-DATA/DenyName.txt";
     private const string BanListPath = "./TOHE-DATA/BanList.txt";
-    private const string ModeratorListPath = "./TOHE-DATA/Moderators.txt";
-    private const string VIPListPath = "./TOHE-DATA/VIP-List.txt";
     private const string WhiteListListPath = "./TOHE-DATA/WhiteList.txt";
     // Full PUIDs stay banned for this room even if the client reconnects from another IP.
     private static readonly HashSet<string> SessionBannedPuids = new(StringComparer.Ordinal);
@@ -57,16 +55,6 @@ public static class BanManager
                 Logger.Warn("Create a new DenyName.txt file", "BanManager");
                 File.Create(DenyNameListPath).Close();
                 File.WriteAllText(DenyNameListPath, GetResourcesTxt("TOHE.Resources.Config.DenyName.txt"));
-            }
-            if (!File.Exists(ModeratorListPath))
-            {
-                Logger.Warn("Creating a new Moderators.txt file", "BanManager");
-                File.Create(ModeratorListPath).Close();
-            }
-            if (!File.Exists(VIPListPath))
-            {
-                Logger.Warn("Creating a new VIP-List.txt file", "BanManager");
-                File.Create(VIPListPath).Close();
             }
             if (!File.Exists(WhiteListListPath))
             {

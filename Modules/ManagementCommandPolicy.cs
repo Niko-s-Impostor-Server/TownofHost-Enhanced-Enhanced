@@ -19,10 +19,6 @@ internal static class ManagementCommandPolicy
         _ => null
     };
 
-    internal static bool LegacyGrant(ManagementAction action, bool enabledModerator, bool allowSay) =>
-        enabledModerator && (action is ManagementAction.Kick or ManagementAction.Ban or ManagementAction.Warn or ManagementAction.List
-            || action == ManagementAction.Chat && allowSay);
-
     internal static bool TagGrant(ManagementAction action, int level, bool say, bool end, bool execute) => action switch
     {
         ManagementAction.Rename or ManagementAction.Color => level >= 1,

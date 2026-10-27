@@ -133,8 +133,7 @@ internal static class FeatureChatCommands
             case "/blackscreenfix":
             case "/fixblackscreen":
             case "/fixblack":
-                bool canFixOthers = host || ManagementCommands.IsLegacyModerator(sender)
-                    || PlayerTagFiles.PermissionLevel(sender) >= 2;
+                bool canFixOthers = host || PlayerTagFiles.PermissionLevel(sender) >= 2;
                 // AntiBlackout temporarily clears Data.IsDead; use the host's actual player state.
                 bool deadSelfFix = GameStates.IsInGame && !sender.IsAlive();
                 if (!canFixOthers && !deadSelfFix)

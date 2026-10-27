@@ -575,6 +575,7 @@ public class Main : BasePlugin
         Translator.Init();
         BanManager.Init();
         TemplateManager.Init();
+        PlayerTagFiles.EnsureTemplate();
         //SpamManager.Init();
         DevManager.Init();
 

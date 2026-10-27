@@ -7,11 +7,8 @@ namespace TOHE;
 
 internal static class ManagementCommands
 {
-    internal static bool IsLegacyModerator(PlayerControl player) => player && player.Data != null
-        && Options.ApplyModeratorList?.GetBool() == true && Utils.IsPlayerModerator(PlayerFriendCode.FromOwner(player));
-
     internal static bool IsAdministrator(PlayerControl player) => player && player.Data != null
-        && (Utils.IsPlayerModerator(PlayerFriendCode.FromOwner(player)) || PlayerTagFiles.IsAdministrator(player));
+        && PlayerTagFiles.IsAdministrator(player);
 
     internal static bool TryHandle(PlayerControl sender, string text)
     {
@@ -21,15 +18,13 @@ internal static class ManagementCommands
         var action = parsed.Value;
         var client = AmongUsClient.Instance;
         var host = sender.OwnerId == client.HostId;
-        var legacy = IsLegacyModerator(sender);
         var friendCode = PlayerFriendCode.FromOwner(sender);
         var dev = friendCode.GetDevUser();
-        var permitted = host || ManagementCommandPolicy.LegacyGrant(action, legacy, Options.AllowSayCommand?.GetBool() == true)
-            || ManagementCommandPolicy.TagGrant(action, PlayerTagFiles.PermissionLevel(sender),
+        var permitted = host || ManagementCommandPolicy.TagGrant(action, PlayerTagFiles.PermissionLevel(sender),
                 PlayerTagFiles.CanSay(sender), PlayerTagFiles.CanEnd(sender), PlayerTagFiles.CanExecute(sender));
         if (action == ManagementAction.Chat) permitted |= dev.IsDev;
-        if (action == ManagementAction.Rename) permitted |= Options.PlayerCanSetName.GetBool() || dev.IsDev || dev.NameCmd || Utils.IsPlayerVIP(friendCode);
-        if (action == ManagementAction.Color) permitted |= Options.PlayerCanSetColor.GetBool() || dev.IsDev || dev.ColorCmd || Utils.IsPlayerVIP(friendCode);
+        if (action == ManagementAction.Rename) permitted |= Options.PlayerCanSetName.GetBool() || dev.IsDev || dev.NameCmd;
+        if (action == ManagementAction.Color) permitted |= Options.PlayerCanSetColor.GetBool() || dev.IsDev || dev.ColorCmd;
         void Reply(string message) => Utils.SendMessage(message, sender.PlayerId, noReplay: true);
         if (!permitted) { Reply(GetString("FeatureCommandNoAccess")); return true; }
 
@@ -94,8 +89,7 @@ internal static class ManagementCommands
                 var target = ManagementCommandPolicy.TryTarget(args, out var targetId) ? Utils.GetPlayerById(targetId) : null;
                 if (!target || target.Data == null || target.Data.Disconnected
                     || !ManagementCommandPolicy.CanModerateTarget(host, target.OwnerId == client.HostId,
-                        Utils.IsPlayerModerator(PlayerFriendCode.FromOwner(target))
-                        || ManagementCommandPolicy.TagProtectsTarget(action, PlayerTagFiles.PermissionLevel(target))))
+                        ManagementCommandPolicy.TagProtectsTarget(action, PlayerTagFiles.PermissionLevel(target))))
                 { Reply(GetString("FeatureInvalidTarget")); break; }
                 var reason = args.Length > 2 ? string.Join(" ", args.Skip(2)) : GetString("ManagementReasonUnspecified");
                 // Snapshot before disconnecting the native object.

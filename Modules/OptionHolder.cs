@@ -173,11 +173,8 @@ public static class Options
     public static OptionItem TempBanPlayersWhoKeepQuitting;
     public static OptionItem QuitTimesTillTempBan;
 
-    public static OptionItem ApplyVipList;
     public static OptionItem ApplyDenyNameList;
     public static OptionItem ApplyBanList;
-    public static OptionItem ApplyModeratorList;
-    public static OptionItem AllowSayCommand;
 
     //public static OptionItem ApplyReminderMsg;
     //public static OptionItem TimeForReminder;
@@ -1057,12 +1054,12 @@ public static class Options
         QuitTimesTillTempBan = IntegerOptionItem.Create(60151, "QuitTimesTillTempBan", new(1, 15, 1), 4, TabGroup.SystemSettings, false)
             .SetValueFormat(OptionFormat.Times)
             .SetParent(TempBanPlayersWhoKeepQuitting);
-        ApplyVipList = BooleanOptionItem.Create(60090, "ApplyVipList", true, TabGroup.SystemSettings, false).SetHeader(true);
+        // Keep retired option IDs in preset schemas without exposing or applying them.
+        BooleanOptionItem.Create(60090, "ApplyVipList", true, TabGroup.SystemSettings, false).SetHeader(true).SetHidden(true);
         ApplyDenyNameList = BooleanOptionItem.Create(60100, "ApplyDenyNameList", true, TabGroup.SystemSettings, true);
         ApplyBanList = BooleanOptionItem.Create(60110, "ApplyBanList", true, TabGroup.SystemSettings, true);
-        ApplyModeratorList = BooleanOptionItem.Create(60120, "ApplyModeratorList", false, TabGroup.SystemSettings, false);
-        AllowSayCommand = BooleanOptionItem.Create(60121, "AllowSayCommand", false, TabGroup.SystemSettings, false)
-            .SetParent(ApplyModeratorList);
+        var retiredModeratorList = BooleanOptionItem.Create(60120, "ApplyModeratorList", false, TabGroup.SystemSettings, false).SetHidden(true);
+        BooleanOptionItem.Create(60121, "AllowSayCommand", false, TabGroup.SystemSettings, false).SetParent(retiredModeratorList).SetHidden(true);
         //ApplyReminderMsg = BooleanOptionItem.Create(60130, "ApplyReminderMsg", false, TabGroup.SystemSettings, false);
         /*TimeForReminder = IntegerOptionItem.Create(60131, "TimeForReminder", new(0, 99, 1), 3, TabGroup.SystemSettings, false)
             .SetParent(TimeForReminder)
