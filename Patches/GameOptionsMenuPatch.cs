@@ -733,6 +733,7 @@ public static class NumberOptionPatch
             __instance.Value = __instance.ValidRange.min;
             __instance.UpdateValue();
             __instance.OnValueChanged.Invoke(__instance);
+            __instance.AdjustButtonsActiveState();
             return false;
         }
 
@@ -742,6 +743,7 @@ public static class NumberOptionPatch
             __instance.Value += increment;
             __instance.UpdateValue();
             __instance.OnValueChanged.Invoke(__instance);
+            __instance.AdjustButtonsActiveState();
             return false;
         }
 
@@ -769,6 +771,7 @@ public static class NumberOptionPatch
             __instance.Value = __instance.ValidRange.max;
             __instance.UpdateValue();
             __instance.OnValueChanged.Invoke(__instance);
+            __instance.AdjustButtonsActiveState();
             return false;
         }
 
@@ -778,6 +781,7 @@ public static class NumberOptionPatch
             __instance.Value -= increment;
             __instance.UpdateValue();
             __instance.OnValueChanged.Invoke(__instance);
+            __instance.AdjustButtonsActiveState();
             return false;
         }
 
