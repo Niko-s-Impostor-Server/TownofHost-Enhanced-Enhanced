@@ -23,6 +23,27 @@ internal static class ManagementCommandPolicy
         enabledModerator && (action is ManagementAction.Kick or ManagementAction.Ban or ManagementAction.Warn or ManagementAction.List
             || action == ManagementAction.Chat && allowSay);
 
+    internal static bool TagGrant(ManagementAction action, int level, bool say, bool end, bool execute) => action switch
+    {
+        ManagementAction.Rename or ManagementAction.Color => level >= 1,
+        ManagementAction.Warn or ManagementAction.List => level >= 2,
+        ManagementAction.Start => level >= 3,
+        ManagementAction.Kick => level >= 4,
+        ManagementAction.Ban => level >= 5,
+        ManagementAction.Chat => say,
+        ManagementAction.End => end,
+        ManagementAction.Execute => execute,
+        _ => false
+    };
+
+    internal static bool TagProtectsTarget(ManagementAction action, int level) => action switch
+    {
+        ManagementAction.Warn => level >= 2,
+        ManagementAction.Kick => level >= 4,
+        ManagementAction.Ban => level >= 5,
+        _ => false
+    };
+
     internal static bool CanModerateTarget(bool actorIsHost, bool targetIsHost, bool targetIsAdministrator) =>
         !targetIsHost && (actorIsHost || !targetIsAdministrator);
 

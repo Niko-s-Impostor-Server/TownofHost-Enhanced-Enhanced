@@ -1646,8 +1646,10 @@ public static class Utils
             return;
         }
 
+        bool hasFileTag = PlayerTagFiles.TryGetRenderedTag(player, Options.GradientTagsOpt.GetBool(), out var fileTag);
         bool hasPrivateTag = PrivateTagManager.TryGetTag(player, out var privateTag);
-        if (!(player.AmOwner || hasPrivateTag || player.FriendCode.GetDevUser().HasTag()))
+        string selectedPrivateTag = !hasFileTag && hasPrivateTag ? privateTag : string.Empty;
+        if (!(player.AmOwner || hasFileTag || selectedPrivateTag.Length > 0 || player.FriendCode.GetDevUser().HasTag()))
         {
             if (!IsPlayerModerator(player.FriendCode) && !IsPlayerVIP(player.FriendCode))
             {
@@ -1765,6 +1767,7 @@ public static class Utils
                 }
             }
         }
+        if (hasFileTag) modtag = fileTag;
         if (player.AmOwner)
         {
             name = Options.GetSuffixMode() switch
@@ -1783,9 +1786,9 @@ public static class Utils
 
         if (!name.Contains($"\r\r") && player.FriendCode.GetDevUser().HasTag() && player.IsModded())
         {
-            name = player.FriendCode.GetDevUser().GetTag() + "<size=1.5>" + modtag + "</size>" + (hasPrivateTag ? privateTag : "") + name;
+            name = player.FriendCode.GetDevUser().GetTag() + "<size=1.5>" + modtag + "</size>" + selectedPrivateTag + name;
         }
-        else name = modtag + (hasPrivateTag ? privateTag : "") + name;
+        else name = modtag + selectedPrivateTag + name;
 
         // Set name
         if (name != player.name && player.CurrentOutfitType == PlayerOutfitType.Default)

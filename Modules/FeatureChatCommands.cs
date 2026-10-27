@@ -19,6 +19,7 @@ internal static class FeatureChatCommands
             if (loadedHost != -1)
             {
                 PrivateTagManager.Reset();
+                PlayerTagFiles.Reset();
                 loadedHost = -1;
             }
             return;
@@ -26,12 +27,14 @@ internal static class FeatureChatCommands
         if (loadedHost != client.HostId || loadedGeneration != OnGameJoinedPatch.Generation)
         {
             PrivateTagManager.Reset();
+            PlayerTagFiles.Reset();
             loadedHost = -1;
         }
         if (!Options.IsLoaded || (loadedHost == client.HostId && loadedGeneration == OnGameJoinedPatch.Generation)) return;
         loadedHost = client.HostId;
         loadedGeneration = OnGameJoinedPatch.Generation;
         if (!PrivateTagManager.Reload(out _)) Logger.Warn("Private tags could not be loaded", "PrivateTagManager");
+        PlayerTagFiles.Reload();
     }
 
     internal static bool TryHandle(PlayerControl sender, string text)
@@ -84,7 +87,8 @@ internal static class FeatureChatCommands
             case "/tags":
                 if (!host || !sender.AmOwner) { Denied(); return true; }
                 if (args.Length != 2 || args[1] != "reload") { Reply(GetString("LocalTagsUsage")); return true; }
-                bool loaded = PrivateTagManager.Reload(out _);
+                bool loaded = PlayerTagFiles.Reload();
+                loaded &= PrivateTagManager.Reload(out _);
                 if (GameStates.IsLobby) foreach (var player in Main.AllPlayerControls) Utils.ApplySuffix(player);
                 Reply(GetString(loaded ? "LocalTagsReloaded" : "LocalTagsFailed"));
                 return true;
@@ -129,7 +133,8 @@ internal static class FeatureChatCommands
             case "/blackscreenfix":
             case "/fixblackscreen":
             case "/fixblack":
-                bool canFixOthers = host || ManagementCommands.IsLegacyModerator(sender);
+                bool canFixOthers = host || ManagementCommands.IsLegacyModerator(sender)
+                    || PlayerTagFiles.PermissionLevel(sender) >= 2;
                 // AntiBlackout temporarily clears Data.IsDead; use the host's actual player state.
                 bool deadSelfFix = GameStates.IsInGame && !sender.IsAlive();
                 if (!canFixOthers && !deadSelfFix)
