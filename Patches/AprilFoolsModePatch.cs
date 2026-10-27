@@ -25,6 +25,22 @@ public static class CreateGameAprilFoolsDefaultPatch
     }
 }
 
+[HarmonyPatch(typeof(FindAGameManager), nameof(FindAGameManager.Start))]
+public static class FindGameAprilFoolsDefaultPatch
+{
+    public static void Postfix(FindAGameManager __instance)
+    {
+        // Start enables April Fools and initializes both filter sets as Fools
+        // when the toggle is visible. Restore the default after that setup;
+        // later user changes continue through the native toggle handler.
+        if (!AprilFoolsMode.IsAprilFoolsModeToggledOn) return;
+
+        __instance.ToggleAprilFools(false);
+        __instance.UpdateFiltersTexts();
+        __instance.FilterModified();
+    }
+}
+
 #region GameManager Patches
 [HarmonyPatch(typeof(NormalGameManager), nameof(NormalGameManager.GetBodyType))]
 public static class GetNormalBodyType_Patch
