@@ -286,7 +286,7 @@ internal class Glitch : RoleBase
 
     private void SendRPC()
     {
-        var writer = CustomRpcTransport.Start(CustomRPC.SyncRoleSkill, SendOption.None, -1);
+        var writer = CustomRpcTransport.Start(CustomRPC.SyncRoleSkill, SendOption.Reliable, -1);
         writer.WriteNetObject(_Player);
         writer.Write(HackCDTimer);
         writer.Write(KCDTimer);

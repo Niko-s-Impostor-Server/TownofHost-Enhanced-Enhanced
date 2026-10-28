@@ -43,7 +43,7 @@ public class FallFromLadder
 
                     player.SetDeathReason(PlayerState.DeathReason.Fall);
 
-                    CustomRpcSender sender = CustomRpcSender.Create("LadderFallRpc", sendOption: Hazel.SendOption.None);
+                    CustomRpcSender sender = CustomRpcSender.Create("LadderFallRpc", sendOption: Hazel.SendOption.Reliable);
                     sender.AutoStartRpc(player.NetTransform.NetId, (byte)RpcCalls.SnapTo)
                         .Write(num)
                         .Write(num2)

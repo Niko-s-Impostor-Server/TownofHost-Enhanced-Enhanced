@@ -377,11 +377,13 @@ internal class StartGameHostPatch
                                         RoleTypes.Noisemaker, RoleTypes.Phantom, RoleTypes.Tracker })
                 opt.RoleOptions.SetRoleRate(role, 0, 0);
         }
+        var optionsBatch = new OfficialPacketBuilder.Batch();
         foreach (var pc in PlayerControl.AllPlayerControls.GetFastEnumerator())
         {
             if (pc == null || pc.Data == null || pc.Data.Disconnected) continue;
-            new InitialGameOptionsSender(pc, opt).SendGameOptions();
+            new InitialGameOptionsSender(pc, opt).SendGameOptions(optionsBatch);
         }
+        optionsBatch.Send();
         return true;
     }
 

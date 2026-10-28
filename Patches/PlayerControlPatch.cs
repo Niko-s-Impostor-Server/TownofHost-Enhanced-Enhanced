@@ -473,7 +473,7 @@ class MurderPlayerPatch
             // Sync protected player from being killed first info for modded clients
             if (PlayerControl.LocalPlayer.IsHost())
             {
-                var writer = CustomRpcTransport.Start(CustomRPC.SyncShieldPersonDiedFirst, SendOption.None, -1);
+                var writer = CustomRpcTransport.Start(CustomRPC.SyncShieldPersonDiedFirst, SendOption.Reliable, -1);
                 writer.Write(Main.FirstDied);
                 writer.Write(Main.FirstDiedPrevious);
                 CustomRpcTransport.Finish(writer);

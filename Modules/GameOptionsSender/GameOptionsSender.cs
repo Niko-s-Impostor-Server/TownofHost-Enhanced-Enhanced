@@ -14,11 +14,13 @@ public abstract class GameOptionsSender
     {
         AllSenders.RemoveAll(s => !s.AmValid()); // .AmValid() has a virtual property, so it doesn't always return true
         var AllSendersArray = AllSenders.ToArray();
+        var batch = new OfficialPacketBuilder.Batch();
         foreach (GameOptionsSender sender in AllSendersArray)
         {
-            if (sender.IsDirty) sender.SendGameOptions();
-            sender.IsDirty = false;
+            if (sender.IsDirty) sender.SendGameOptions(batch);
         }
+        batch.Send();
+        foreach (GameOptionsSender sender in AllSendersArray) sender.IsDirty = false;
     }
     #endregion
 
@@ -26,15 +28,17 @@ public abstract class GameOptionsSender
     public abstract bool IsDirty { get; protected set; }
 
 
-    public virtual void SendGameOptions()
+    public virtual void SendGameOptions(OfficialPacketBuilder.Batch batch = null)
     {
         var opt = BuildGameOptions();
         // Keep version framing identical to LogicOptions.Serialize in the game.
         var factory = new GameOptionsFactory(new UnityLogger().Cast<ILogger>());
-        SendOptionsArray(factory.ToBytes(opt, AprilFoolsMode.IsAprilFoolsModeToggledOn));
+        SendOptionsArray(factory.ToBytes(opt, AprilFoolsMode.IsAprilFoolsModeToggledOn), batch);
     }
-    public virtual void SendOptionsArray(Il2CppStructArray<byte> optionArray)
+    public virtual void SendOptionsArray(Il2CppStructArray<byte> optionArray, OfficialPacketBuilder.Batch batch = null)
     {
+        bool ownsBatch = batch == null;
+        batch ??= new OfficialPacketBuilder.Batch();
         try
         {
             byte logicOptionsIndex = 0;
@@ -42,7 +46,7 @@ public abstract class GameOptionsSender
             {
                 if (logicComponent.TryCast<LogicOptions>(out _))
                 {
-                    SendOptionsArray(optionArray, logicOptionsIndex, -1);
+                    SendOptionsArray(optionArray, logicOptionsIndex, -1, batch);
                 }
                 logicOptionsIndex++;
             }
@@ -52,16 +56,13 @@ public abstract class GameOptionsSender
             Logger.Fatal(error.ToString(), "GameOptionsSender.SendOptionsArray");
             throw;
         }
+        if (ownsBatch) batch.Send();
     }
-    protected virtual void SendOptionsArray(Il2CppStructArray<byte> optionArray, byte LogicOptionsIndex, int targetClientId)
+    protected virtual void SendOptionsArray(Il2CppStructArray<byte> optionArray, byte LogicOptionsIndex, int targetClientId,
+        OfficialPacketBuilder.Batch batch)
     {
-        using var owner = new OfficialPacketBuilder.BoundedWriter(SendOption.Reliable, OfficialAnticheatPolicy.Enabled);
-        var writer = owner.Writer;
-
-        writer.StartMessage(targetClientId == -1 ? Tags.GameData : Tags.GameDataTo);
+        batch.AddChild(targetClientId, writer =>
         {
-            writer.Write(AmongUsClient.Instance.GameId);
-            if (targetClientId != -1) writer.WritePacked(targetClientId);
             writer.StartMessage(1);
             {
                 writer.WritePacked(GameManager.Instance.NetId);
@@ -72,10 +73,7 @@ public abstract class GameOptionsSender
                 writer.EndMessage();
             }
             writer.EndMessage();
-        }
-        writer.EndMessage();
-
-        OfficialPacketBuilder.SendCompleted(writer);
+        });
     }
     public abstract IGameOptions BuildGameOptions();
 

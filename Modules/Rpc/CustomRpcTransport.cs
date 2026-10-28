@@ -63,7 +63,7 @@ internal static class CustomRpcTransport
 
     private static void ValidateOption(SendOption option)
     {
-        if (option != SendOption.Reliable && option != SendOption.None) throw new ArgumentOutOfRangeException(nameof(option));
+        if (option != SendOption.Reliable) throw new ArgumentOutOfRangeException(nameof(option));
     }
 
     internal static MessageWriter Start(CustomRPC rpc, SendOption option = SendOption.Reliable, int target = -1)
@@ -170,10 +170,10 @@ internal static class CustomRpcTransport
             return;
         }
         FlushPending();
-        Enqueue(message, client, option);
+        Enqueue(message, client);
         if (OfficialAnticheatPolicy.Enabled) return;
         var nativeMessage = message.Cast<IGameDataMessage>();
-        var queue = option == SendOption.Reliable ? client.reliableMessageQueue : client.unreliableMessageQueue;
+        var queue = client.reliableMessageQueue;
         flushing = true;
         try
         {
@@ -213,15 +213,14 @@ internal static class CustomRpcTransport
         pendingBytes += bytes;
     }
 
-    private static void Enqueue(TOHERpcMessage message, AmongUsClient client, SendOption option)
+    private static void Enqueue(TOHERpcMessage message, AmongUsClient client)
     {
         message.Sequence = ++sequence;
         Queued.Add(message.Sequence, message);
         var nativeMessage = message.Cast<IGameDataMessage>();
         try
         {
-            if (option == SendOption.Reliable) client.LateBroadcastReliableMessage(nativeMessage);
-            else client.LateBroadcastUnreliableMessage(nativeMessage);
+            client.LateBroadcastReliableMessage(nativeMessage);
         }
         catch { Queued.Remove(message.Sequence); throw; }
     }
@@ -243,8 +242,8 @@ internal static class CustomRpcTransport
             player.GetInstanceID(), CustomRPC.ProtocolCapabilities, -1, SendOption.Reliable,
             RpcCompatibility.CreateDeclarationPayload());
         Pending.Clear(); pendingBytes = 0; pendingContext = null;
-        Enqueue(declaration, client, SendOption.Reliable);
-        Enqueue(message, client, SendOption.Reliable);
+        Enqueue(declaration, client);
+        Enqueue(message, client);
     }
 
     internal static RpcSendBarrier CaptureBarrier()

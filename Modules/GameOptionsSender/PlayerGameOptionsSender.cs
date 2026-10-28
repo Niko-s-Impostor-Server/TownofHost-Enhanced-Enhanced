@@ -43,7 +43,7 @@ public class PlayerGameOptionsSender(PlayerControl player) : GameOptionsSender
 
     public void SetDirty() => IsDirty = true;
 
-    public override void SendGameOptions()
+    public override void SendGameOptions(OfficialPacketBuilder.Batch batch = null)
     {
         if (player.AmOwner)
         {
@@ -55,20 +55,23 @@ public class PlayerGameOptionsSender(PlayerControl player) : GameOptionsSender
             }
             GameOptionsManager.Instance.CurrentGameOptions = opt;
         }
-        else base.SendGameOptions();
+        else base.SendGameOptions(batch);
     }
 
-    public override void SendOptionsArray(Il2CppStructArray<byte> optionArray)
+    public override void SendOptionsArray(Il2CppStructArray<byte> optionArray, OfficialPacketBuilder.Batch batch = null)
     {
+        bool ownsBatch = batch == null;
+        batch ??= new OfficialPacketBuilder.Batch();
         byte logicOptionsIndex = 0;
         foreach (var logicComponent in GameManager.Instance.LogicComponents.GetFastEnumerator())
         {
             if (logicComponent.TryCast<LogicOptions>(out _))
             {
-                SendOptionsArray(optionArray, logicOptionsIndex, player.GetClientId());
+                SendOptionsArray(optionArray, logicOptionsIndex, player.GetClientId(), batch);
             }
             logicOptionsIndex++;
         }
+        if (ownsBatch) batch.Send();
     }
     public static void RemoveSender(PlayerControl player)
     {

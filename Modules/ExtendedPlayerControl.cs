@@ -285,7 +285,7 @@ static class ExtendedPlayerControl
             return;
         }
         player.Exiled();
-        MessageWriter writer = AmongUsClient.Instance.StartImmediate(player.NetId, (byte)RpcCalls.Exiled, SendOption.None, -1);
+        MessageWriter writer = AmongUsClient.Instance.StartImmediate(player.NetId, (byte)RpcCalls.Exiled, SendOption.Reliable, -1);
         AmongUsClient.Instance.FinishImmediate(writer);
     }
     public static void RpcExileDesync(this PlayerControl player, PlayerControl seer)
@@ -307,7 +307,7 @@ static class ExtendedPlayerControl
             player.Exiled();
             return;
         }
-        MessageWriter writer = AmongUsClient.Instance.StartImmediate(player.NetId, (byte)RpcCalls.Exiled, SendOption.None, clientId);
+        MessageWriter writer = AmongUsClient.Instance.StartImmediate(player.NetId, (byte)RpcCalls.Exiled, SendOption.Reliable, clientId);
         AmongUsClient.Instance.FinishImmediate(writer);
     }
     public static void RpcExileV2(this PlayerControl player)
@@ -323,7 +323,7 @@ static class ExtendedPlayerControl
         }
         player.Exiled();
 
-        MessageWriter writer = AmongUsClient.Instance.StartImmediate(player.NetId, (byte)RpcCalls.Exiled, SendOption.None, -1);
+        MessageWriter writer = AmongUsClient.Instance.StartImmediate(player.NetId, (byte)RpcCalls.Exiled, SendOption.Reliable, -1);
         AmongUsClient.Instance.FinishImmediate(writer);
     }
     public static void RpcCastVote(this PlayerControl player, byte suspectIdx)
@@ -602,18 +602,26 @@ static class ExtendedPlayerControl
     public static void RpcSpecificRejectShapeshift(this PlayerControl player, PlayerControl target, bool shouldAnimate)
     {
         if (!AmongUsClient.Instance.AmHost) return;
+        var batch = new OfficialPacketBuilder.Batch();
         foreach (var seer in Main.AllPlayerControls)
         {
             if (seer != player)
             {
-                MessageWriter msg = AmongUsClient.Instance.StartImmediate(player.NetId, (byte)RpcCalls.RejectShapeshift, SendOption.Reliable, seer.GetClientId());
-                AmongUsClient.Instance.FinishImmediate(msg);
+                batch.AddChild(seer.GetClientId(), writer =>
+                {
+                    writer.StartMessage(2);
+                    writer.WritePacked(player.NetId);
+                    writer.Write((byte)RpcCalls.RejectShapeshift);
+                    writer.EndMessage();
+                });
             }
             else
             {
+                batch.Send();
                 player.RpcSpecificShapeshift(target, shouldAnimate);
             }
         }
+        batch.Send();
     }
 
     public static Vent GetClosestVent(this PlayerControl player)
@@ -679,7 +687,7 @@ static class ExtendedPlayerControl
             player.CheckVanish();
             return;
         }
-        MessageWriter messageWriter = AmongUsClient.Instance.StartImmediate(player.NetId, (byte)RpcCalls.CheckVanish, SendOption.None, seer.GetClientId());
+        MessageWriter messageWriter = AmongUsClient.Instance.StartImmediate(player.NetId, (byte)RpcCalls.CheckVanish, SendOption.Reliable, seer.GetClientId());
         messageWriter.Write(0); // not used, lol
         AmongUsClient.Instance.FinishImmediate(messageWriter);
     }
@@ -690,7 +698,7 @@ static class ExtendedPlayerControl
             player.SetRoleInvisibility(true, false, true);
             return;
         }
-        MessageWriter msg = AmongUsClient.Instance.StartImmediate(player.NetId, (byte)RpcCalls.StartVanish, SendOption.None, seer.GetClientId());
+        MessageWriter msg = AmongUsClient.Instance.StartImmediate(player.NetId, (byte)RpcCalls.StartVanish, SendOption.Reliable, seer.GetClientId());
         AmongUsClient.Instance.FinishImmediate(msg);
     }
     public static void RpcCheckAppearDesync(this PlayerControl player, bool shouldAnimate, PlayerControl seer)
@@ -700,7 +708,7 @@ static class ExtendedPlayerControl
             player.CheckAppear(shouldAnimate);
             return;
         }
-        MessageWriter messageWriter = AmongUsClient.Instance.StartImmediate(player.NetId, (byte)RpcCalls.CheckAppear, SendOption.None, seer.GetClientId());
+        MessageWriter messageWriter = AmongUsClient.Instance.StartImmediate(player.NetId, (byte)RpcCalls.CheckAppear, SendOption.Reliable, seer.GetClientId());
         messageWriter.Write(shouldAnimate);
         AmongUsClient.Instance.FinishImmediate(messageWriter);
     }
@@ -711,14 +719,14 @@ static class ExtendedPlayerControl
             player.SetRoleInvisibility(false, shouldAnimate, true);
             return;
         }
-        MessageWriter messageWriter = AmongUsClient.Instance.StartImmediate(player.NetId, (byte)RpcCalls.StartAppear, SendOption.None, seer.GetClientId());
+        MessageWriter messageWriter = AmongUsClient.Instance.StartImmediate(player.NetId, (byte)RpcCalls.StartAppear, SendOption.Reliable, seer.GetClientId());
         messageWriter.Write(shouldAnimate);
         AmongUsClient.Instance.FinishImmediate(messageWriter);
     }
     public static void RpcCheckAppear(this PlayerControl player, bool shouldAnimate)
     {
         player.CheckAppear(shouldAnimate);
-        MessageWriter messageWriter = AmongUsClient.Instance.StartImmediate(player.NetId, (byte)RpcCalls.CheckAppear, SendOption.None);
+        MessageWriter messageWriter = AmongUsClient.Instance.StartImmediate(player.NetId, (byte)RpcCalls.CheckAppear, SendOption.Reliable);
         messageWriter.Write(shouldAnimate);
         AmongUsClient.Instance.FinishImmediate(messageWriter);
     }
@@ -729,7 +737,7 @@ static class ExtendedPlayerControl
             killer.MurderPlayer(target, MurderResultFlags.Succeeded);
             return;
         }
-        MessageWriter messageWriter = AmongUsClient.Instance.StartImmediate(killer.NetId, (byte)RpcCalls.MurderPlayer, SendOption.None, seer.GetClientId());
+        MessageWriter messageWriter = AmongUsClient.Instance.StartImmediate(killer.NetId, (byte)RpcCalls.MurderPlayer, SendOption.Reliable, seer.GetClientId());
         messageWriter.WriteNetObject(target);
         messageWriter.Write((int)MurderResultFlags.Succeeded);
         AmongUsClient.Instance.FinishImmediate(messageWriter);
@@ -764,7 +772,7 @@ static class ExtendedPlayerControl
         }
         else
         {
-            MessageWriter writer = AmongUsClient.Instance.StartImmediate(target.NetId, (byte)RpcCalls.ProtectPlayer, SendOption.None, target.GetClientId());
+            MessageWriter writer = AmongUsClient.Instance.StartImmediate(target.NetId, (byte)RpcCalls.ProtectPlayer, SendOption.Reliable, target.GetClientId());
             writer.WriteNetObject(target);
             writer.Write(0);
             AmongUsClient.Instance.FinishImmediate(writer);
@@ -787,10 +795,12 @@ static class ExtendedPlayerControl
 
     public static void RpcTeleportAllPlayers(Vector2 location)
     {
+        var batch = new OfficialPacketBuilder.Batch();
         foreach (var pc in Main.AllAlivePlayerControls)
         {
-            pc.RpcTeleport(location);
+            pc.RpcTeleport(location, batch: batch);
         }
+        batch.Send();
     }
     public static void RpcDesyncTeleport(this PlayerControl player, Vector2 position, PlayerControl seer)
     {
@@ -811,7 +821,8 @@ static class ExtendedPlayerControl
         writer.Write(newSid);
         AmongUsClient.Instance.FinishImmediate(writer);
     }
-    public static void RpcTeleport(this PlayerControl player, Vector2 position, bool isRandomSpawn = false, bool sendInfoInLogs = true)
+    public static void RpcTeleport(this PlayerControl player, Vector2 position, bool isRandomSpawn = false, bool sendInfoInLogs = true,
+        OfficialPacketBuilder.Batch batch = null)
     {
         if (sendInfoInLogs)
         {
@@ -858,6 +869,19 @@ static class ExtendedPlayerControl
         }
 
         ushort newSid = (ushort)(netTransform.lastSequenceId + 8);
+        if (batch != null)
+        {
+            batch.AddChild(-1, writer =>
+            {
+                writer.StartMessage(2);
+                writer.WritePacked(netTransform.NetId);
+                writer.Write((byte)RpcCalls.SnapTo);
+                NetHelpers.WriteVector2(position, writer);
+                writer.Write(newSid);
+                writer.EndMessage();
+            });
+            return;
+        }
         MessageWriter messageWriter = AmongUsClient.Instance.StartImmediate(netTransform.NetId, (byte)RpcCalls.SnapTo, SendOption.Reliable);
         NetHelpers.WriteVector2(position, messageWriter);
         messageWriter.Write(newSid);

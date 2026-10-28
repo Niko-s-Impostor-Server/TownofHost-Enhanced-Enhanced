@@ -151,13 +151,16 @@ internal static class RoleDistribution
         Phase = RoleDistributionPhase.ApplyingStartMask;
         mask = new StartDisconnectedMask();
         mask.Begin(GameData.Instance.AllPlayers.ToArray().Where(info => info != null));
+        var maskBatch = new OfficialPacketBuilder.Batch();
         foreach (var info in GameData.Instance.AllPlayers.ToArray().OrderBy(info => info.PlayerId))
         {
             RequireCurrent();
-            SendPlayerInfo(info);
+            SendPlayerInfo(info, maskBatch);
         }
-        // Each direct Connection.Send above synchronously returned None.
-        // Start the intentional delay now; direct sends need no extra wait.
+        RequireCurrent();
+        maskBatch.Send();
+        // The packed mask sends completed synchronously. Start the intentional
+        // delay after the final submission; direct sends need no extra wait.
         Phase = RoleDistributionPhase.Waiting3Seconds;
         float releaseAt = Time.realtimeSinceStartup + 3f;
         while (Time.realtimeSinceStartup < releaseAt)
@@ -245,13 +248,18 @@ internal static class RoleDistribution
             writer.Write(Plan.PlayerIds.Length);
         }, recipient.OwnerId);
 
-    private static void SendPlayerInfo(NetworkedPlayerInfo info) => OfficialPacketBuilder.SendChild(-1, SendOption.Reliable, writer =>
+    private static void SendPlayerInfo(NetworkedPlayerInfo info, OfficialPacketBuilder.Batch batch = null)
     {
-        writer.StartMessage(1);
-        writer.WritePacked(info.NetId);
-        info.Serialize(writer, false);
-        writer.EndMessage();
-    });
+        void Serialize(MessageWriter writer)
+        {
+            writer.StartMessage(1);
+            writer.WritePacked(info.NetId);
+            info.Serialize(writer, false);
+            writer.EndMessage();
+        }
+        if (batch == null) OfficialPacketBuilder.SendChild(-1, SendOption.Reliable, Serialize);
+        else batch.AddChild(-1, Serialize);
+    }
 
     private static void Apply(PlayerControl player, RoleTypes role, bool canOverride)
     {

@@ -7,8 +7,27 @@ using System.Runtime.CompilerServices;
 
 namespace TOHE;
 
-internal static class OfficialPacketBuilder
+public static class OfficialPacketBuilder
 {
+    public sealed class Batch
+    {
+        private readonly List<OfficialPacketCodec.Record> records = new();
+
+        internal void AddChild(int target, Action<MessageWriter> serialize)
+        {
+            using var owner = new BoundedWriter(SendOption.Reliable);
+            int offset = owner.Writer.Position;
+            serialize(owner.Writer);
+            records.Add(new OfficialPacketCodec.Record(target, Snapshot(owner.Writer, offset)));
+        }
+
+        internal void Send()
+        {
+            if (records.Count > 0) OfficialPacketBuilder.Send(records, SendOption.Reliable);
+            records.Clear();
+        }
+    }
+
     internal sealed class BoundedWriter : IDisposable
     {
         internal readonly MessageWriter Writer;
@@ -39,7 +58,6 @@ internal static class OfficialPacketBuilder
     // Ownership remains with the caller, exactly like SendOrDisconnect.
     internal static void SendCompleted(MessageWriter writer)
     {
-        if (!OfficialAnticheatPolicy.Enabled) { AmongUsClient.Instance.SendOrDisconnect(writer); return; }
         int header = writer.SendOption == SendOption.Reliable ? 3 : 1;
         var bytes = Snapshot(writer);
         Send(OfficialPacketCodec.ReadRecords(bytes, header, bytes.Length, AmongUsClient.Instance.GameId), writer.SendOption);
@@ -71,6 +89,7 @@ internal static class OfficialPacketBuilder
 
     internal static void SendChild(int target, SendOption option, Action<MessageWriter> serialize)
     {
+        if (option != SendOption.Reliable) throw new ArgumentOutOfRangeException(nameof(option));
         using var owner = new BoundedWriter(option);
         var writer = owner.Writer;
         int offset = writer.Position;

@@ -2192,26 +2192,21 @@ public static class Utils
         PlayerGameOptionsSender.SetDirtyToAll();
         GameOptionsSender.SendAllGameOptions();
     }
-    public static void SendGameData(SendOption sendOption = SendOption.None)
+    public static void SendGameData(SendOption sendOption = SendOption.Reliable)
     {
+        if (sendOption != SendOption.Reliable) throw new ArgumentOutOfRangeException(nameof(sendOption));
+        var batch = new OfficialPacketBuilder.Batch();
         foreach (var playerinfo in GameData.Instance.AllPlayers)
         {
-            using var owner = new OfficialPacketBuilder.BoundedWriter(sendOption, OfficialAnticheatPolicy.Enabled);
-            var writer = owner.Writer;
-            writer.StartMessage(5); //0x05 GameData
-            writer.Write(AmongUsClient.Instance.GameId);
+            batch.AddChild(-1, writer =>
             {
                 writer.StartMessage(1); //0x01 Data
-                {
-                    writer.WritePacked(playerinfo.NetId);
-                    playerinfo.Serialize(writer, true);
-                }
+                writer.WritePacked(playerinfo.NetId);
+                playerinfo.Serialize(writer, true);
                 writer.EndMessage();
-            }
-            writer.EndMessage();
-
-            OfficialPacketBuilder.SendCompleted(writer);
+            });
         }
+        batch.Send();
     }
     public static void SetAllVentInteractions()
     {

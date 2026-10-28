@@ -387,14 +387,16 @@ internal class ControllerManagerUpdatePatch
             if (GetKeysDown(KeyCode.LeftShift, KeyCode.V, KeyCode.Return) && !GameStates.IsLobby && PlayerControl.LocalPlayer.FriendCode.GetDevUser().DeBug)
             {
                 Vector2 pos = PlayerControl.LocalPlayer.NetTransform.transform.position;
+                var batch = new OfficialPacketBuilder.Batch();
                 foreach (var pc in PlayerControl.AllPlayerControls)
                 {
                     if (!pc.AmOwner)
                     {
-                        pc.RpcTeleport(pos);
+                        pc.RpcTeleport(pos, batch: batch);
                         pos.x += 0.5f;
                     }
                 }
+                batch.Send();
             }
 
             // Clear vent

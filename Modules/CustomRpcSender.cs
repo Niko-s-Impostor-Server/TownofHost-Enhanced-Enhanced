@@ -30,7 +30,6 @@ public class CustomRpcSender : IDisposable
     //-1: 全プレイヤー (GameData)
     //-2: 未設定
     private int currentRpcTarget;
-    private readonly bool official;
     private readonly int sessionGameId;
     private readonly OfficialSessionContext session;
     private readonly OfficialPacketBuilder.BoundedWriter writerOwner;
@@ -41,16 +40,12 @@ public class CustomRpcSender : IDisposable
     private CustomRpcSender() { }
     public CustomRpcSender(string name, SendOption sendOption, bool isUnsafe)
     {
-        official = OfficialAnticheatPolicy.Enabled;
+        if (sendOption != SendOption.Reliable) throw new ArgumentOutOfRangeException(nameof(sendOption));
         sessionGameId = AmongUsClient.Instance.GameId;
         session = OfficialSessionContext.Capture();
-        if (official)
-        {
-            writerOwner = new OfficialPacketBuilder.BoundedWriter(sendOption);
-            stream = writerOwner.Writer;
-            Active.Add(this);
-        }
-        else stream = MessageWriter.Get(sendOption);
+        writerOwner = new OfficialPacketBuilder.BoundedWriter(sendOption);
+        stream = writerOwner.Writer;
+        Active.Add(this);
 
         this.name = name;
         this.sendOption = sendOption;
@@ -61,7 +56,7 @@ public class CustomRpcSender : IDisposable
         currentState = State.Ready;
         Logger.Info($"\"{name}\" is ready", "CustomRpcSender");
     }
-    public static CustomRpcSender Create(string name = "No Name Sender", SendOption sendOption = SendOption.None, bool isUnsafe = false)
+    public static CustomRpcSender Create(string name = "No Name Sender", SendOption sendOption = SendOption.Reliable, bool isUnsafe = false)
     {
         return new CustomRpcSender(name, sendOption, isUnsafe);
     }
@@ -82,20 +77,6 @@ public class CustomRpcSender : IDisposable
             }
         }
 
-        if (!official && targetClientId < 0)
-        {
-            // 全員に対するRPC
-            stream.StartMessage(5);
-            stream.Write(AmongUsClient.Instance.GameId);
-        }
-        else if (!official)
-        {
-            // 特定のクライアントに対するRPC (Desync)
-            stream.StartMessage(6);
-            stream.Write(AmongUsClient.Instance.GameId);
-            stream.WritePacked(targetClientId);
-        }
-
         currentRpcTarget = targetClientId;
         currentState = State.InRootMessage;
         return this;
@@ -110,8 +91,6 @@ public class CustomRpcSender : IDisposable
             else
                 throw new InvalidOperationException(errorMsg);
         }
-        if (!official) stream.EndMessage();
-
         currentRpcTarget = -2;
         currentState = State.Ready;
         return this;
@@ -153,13 +132,10 @@ public class CustomRpcSender : IDisposable
         }
 
         stream.EndMessage();
-        if (official)
-        {
-            if (stream.Length - childOffset > ChildBudget)
-                throw new InvalidOperationException("Vanilla RPC cannot fit the official packet contract");
-            records.Add(new OfficialPacketCodec.Record(currentRpcTarget, OfficialPacketBuilder.Snapshot(stream, childOffset)));
-            stream.Clear(sendOption);
-        }
+        if (stream.Length - childOffset > ChildBudget)
+            throw new InvalidOperationException("Vanilla RPC cannot fit the packet contract");
+        records.Add(new OfficialPacketCodec.Record(currentRpcTarget, OfficialPacketBuilder.Snapshot(stream, childOffset)));
+        stream.Clear(sendOption);
         currentState = State.InRootMessage;
         return this;
     }
@@ -204,14 +180,9 @@ public class CustomRpcSender : IDisposable
         currentState = State.Finished;
         try
         {
-            var client = AmongUsClient.Instance;
-            if (official)
-            {
-                if (!session.IsCurrent())
-                    throw new InvalidOperationException("RPC sender belongs to an expired room");
-                OfficialPacketBuilder.Send(records, sendOption);
-            }
-            else client.SendOrDisconnect(stream);
+            if (!session.IsCurrent())
+                throw new InvalidOperationException("RPC sender belongs to an expired room");
+            OfficialPacketBuilder.Send(records, sendOption);
             onSendDelegate?.Invoke();
             Logger.Info($"\"{name}\" is finished", "CustomRpcSender");
         }
@@ -227,8 +198,8 @@ public class CustomRpcSender : IDisposable
     private void Release()
     {
         records.Clear();
-        if (official) { Active.Remove(this); writerOwner.Dispose(); }
-        else stream.Recycle();
+        Active.Remove(this);
+        writerOwner.Dispose();
     }
 
     public void Dispose()
@@ -248,7 +219,7 @@ public class CustomRpcSender : IDisposable
     public CustomRpcSender Write(float val) => Write(w => w.Write(val));
     public CustomRpcSender Write(string val)
     {
-        if (official && System.Text.Encoding.UTF8.GetByteCount(val ?? "") > ChildBudget)
+        if (System.Text.Encoding.UTF8.GetByteCount(val ?? "") > ChildBudget)
             throw new InvalidOperationException("Vanilla RPC string requires business-level splitting");
         return Write(w => w.Write(val));
     }
@@ -280,7 +251,7 @@ public class CustomRpcSender : IDisposable
                 throw new InvalidOperationException(errorMsg);
         }
         action(stream);
-        if (official && stream.Length - childOffset > ChildBudget)
+        if (stream.Length - childOffset > ChildBudget)
             throw new InvalidOperationException("Vanilla RPC payload exceeds its bounded child budget");
         return this;
     }

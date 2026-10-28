@@ -43,14 +43,16 @@ static class VentSystemDeterioratePatch
         if (ForceUpadate || (nowTime != LastUpadate))
         {
             LastUpadate = nowTime;
+            var batch = new OfficialPacketBuilder.Batch();
             foreach (var pc in PlayerControl.AllPlayerControls.GetFastEnumerator())
             {
                 if (pc.BlockVentInteraction())
                 {
                     LastClosestVent[pc.PlayerId] = pc.GetVentsFromClosest()[0].Id;
-                    pc.RpcCloseVent(__instance);
+                    pc.RpcCloseVent(__instance, batch);
                 }
             }
+            batch.Send();
         }
     }
     /// <summary>
@@ -67,30 +69,28 @@ static class VentSystemDeterioratePatch
 
     public static void SerializeV2(VentilationSystem __instance, PlayerControl player = null)
     {
+        var batch = new OfficialPacketBuilder.Batch();
         foreach (var pc in PlayerControl.AllPlayerControls.GetFastEnumerator())
         {
             if (pc.AmOwner || (player != null && pc != player)) continue;
 
             if (pc.BlockVentInteraction())
             {
-                pc.RpcCloseVent(__instance);
+                pc.RpcCloseVent(__instance, batch);
             }
             else
             {
-                pc.RpcSerializeVent(__instance);
+                pc.RpcSerializeVent(__instance, batch);
             }
         }
+        batch.Send();
     }
     /// <summary>
     /// Send rpc for blocking specifics vent use or all vents
     /// </summary>
-    private static void RpcCloseVent(this PlayerControl pc, VentilationSystem __instance)
+    private static void RpcCloseVent(this PlayerControl pc, VentilationSystem __instance, OfficialPacketBuilder.Batch batch)
     {
-        using var owner = new OfficialPacketBuilder.BoundedWriter(SendOption.None, OfficialAnticheatPolicy.Enabled);
-        var writer = owner.Writer;
-        writer.StartMessage(6);
-        writer.Write(AmongUsClient.Instance.GameId);
-        writer.WritePacked(pc.GetClientId());
+        batch.AddChild(pc.GetClientId(), writer =>
         {
             writer.StartMessage(1);
             writer.WritePacked(ShipStatus.Instance.NetId);
@@ -131,18 +131,12 @@ static class VentSystemDeterioratePatch
                 writer.EndMessage();
             }
             writer.EndMessage();
-        }
-        writer.EndMessage();
-        OfficialPacketBuilder.SendCompleted(writer);
+        });
     }
 
-    private static void RpcSerializeVent(this PlayerControl pc, VentilationSystem __instance)
+    private static void RpcSerializeVent(this PlayerControl pc, VentilationSystem __instance, OfficialPacketBuilder.Batch batch)
     {
-        using var owner = new OfficialPacketBuilder.BoundedWriter(SendOption.None, OfficialAnticheatPolicy.Enabled);
-        var writer = owner.Writer;
-        writer.StartMessage(6);
-        writer.Write(AmongUsClient.Instance.GameId);
-        writer.WritePacked(pc.GetClientId());
+        batch.AddChild(pc.GetClientId(), writer =>
         {
             writer.StartMessage(1);
             writer.WritePacked(ShipStatus.Instance.NetId);
@@ -154,9 +148,7 @@ static class VentSystemDeterioratePatch
                 writer.EndMessage();
             }
             writer.EndMessage();
-        }
-        writer.EndMessage();
-        OfficialPacketBuilder.SendCompleted(writer);
+        });
     }
 }
 [HarmonyPatch(typeof(VentilationSystem), nameof(VentilationSystem.IsVentCurrentlyBeingCleaned))]
