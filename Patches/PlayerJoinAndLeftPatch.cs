@@ -263,7 +263,7 @@ public static class OnPlayerJoinedPatch
 
                 if (AmongUsClient.Instance.AmHost && !Main.playerVersion.TryGetValue(client.Id, out _))
                 {
-                    var retry = CustomRpcTransport.Start(CustomRPC.RequestRetryVersionCheck, SendOption.None, client.Id);
+                    var retry = CustomRpcTransport.Start(CustomRPC.RequestRetryVersionCheck, SendOption.Reliable, client.Id);
                     CustomRpcTransport.Finish(retry);
                 }
             }
@@ -440,7 +440,6 @@ class OnPlayerLeftPatch
 
             if (Main.HostClientId == data.Id && Main.playerVersion.ContainsKey(data.Id))
             {
-                var clientId = -1;
                 var player = PlayerControl.LocalPlayer;
                 var title = "<color=#aaaaff>" + GetString("DefaultSystemMessageTitle") + "</color>";
                 var name = player?.Data?.PlayerName;
@@ -453,7 +452,7 @@ class OnPlayerLeftPatch
                 else if (GameStates.IsLobby)
                     msg = GetString("Message.HostLeftGameInLobby");
 
-                if (!OfficialAnticheatPolicy.Enabled || !AmongUsClient.Instance.AmHost)
+                if (!AmongUsClient.Instance.AmHost)
                 {
                     player.SetName(title);
                     DestroyableSingleton<HudManager>.Instance.Chat.AddChat(player, msg);
@@ -461,27 +460,9 @@ class OnPlayerLeftPatch
                 }
 
                 //On Become Host is called before OnPlayerLeft, so this is safe to use
-                if (AmongUsClient.Instance.AmHost && OfficialAnticheatPolicy.Enabled)
+                if (AmongUsClient.Instance.AmHost)
                 {
                     OfficialChat.Send(player, msg, title: title);
-                }
-                else if (AmongUsClient.Instance.AmHost)
-                {
-                    var writer = CustomRpcSender.Create("MessagesToSend", SendOption.None);
-                    writer.StartMessage(clientId);
-                    writer.StartRpc(player.NetId, (byte)RpcCalls.SetName)
-                        .Write(player.Data.NetId)
-                        .Write(title)
-                        .EndRpc();
-                    writer.StartRpc(player.NetId, (byte)RpcCalls.SendChat)
-                        .Write(msg)
-                        .EndRpc();
-                    writer.StartRpc(player.NetId, (byte)RpcCalls.SetName)
-                        .Write(player.Data.NetId)
-                        .Write(player.Data.PlayerName)
-                        .EndRpc();
-                    writer.EndMessage();
-                    writer.SendMessage();
                 }
                 Main.HostClientId = AmongUsClient.Instance.HostId;
                 var generation = OnGameJoinedPatch.Generation;

@@ -1,4 +1,3 @@
-using Hazel;
 using static TOHE.Options;
 using static TOHE.Translator;
 
@@ -93,28 +92,7 @@ internal class Spiritualist : RoleBase
 
             TargetArrow.Add(spiritualist, target.PlayerId);
 
-            if (OfficialAnticheatPolicy.Enabled)
-            {
-                OfficialChat.Send(target, GetString("SpiritualistNoticeMessage"), target.PlayerId, GetString("SpiritualistNoticeTitle"));
-            }
-            else
-            {
-                var writer = CustomRpcSender.Create("SpiritualistSendMessage", SendOption.None);
-                writer.StartMessage(target.GetClientId());
-                writer.StartRpc(target.NetId, (byte)RpcCalls.SetName)
-                    .Write(target.Data.NetId)
-                    .Write(GetString("SpiritualistNoticeTitle"))
-                    .EndRpc();
-                writer.StartRpc(target.NetId, (byte)RpcCalls.SendChat)
-                    .Write(GetString("SpiritualistNoticeMessage"))
-                    .EndRpc();
-                writer.StartRpc(target.NetId, (byte)RpcCalls.SetName)
-                    .Write(target.Data.NetId)
-                    .Write(target.Data.PlayerName)
-                    .EndRpc();
-                writer.EndMessage();
-                writer.SendMessage();
-            }
+            OfficialChat.Send(target, GetString("SpiritualistNoticeMessage"), target.PlayerId, GetString("SpiritualistNoticeTitle"));
         }
     }
 

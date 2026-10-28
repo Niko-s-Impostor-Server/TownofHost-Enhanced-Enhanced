@@ -2571,42 +2571,7 @@ class ChatUpdatePatch
         }
         Main.MessagesToSend.RemoveAt(0);
 
-        if (OfficialAnticheatPolicy.Enabled)
-        {
-            OfficialChat.Send(player, msg, sendTo, title);
-            __instance.timeSinceLastMessage = 0f;
-            return;
-        }
-
-        int clientId = sendTo == byte.MaxValue ? -1 : Utils.GetPlayerById(sendTo).GetClientId();
-        var name = player.Data.PlayerName;
-
-        //__instance.freeChatField.textArea.characterLimit = 999;
-
-        if (clientId == -1)
-        {
-            player.SetName(title);
-            DestroyableSingleton<HudManager>.Instance.Chat.AddChat(player, msg, false);
-            player.SetName(name);
-        }
-
-
-        var writer = CustomRpcSender.Create("MessagesToSend", SendOption.None);
-        writer.StartMessage(clientId);
-        writer.StartRpc(player.NetId, (byte)RpcCalls.SetName)
-            .Write(player.Data.NetId)
-            .Write(title)
-            .EndRpc();
-        writer.StartRpc(player.NetId, (byte)RpcCalls.SendChat)
-            .Write(msg)
-            .EndRpc();
-        writer.StartRpc(player.NetId, (byte)RpcCalls.SetName)
-            .Write(player.Data.NetId)
-            .Write(player.Data.PlayerName)
-            .EndRpc();
-        writer.EndMessage();
-        writer.SendMessage();
-
+        OfficialChat.Send(player, msg, sendTo, title);
         __instance.timeSinceLastMessage = 0f;
     }
 }
@@ -2676,7 +2641,7 @@ class RpcSendChatPatch
             DestroyableSingleton<HudManager>.Instance.Chat.AddChat(__instance, chatText);
         if (chatText.Contains("who", StringComparison.OrdinalIgnoreCase))
             DestroyableSingleton<UnityTelemetry>.Instance.SendWho();
-        MessageWriter messageWriter = AmongUsClient.Instance.StartImmediate(__instance.NetId, (byte)RpcCalls.SendChat, SendOption.None);
+        MessageWriter messageWriter = AmongUsClient.Instance.StartImmediate(__instance.NetId, (byte)RpcCalls.SendChat, SendOption.Reliable);
         messageWriter.Write(chatText);
         AmongUsClient.Instance.FinishImmediate(messageWriter);
         __result = true;

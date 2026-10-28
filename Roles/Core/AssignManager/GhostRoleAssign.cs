@@ -169,7 +169,6 @@ public static class GhostRoleAssign
             if (Options.SendRoleDescriptionFirstMeeting.GetBool())
             {
                 var host = PlayerControl.LocalPlayer;
-                var name = host.Data.PlayerName;
                 var lp = __instance;
                 var sb = new StringBuilder();
                 var conf = new StringBuilder();
@@ -181,36 +180,9 @@ public static class GhostRoleAssign
                 var cleared = conf.ToString();
                 conf.Clear().Append($"<size={ChatCommands.Csize}>" + $"<color={rlHex}>{Translator.GetString(role.ToString())} {Translator.GetString("Settings:")}</color>\n" + cleared + "</size>");
 
-                if (OfficialAnticheatPolicy.Enabled)
-                {
-                    string heading = Utils.ColorString(Utils.GetRoleColor(role), Translator.GetString("GhostTransformTitle"));
-                    OfficialChat.Send(host, sb.ToString(), __instance.PlayerId, heading);
-                    OfficialChat.Send(host, conf.ToString(), __instance.PlayerId, heading);
-                    return;
-                }
-
-                var writer = CustomRpcSender.Create("SendGhostRoleInfo", SendOption.None);
-                writer.StartMessage(__instance.GetClientId());
-                {
-                    writer.StartRpc(host.NetId, (byte)RpcCalls.SetName)
-                        .Write(host.Data.NetId)
-                        .Write(Utils.ColorString(Utils.GetRoleColor(role), Translator.GetString("GhostTransformTitle")))
-                        .EndRpc();
-                    writer.StartRpc(host.NetId, (byte)RpcCalls.SendChat)
-                        .Write(sb.ToString())
-                        .EndRpc();
-                    writer.StartRpc(host.NetId, (byte)RpcCalls.SendChat)
-                        .Write(conf.ToString())
-                        .EndRpc();
-                    writer.StartRpc(host.NetId, (byte)RpcCalls.SetName)
-                        .Write(host.Data.NetId)
-                        .Write(name)
-                        .EndRpc();
-                }
-                writer.EndMessage();
-                writer.SendMessage();
-
-                // Utils.SendMessage(sb.ToString(), __instance.PlayerId, Utils.ColorString(Utils.GetRoleColor(role), GetString("GhostTransformTitle")));
+                string heading = Utils.ColorString(Utils.GetRoleColor(role), Translator.GetString("GhostTransformTitle"));
+                OfficialChat.Send(host, sb.ToString(), __instance.PlayerId, heading);
+                OfficialChat.Send(host, conf.ToString(), __instance.PlayerId, heading);
 
             }
 

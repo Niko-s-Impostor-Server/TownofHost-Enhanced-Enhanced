@@ -48,8 +48,8 @@ internal static class OfficialChat
                 if (target < 0) continue; // A missing private recipient must never become a broadcast.
                 if (seer.IsModded())
                 {
-                    // The transport already bounds and fragments large logical payloads. Never send
-                    // native SetName/QuickChat to mod clients, including in a mixed broadcast.
+                    // Mod clients receive SystemChat; official packed mode also fragments
+                    // large payloads. Never send native SetName/QuickChat to mod clients.
                     try
                     {
                         CustomRpcTransport.SendPayload(CustomRPC.SystemChat, writer =>
@@ -70,33 +70,60 @@ internal static class OfficialChat
                 try
                 {
                     // Preflight bounded names before creating a Hazel buffer. Large headings become body text.
-                    if (Encoding.UTF8.GetByteCount(actorRestore) > HardPacketBytes
-                        || Encoding.UTF8.GetByteCount(carrierRestore) > HardPacketBytes)
+                    int inputNameBytes = Encoding.UTF8.GetByteCount(heading);
+                    int actorRestoreBytes = Encoding.UTF8.GetByteCount(actorRestore);
+                    int carrierRestoreBytes = Encoding.UTF8.GetByteCount(carrierRestore);
+                    int textBytes = Encoding.UTF8.GetByteCount(body);
+                    if (actorRestoreBytes > HardPacketBytes || carrierRestoreBytes > HardPacketBytes)
                         throw new InvalidOperationException("The recipient name restoration exceeds the packet budget.");
-                    if (Encoding.UTF8.GetByteCount(heading) > 256)
+                    if (inputNameBytes > 256)
                     {
                         body = heading + "\n" + body;
                         heading = "TOHE";
                     }
-                    // Worst-case packed uint and UTF-8 string prefixes are five bytes.
-                    // Include the reliable transport header, root, every child, and both restore values
-                    // before allocating a writer; the actual serialized length is checked as well.
-                    int overhead = actor == carrier ? 62 + Encoding.UTF8.GetByteCount(carrierRestore)
-                        : 98 + Encoding.UTF8.GetByteCount(heading) + Encoding.UTF8.GetByteCount(actorRestore)
-                            + Encoding.UTF8.GetByteCount(carrierRestore);
-                    int budget = SoftPacketBytes - overhead;
-                    if (budget <= 0) budget = HardPacketBytes - overhead;
-                    if (budget <= 0) throw new InvalidOperationException("The name restoration leaves no message budget.");
                     string padding = TitlePadding(heading);
+                    // An empty-body transaction measures the actual reliable header, target,
+                    // name changes, QuickChat payload, and both name restorations.
+                    int available;
+                    using (var baseline = BuildTransaction(actor, carrier, target, heading, padding, actorRestore, carrierRestore))
+                        available = HardPacketBytes - baseline.Writer.Length;
+                    if (available <= 0) throw new InvalidOperationException("The name restoration leaves no message budget.");
+
+                    // Hazel's string length prefix can grow as the body grows. Measure that
+                    // change with the same writer serializer before setting the page limit.
+                    var probe = MessageWriter.Get(SendOption.Reliable);
+                    try
+                    {
+                        int start = probe.Length;
+                        probe.Write(padding);
+                        int paddedStringLength = probe.Length - start;
+                        probe.Clear(SendOption.Reliable);
+                        start = probe.Length;
+                        probe.Write(padding + new string('A', available));
+                        int prefixGrowth = (probe.Length - start) - paddedStringLength - available;
+                        available -= prefixGrowth;
+                    }
+                    finally { probe.Recycle(); }
+                    if (available <= 0) throw new InvalidOperationException("The name restoration leaves no message budget.");
+                    Logger.Test($"recipient={seer.PlayerId}, inputNameUtf8Bytes={inputNameBytes}, " +
+                        $"setHeadingUtf8Bytes={(actor == carrier ? 0 : Encoding.UTF8.GetByteCount(heading))}, " +
+                        $"actorRestoreUtf8Bytes={actorRestoreBytes}, carrierRestoreUtf8Bytes={carrierRestoreBytes}, " +
+                        $"textUtf8Bytes={textBytes}, paginatedBodyUtf8Bytes={Encoding.UTF8.GetByteCount(body)}, " +
+                        $"pageLimitUtf8Bytes={available}", "OfficialChat.Pagination");
                     // Materialize all pages before sending so a later invalid token cannot leave
                     // a partially delivered message. Padding is repeated, outside the rich text.
-                    var pages = Paginate(body, budget - Encoding.UTF8.GetByteCount(padding)).ToArray();
+                    var pages = Paginate(body, available).ToArray();
+                    Logger.Test($"recipient={seer.PlayerId}, pageCount={pages.Length}", "OfficialChat.Pagination");
+                    int pageIndex = 0;
                     foreach (string page in pages)
                     {
                         if (!Current()) return;
                         using var packet = BuildTransaction(actor, carrier, target, heading, padding + page, actorRestore, carrierRestore);
                         if (packet.Writer.Length > HardPacketBytes)
                             throw new InvalidOperationException("The complete chat transaction exceeds 1200 bytes.");
+                        Logger.Test($"recipient={seer.PlayerId}, page={++pageIndex}/{pages.Length}, " +
+                            $"setCarrierNameUtf8Bytes={Encoding.UTF8.GetByteCount(padding + page)}, " +
+                            $"packetBytes={packet.Writer.Length}", "OfficialChat.Pagination");
                         OfficialNetworkSend.Send(client, packet.Writer);
                     }
                 }
