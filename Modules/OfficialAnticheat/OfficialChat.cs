@@ -14,21 +14,28 @@ internal static class OfficialChat
     private static readonly object TransactionLock = new();
     private const int SoftPacketBytes = 1000;
     private const int HardPacketBytes = 1200;
+    internal readonly record struct SentPage(byte SpeakerId, PlayerControl Recipient, string Heading, string Text);
     internal static PlayerControl DisplayActor { get; private set; }
     internal static string DisplayTitle { get; private set; }
 
-    public static void Send(PlayerControl actor, string text, byte recipient = byte.MaxValue, string title = null)
+    // Transport only. Higher-level modules decide whether a delivered page belongs in history.
+    internal static SentPage[] Send(PlayerControl actor, string text, byte recipient = byte.MaxValue, string title = null,
+        bool preserveDeadActor = false)
     {
         var client = AmongUsClient.Instance;
-        if (client == null || !client.AmHost || actor?.Data == null) return;
+        if (client == null || !client.AmHost || actor?.Data == null) return [];
+        var sentPages = new List<SentPage>();
         lock (TransactionLock)
         {
-            // A dead actor's chat is hidden from living recipients by vanilla AddChat.
             title ??= actor.Data.PlayerName;
-            actor = Main.AllPlayerControls.Where(p => p?.Data != null && !p.Data.Disconnected && !p.Data.IsDead)
-                .OrderBy(p => p.PlayerId).FirstOrDefault(p => p == actor)
-                ?? Main.AllPlayerControls.Where(p => p?.Data != null && !p.Data.Disconnected && !p.Data.IsDead)
-                    .OrderBy(p => p.PlayerId).FirstOrDefault() ?? actor;
+            byte speakerId = actor.PlayerId;
+            // System messages need a living carrier; ghost chat preserves its dead sender
+            // because ChatManager sends it only to recipients whose Data.IsDead is true.
+            if (!preserveDeadActor)
+                actor = Main.AllPlayerControls.Where(p => p?.Data != null && !p.Data.Disconnected && !p.Data.IsDead)
+                    .OrderBy(p => p.PlayerId).FirstOrDefault(p => p == actor)
+                    ?? Main.AllPlayerControls.Where(p => p?.Data != null && !p.Data.Disconnected && !p.Data.IsDead)
+                        .OrderBy(p => p.PlayerId).FirstOrDefault() ?? actor;
             var carrier = Main.AllPlayerControls.Where(p => p?.Data != null && !p.Data.Disconnected && p != actor)
                 .OrderBy(p => p.PlayerId).FirstOrDefault() ?? actor;
             var context = OfficialSessionContext.Capture();
@@ -38,10 +45,12 @@ internal static class OfficialChat
                 && (recipient == byte.MaxValue || p.PlayerId == recipient)).OrderBy(p => p.PlayerId).ToArray();
             foreach (var seer in recipients)
             {
-                if (!Current()) return;
+                if (!Current()) return sentPages.ToArray();
                 if (seer.AmOwner)
                 {
-                    ShowLocal(actor, text, title);
+                    var (localHeading, localPages) = ShowLocal(actor, text, title);
+                    foreach (var page in localPages)
+                        sentPages.Add(new(speakerId, seer, localHeading, page));
                     continue;
                 }
                 int target = seer.GetClientId();
@@ -52,12 +61,15 @@ internal static class OfficialChat
                     // large payloads. Never send native SetName/QuickChat to mod clients.
                     try
                     {
+                        var (modHeading, modPages) = LocalPages(text ?? string.Empty, title ?? string.Empty);
                         CustomRpcTransport.SendPayload(CustomRPC.SystemChat, writer =>
                         {
                             writer.Write(actor.PlayerId);
                             writer.Write(title ?? string.Empty);
                             writer.Write(text ?? string.Empty);
                         }, target);
+                        foreach (var page in modPages)
+                            sentPages.Add(new(speakerId, seer, modHeading, page));
                     }
                     catch (Exception error)
                     {
@@ -117,7 +129,7 @@ internal static class OfficialChat
                     int pageIndex = 0;
                     foreach (string page in pages)
                     {
-                        if (!Current()) return;
+                        if (!Current()) return sentPages.ToArray();
                         using var packet = BuildTransaction(actor, carrier, target, heading, padding + page, actorRestore, carrierRestore);
                         if (packet.Writer.Length > HardPacketBytes)
                             throw new InvalidOperationException("The complete chat transaction exceeds 1200 bytes.");
@@ -125,6 +137,7 @@ internal static class OfficialChat
                             $"setCarrierNameUtf8Bytes={Encoding.UTF8.GetByteCount(padding + page)}, " +
                             $"packetBytes={packet.Writer.Length}", "OfficialChat.Pagination");
                         OfficialNetworkSend.Send(client, packet.Writer);
+                        sentPages.Add(new(speakerId, seer, heading, page));
                     }
                 }
                 catch (Exception error)
@@ -134,25 +147,22 @@ internal static class OfficialChat
                 }
             }
         }
+        return sentPages.ToArray();
     }
 
-    private static string VisibleName(PlayerControl actor, PlayerControl seer)
+    internal static string VisibleName(PlayerControl actor, PlayerControl seer)
         // Role-name views can survive the round; lobby chat must restore current tags.
         => !GameStates.IsLobby && Main.LastNotifyNames.TryGetValue((actor.PlayerId, seer.PlayerId), out var name)
             ? name : actor.Data.PlayerName;
 
-    internal static void ShowLocal(PlayerControl actor, string text, string title)
+    internal static (string Heading, string[] Pages) ShowLocal(PlayerControl actor, string text, string title, bool censor = false,
+        bool textHasNamePadding = false)
     {
-        if (actor?.Data == null || !DestroyableSingleton<HudManager>.Instance) return;
+        if (actor?.Data == null || !DestroyableSingleton<HudManager>.Instance) return (title ?? string.Empty, []);
         title ??= actor.Data.PlayerName;
         text ??= string.Empty;
-        if (Encoding.UTF8.GetByteCount(title) > 256)
-        {
-            text = title + "\n" + text;
-            title = "TOHE";
-        }
-        string padding = TitlePadding(title);
-        var pages = Paginate(text, SoftPacketBytes - Encoding.UTF8.GetByteCount(padding)).ToArray();
+        var (heading, pages) = LocalPages(text, title, includeTitlePadding: !textHasNamePadding);
+        string padding = textHasNamePadding ? string.Empty : TitlePadding(heading);
         var previousActor = DisplayActor;
         string previousTitle = DisplayTitle;
         try
@@ -160,11 +170,24 @@ internal static class OfficialChat
             // Override only the bubble's name at the native presentation boundary. Player data,
             // cosmetics, notifications and name caches continue to see the real player name.
             DisplayActor = actor;
-            DisplayTitle = title;
+            DisplayTitle = heading;
             foreach (string page in pages)
-                DestroyableSingleton<HudManager>.Instance.Chat.AddChat(actor, padding + page, false);
+                DestroyableSingleton<HudManager>.Instance.Chat.AddChat(actor, padding + page, censor);
         }
         finally { DisplayActor = previousActor; DisplayTitle = previousTitle; }
+        return (heading, pages);
+    }
+
+    private static (string Heading, string[] Pages) LocalPages(string text, string title, bool includeTitlePadding = true)
+    {
+        if (Encoding.UTF8.GetByteCount(title) > 256)
+        {
+            text = title + "\n" + text;
+            title = "TOHE";
+        }
+        string padding = includeTitlePadding ? TitlePadding(title) : string.Empty;
+        var pages = Paginate(text, SoftPacketBytes - Encoding.UTF8.GetByteCount(padding)).ToArray();
+        return (title, pages);
     }
 
     // Vanilla positions the body at a fixed Y even though its background includes the full

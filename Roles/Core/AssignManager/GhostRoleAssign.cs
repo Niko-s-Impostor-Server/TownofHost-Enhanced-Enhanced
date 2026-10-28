@@ -1,5 +1,6 @@
 ﻿using Hazel;
 using System.Text;
+using TOHE.Modules.ChatManager;
 
 namespace TOHE.Roles.Core.AssignManager;
 
@@ -181,8 +182,8 @@ public static class GhostRoleAssign
                 conf.Clear().Append($"<size={ChatCommands.Csize}>" + $"<color={rlHex}>{Translator.GetString(role.ToString())} {Translator.GetString("Settings:")}</color>\n" + cleared + "</size>");
 
                 string heading = Utils.ColorString(Utils.GetRoleColor(role), Translator.GetString("GhostTransformTitle"));
-                OfficialChat.Send(host, sb.ToString(), __instance.PlayerId, heading);
-                OfficialChat.Send(host, conf.ToString(), __instance.PlayerId, heading);
+                ChatManager.SendSystem(host, sb.ToString(), __instance.PlayerId, heading);
+                ChatManager.SendSystem(host, conf.ToString(), __instance.PlayerId, heading);
 
             }
 

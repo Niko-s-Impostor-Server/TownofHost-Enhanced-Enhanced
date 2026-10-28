@@ -1,4 +1,6 @@
 using Hazel;
+using AmongUs.QuickChat;
+using Il2CppInterop.Runtime.InteropTypes.Arrays;
 using System;
 using System.Security.Cryptography;
 using System.Text;
@@ -10,24 +12,175 @@ namespace TOHE.Modules.ChatManager
     public class ChatManager
     {
         public static bool cancel = false;
-        private static readonly List<Dictionary<byte, string>> chatHistory = [];
-        private static readonly Dictionary<byte, string> LastSystemChatMsg = [];
-        private const int maxHistorySize = 20;
+        private static readonly ChatViewHistory history = new();
+        internal readonly record struct View(PlayerControl Recipient, ChatViewHistory.Entry[] Entries);
         public static List<string> ChatSentBySystem = [];
         public static void ResetHistory()
         {
-            chatHistory.Clear();
-            LastSystemChatMsg.Clear();
+            history.Clear();
             ChatSentBySystem.Clear();
             cancel = false;
         }
-        public static void ClearLastSysMsg()
+        internal static void RemoveRecipient(int clientId) => history.Remove(clientId);
+
+        internal static int BufferSize => DestroyableSingleton<HudManager>.Instance.Chat.chatBubblePool.poolSize;
+
+        internal static void SendSystem(PlayerControl actor, string text, byte recipient = byte.MaxValue, string title = null,
+            bool recordHistory = true)
         {
-            LastSystemChatMsg.Clear();
+            var pages = OfficialChat.Send(actor, text, recipient, title);
+            if (!recordHistory) return;
+            foreach (var page in pages) RecordSystemPage(page);
         }
-        public static void AddSystemChatHistory(byte playerId, string msg)
+
+        internal static void SendPlayerText(PlayerControl sender, string text)
         {
-            LastSystemChatMsg[playerId] = msg;
+            if (sender?.Data == null) return;
+            if (!sender.IsAlive())
+            {
+                foreach (var recipient in Main.AllPlayerControls.Where(p => p?.Data != null && !p.Data.Disconnected && p.Data.IsDead))
+                    OfficialChat.Send(sender, text, recipient.PlayerId, preserveDeadActor: true);
+                return;
+            }
+
+            var pages = OfficialChat.Send(sender, text);
+            foreach (var page in pages) RecordPlayerPage(page);
+        }
+
+        private static void RecordSystemPage(OfficialChat.SentPage page)
+        {
+            int clientId = page.Recipient.GetClientId();
+            if (clientId < 0) return;
+            history.Add(clientId, new(ChatViewHistory.Kind.System, page.SpeakerId, page.Heading, page.Text, [], false), BufferSize);
+        }
+
+        internal static void RecordPlayerChat(PlayerControl sender, string text, bool textHasNamePadding = false)
+            => RecordPlayerMessage(sender, ChatViewHistory.Kind.PlayerText, text, [], textHasNamePadding);
+
+        internal static void RecordQuickChat(PlayerControl sender, QuickChatPhraseBuilderResult data)
+        {
+            var writer = MessageWriter.Get(SendOption.Reliable);
+            try
+            {
+                QuickChatNetData.Serialize(data, writer);
+                RecordQuickChat(sender, OfficialPacketBuilder.Snapshot(writer));
+            }
+            finally { writer.Recycle(); }
+        }
+
+        internal static void RecordQuickChat(PlayerControl sender, byte[] payload)
+            => RecordPlayerMessage(sender, ChatViewHistory.Kind.QuickChat, string.Empty, payload, false);
+
+        private static void RecordPlayerMessage(PlayerControl sender, ChatViewHistory.Kind type, string text, byte[] payload,
+            bool textHasNamePadding)
+        {
+            if (!AmongUsClient.Instance.AmHost || sender?.Data == null || !sender.IsAlive()) return;
+            int capacity = BufferSize;
+            foreach (var recipient in Main.AllPlayerControls.Where(p => p?.Data != null && !p.Data.Disconnected))
+            {
+                int clientId = recipient.GetClientId();
+                if (clientId < 0) continue;
+                history.Add(clientId, new(type, sender.PlayerId, OfficialChat.VisibleName(sender, recipient), text, payload,
+                    textHasNamePadding), capacity);
+            }
+        }
+
+        private static void RecordPlayerPage(OfficialChat.SentPage page)
+        {
+            int clientId = page.Recipient.GetClientId();
+            if (clientId < 0) return;
+            history.Add(clientId, new(ChatViewHistory.Kind.PlayerText, page.SpeakerId, page.Heading, page.Text, [], false), BufferSize);
+        }
+
+        internal static View[] SnapshotViews() => Main.AllPlayerControls
+            .Where(p => p?.Data != null && !p.Data.Disconnected && p.GetClientId() >= 0)
+            .OrderBy(p => p.PlayerId)
+            .Select(p => new View(p, history.Snapshot(p.GetClientId())))
+            .ToArray();
+
+        internal static void Replay(View view)
+        {
+            foreach (var entry in view.Entries)
+            {
+                var actor = entry.SpeakerId.GetPlayer();
+                if (actor?.Data == null || actor.Data.Disconnected || !actor.IsAlive())
+                    actor = Main.AllPlayerControls.FirstOrDefault(p => p?.Data != null && !p.Data.Disconnected && p.IsAlive())
+                        ?? view.Recipient;
+                if (actor?.Data == null) continue;
+                if (entry.Type == ChatViewHistory.Kind.System)
+                    OfficialChat.Send(actor, entry.Text, view.Recipient.PlayerId, entry.Title);
+                else ReplayPlayer(actor, view.Recipient, entry);
+            }
+        }
+
+        private static void ReplayPlayer(PlayerControl actor, PlayerControl seer, ChatViewHistory.Entry entry)
+        {
+            bool quickChat = entry.Type == ChatViewHistory.Kind.QuickChat;
+            if (seer.AmOwner)
+            {
+                string text = quickChat ? QuickChatText(entry.QuickChatPayload) : entry.Text;
+                OfficialChat.ShowLocal(actor, text, entry.Title, censor: !quickChat,
+                    textHasNamePadding: entry.TextHasNamePadding);
+                return;
+            }
+
+            int target = seer.GetClientId();
+            if (target < 0) return;
+            if (seer.IsModded())
+            {
+                CustomRpcTransport.SendPayload(CustomRPC.ReplayPlayerChat, writer =>
+                {
+                    writer.Write(quickChat);
+                    writer.Write(actor.PlayerId);
+                    writer.Write(entry.Title);
+                    writer.Write(entry.TextHasNamePadding);
+                    if (quickChat)
+                    {
+                        writer.WritePacked(entry.QuickChatPayload.Length);
+                        foreach (byte value in entry.QuickChatPayload) writer.Write(value);
+                    }
+                    else writer.Write(entry.Text);
+                }, target);
+                return;
+            }
+
+            using var owner = new OfficialPacketBuilder.BoundedWriter(SendOption.Reliable, bounded: false);
+            var writer = owner.Writer;
+            writer.StartMessage(6);
+            writer.Write(AmongUsClient.Instance.GameId);
+            writer.WritePacked(target);
+            WriteName(writer, actor, entry.Title);
+            writer.StartMessage(2);
+            writer.WritePacked(actor.NetId);
+            writer.Write((byte)(quickChat ? RpcCalls.SendQuickChat : RpcCalls.SendChat));
+            if (quickChat) writer.Write(new Il2CppStructArray<byte>(entry.QuickChatPayload));
+            else writer.Write(entry.Text);
+            writer.EndMessage();
+            WriteName(writer, actor, OfficialChat.VisibleName(actor, seer));
+            writer.EndMessage();
+            if (writer.Length > OfficialPacketCodec.HardLimit)
+            {
+                if (!quickChat) OfficialChat.Send(actor, entry.Text, seer.PlayerId, entry.Title);
+                return;
+            }
+            OfficialNetworkSend.Send(AmongUsClient.Instance, writer);
+        }
+
+        internal static string QuickChatText(byte[] payload)
+        {
+            var reader = MessageReader.Get(new Il2CppStructArray<byte>(payload));
+            try { return QuickChatNetData.Deserialize(reader)?.ToChatText() ?? string.Empty; }
+            finally { reader.Recycle(); }
+        }
+
+        private static void WriteName(MessageWriter writer, PlayerControl player, string name)
+        {
+            writer.StartMessage(2);
+            writer.WritePacked(player.NetId);
+            writer.Write((byte)RpcCalls.SetName);
+            writer.Write(player.Data.NetId);
+            writer.Write(name);
+            writer.EndMessage();
         }
         public static bool CheckCommond(ref string msg, string command, bool exact = true)
         {
@@ -98,7 +251,6 @@ namespace TOHE.Modules.ChatManager
             if (HostOnlyChatCommand.IsActive || HostOnlyChatCommand.IsEnvelope(message)) return;
             int operate = 0; // 1:ID 2:猜测
             string msg = message;
-            string playername = player.GetNameWithRole();
             message = message.ToLower().TrimStart().TrimEnd();
 
             if (GameStates.IsInGame) operate = 3;
@@ -141,19 +293,6 @@ namespace TOHE.Modules.ChatManager
                     }
                     return;
                 }
-                if (!player.IsAlive()) return;
-                message = msg;
-                //Logger.Warn($"Logging msg : {message}","Checking Exile");
-                Dictionary<byte, string> newChatEntry = new()
-                    {
-                        { player.PlayerId, message }
-                    };
-                chatHistory.Add(newChatEntry);
-
-                if (chatHistory.Count > maxHistorySize)
-                {
-                    chatHistory.RemoveAt(0);
-                }
                 cancel = false;
             }
         }
@@ -162,43 +301,18 @@ namespace TOHE.Modules.ChatManager
         {
             if (HostOnlyChatCommand.IsActive) return;
             if (!AmongUsClient.Instance.AmHost || !GameStates.IsModHost) return;
-            int bufferSize = DestroyableSingleton<HudManager>.Instance.Chat.chatBubblePool.poolSize;
-            var history = GetReplayableHistory(bufferSize);
-            //This should never function for non host
-            if (GameStates.IsExilling && history.Length < bufferSize)
+            int bufferSize = BufferSize;
+            foreach (var view in SnapshotViews())
             {
-                var firstAlivePlayer = Main.AllAlivePlayerControls.OrderBy(x => x.PlayerId).FirstOrDefault();
-                if (firstAlivePlayer == null) return;
-
-                var title = "<color=#aaaaff>" + GetString("DefaultSystemMessageTitle") + "</color>";
-                string spamMsg = GetString("ExileSpamMsg");
-
-                for (int i = 0; i < bufferSize - history.Length; i++)
+                if (GameStates.IsExilling && view.Entries.Length < bufferSize)
                 {
-                    OfficialChat.Send(firstAlivePlayer, spamMsg, title: title);
+                    var actor = Main.AllAlivePlayerControls.OrderBy(x => x.PlayerId).FirstOrDefault() ?? view.Recipient;
+                    var title = "<color=#aaaaff>" + GetString("DefaultSystemMessageTitle") + "</color>";
+                    for (int i = 0; i < bufferSize - view.Entries.Length; i++)
+                        OfficialChat.Send(actor, GetString("ExileSpamMsg"), view.Recipient.PlayerId, title);
                 }
-            }
-            foreach (var (senderPlayer, senderMessage) in history)
-            {
-                OfficialChat.Send(senderPlayer, senderMessage);
-            }
-            foreach (var playerId in LastSystemChatMsg.Keys.ToArray())
-            {
-                var pc = playerId.GetPlayer();
-                if (pc == null && playerId != byte.MaxValue) continue;
-                var title = "<color=#FF0000>" + GetString("LastMessageReplay") + "</color>";
-                Utils.SendMessage(LastSystemChatMsg[playerId], playerId, title: title, noReplay: true);
+                Replay(view);
             }
         }
-
-        internal static int GetChatBufferFillCount()
-        {
-            int bufferSize = DestroyableSingleton<HudManager>.Instance.Chat.chatBubblePool.poolSize;
-            return bufferSize - GetReplayableHistory(bufferSize).Length;
-        }
-
-        private static (PlayerControl Sender, string Message)[] GetReplayableHistory(int bufferSize) =>
-            chatHistory.Select(entry => (Sender: entry.Keys.First().GetPlayer(), Message: entry.Values.First()))
-                .Where(entry => entry.Sender?.Data != null).TakeLast(bufferSize).ToArray();
     }
 }

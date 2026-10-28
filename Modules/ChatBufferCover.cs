@@ -11,7 +11,8 @@ internal static class ChatBufferCover
     {
         if (HostOnlyChatCommand.IsActive) return;
 
-        int fillCount = ChatManager.GetChatBufferFillCount();
+        int bufferSize = ChatManager.BufferSize;
+        var views = ChatManager.SnapshotViews();
         var rd = IRandom.Instance;
         string[] guessCommands = ["bet", "bt", "guess", "gs", "shoot", "st", "赌", "猜", "审判", "tl", "判", "审"];
         string[] compareCommands = ["cmp", "compare", "比较"];
@@ -23,33 +24,37 @@ internal static class ChatBufferCover
         ChatUpdatePatch.DoBlockChat = true;
         try
         {
-            for (int i = 0; i < fillCount; i++)
+            foreach (var view in views)
             {
-                string msg = "/";
-                if (kind == Kind.President)
-                    msg += rd.Next(1, 100) < 20 ? "finish" : "reveal";
-                else if (rd.Next(1, 100) < 20)
-                    msg += "id";
-                else if (kind == Kind.Guess)
+                var fillerActor = Main.AllAlivePlayerControls.OrderBy(x => x.PlayerId).FirstOrDefault() ?? view.Recipient;
+                for (int i = 0; i < bufferSize - view.Entries.Length; i++)
                 {
-                    msg += guessCommands[rd.Next(0, guessCommands.Length - 1)];
-                    msg += rd.Next(1, 100) < 50 ? string.Empty : " ";
-                    msg += rd.Next(0, 15);
-                    msg += rd.Next(1, 100) < 50 ? string.Empty : " ";
-                    CustomRoles role = roles.RandomElement();
-                    msg += rd.Next(1, 100) < 50 ? string.Empty : " ";
-                    msg += Utils.GetRoleName(role);
-                }
-                else if (kind == Kind.Compare)
-                    msg += compareCommands[rd.Next(0, compareCommands.Length - 1)] + " " + rd.Next(0, 15) + " " + rd.Next(0, 15);
-                else
-                    msg += duelCommands[rd.Next(0, duelCommands.Length - 1)] + " " + rd.Next(0, 3);
+                    string msg = "/";
+                    if (kind == Kind.President)
+                        msg += rd.Next(1, 100) < 20 ? "finish" : "reveal";
+                    else if (rd.Next(1, 100) < 20)
+                        msg += "id";
+                    else if (kind == Kind.Guess)
+                    {
+                        msg += guessCommands[rd.Next(guessCommands.Length)];
+                        msg += rd.Next(1, 100) < 50 ? string.Empty : " ";
+                        msg += rd.Next(0, 15);
+                        msg += rd.Next(1, 100) < 50 ? string.Empty : " ";
+                        CustomRoles role = roles[rd.Next(roles.Length)];
+                        msg += rd.Next(1, 100) < 50 ? string.Empty : " ";
+                        msg += Utils.GetRoleName(role);
+                    }
+                    else if (kind == Kind.Compare)
+                        msg += compareCommands[rd.Next(compareCommands.Length)] + " " + rd.Next(0, 15) + " " + rd.Next(0, 15);
+                    else
+                        msg += duelCommands[rd.Next(duelCommands.Length)] + " " + rd.Next(0, 3);
 
-                OfficialChat.Send(Main.AllAlivePlayerControls.RandomElement(), msg);
+                    OfficialChat.Send(fillerActor, msg, view.Recipient.PlayerId);
+                }
+                ChatManager.Replay(view);
             }
         }
         finally { ChatUpdatePatch.DoBlockChat = false; }
 
-        ChatManager.SendPreviousMessagesToAll();
     }
 }

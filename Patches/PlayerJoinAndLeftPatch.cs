@@ -5,6 +5,7 @@ using InnerNet;
 using System;
 using System.Text.RegularExpressions;
 using TOHE.Modules;
+using TOHE.Modules.ChatManager;
 using TOHE.Patches;
 using TOHE.Roles.Core.AssignManager;
 using TOHE.Roles.Crewmate;
@@ -349,6 +350,7 @@ class OnPlayerLeftPatch
     static void Prefix([HarmonyArgument(0)] ClientData data)
     {
         StartingProcessing = true;
+        if (data != null) ChatManager.RemoveRecipient(data.Id);
         LeftPlayerId = data?.Character?.PlayerId ?? byte.MaxValue;
 
         if (data?.Character == null) return;
@@ -378,7 +380,7 @@ class OnPlayerLeftPatch
             // Remove messages sending to left player
             for (int i = 0; i < Main.MessagesToSend.Count; i++)
             {
-                var (msg, sendTo, title) = Main.MessagesToSend[i];
+                var (msg, sendTo, title, noReplay) = Main.MessagesToSend[i];
                 if (sendTo == data.Character.PlayerId)
                 {
                     Main.MessagesToSend.RemoveAt(i);
@@ -462,7 +464,7 @@ class OnPlayerLeftPatch
                 //On Become Host is called before OnPlayerLeft, so this is safe to use
                 if (AmongUsClient.Instance.AmHost)
                 {
-                    OfficialChat.Send(player, msg, title: title);
+                    ChatManager.SendSystem(player, msg, title: title);
                 }
                 Main.HostClientId = AmongUsClient.Instance.HostId;
                 var generation = OnGameJoinedPatch.Generation;

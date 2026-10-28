@@ -118,7 +118,7 @@ public static class Utils
         {
             if (OfficialAnticheatPolicy.Enabled)
             {
-                OfficialChat.Send(player, GetString("NotifyGameEnding"), player.PlayerId);
+                ChatManager.SendSystem(player, GetString("NotifyGameEnding"), player.PlayerId, recordHistory: false);
                 continue;
             }
             var writer = AmongUsClient.Instance.StartImmediate(player.NetId, (byte)RpcCalls.SendChat, SendOption.Reliable, player.OwnerId);
@@ -1520,7 +1520,7 @@ public static class Utils
         {
             if (!OfficialAnticheatPolicy.Enabled && ShouldSplit && text.Length > 1200)
             {
-                text.SplitMessage().Do(x => SendMessage(x, sendTo, title));
+                text.SplitMessage().Do(x => SendMessage(x, sendTo, title, logforChatManager, noReplay));
                 return;
             }
             //else if (text.Length > 1200 && (!GetPlayerById(sendTo).IsModClient()))
@@ -1533,13 +1533,10 @@ public static class Utils
             Logger.Warn($"Error after try split the msg {text} at: {exx}", "Utils.SendMessage.SplitMessage");
         }
 
-        // set noReplay to false when you want to send previous sys msg or do not want to add a sys msg in the history
-        if (!noReplay && GameStates.IsInGame) ChatManager.AddSystemChatHistory(sendTo, text);
-
         if (!logforChatManager)
             ChatManager.AddToHostMessage(text.RemoveHtmlTagsTemplate());
 
-        Main.MessagesToSend.Add((text.RemoveHtmlTagsTemplate(), sendTo, title));
+        Main.MessagesToSend.Add((text.RemoveHtmlTagsTemplate(), sendTo, title, noReplay));
     }
     public static bool CheckColorHex(string ColorCode)
     {
@@ -2300,7 +2297,6 @@ public static class Utils
         try
         {
             PhantomRolePatch.AfterMeeting();
-            ChatManager.ClearLastSysMsg();
             FallFromLadder.Reset();
 
             if (Diseased.IsEnable) Diseased.AfterMeetingTasks();

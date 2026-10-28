@@ -3,6 +3,7 @@ using Hazel;
 using InnerNet;
 using System;
 using TOHE.Modules;
+using TOHE.Modules.ChatManager;
 using TOHE.Patches;
 using TOHE.Roles.AddOns.Impostor;
 using TOHE.Roles.Core;
@@ -124,6 +125,7 @@ enum CustomRPC : uint
     // 194 was the removed SetNativeRole RPC; do not reuse it.
     SystemChat = 195,
     AntiBlackoutUnavailable,
+    ReplayPlayerChat,
 }
 public enum Sounds
 {
@@ -212,12 +214,20 @@ internal class RPCHandlerPatch
                 Logger.Info($"{__instance.GetNameWithRole().RemoveHtmlTags()}:{text.RemoveHtmlTags()}", "ReceiveChat");
                 ChatCommands.OnReceiveChat(__instance, text, out var canceled);
                 if (canceled) return false;
+                if (AmongUsClient.Instance.AmHost && !__instance.AmOwner)
+                    ChatManager.RecordPlayerChat(__instance, text,
+                        textHasNamePadding: !OfficialAnticheatPolicy.Enabled && __instance.IsModded());
                 break;
             case RpcCalls.SendQuickChat:
                 Logger.Info($"{__instance.GetNameWithRole().RemoveHtmlTags()}:Some message from quick chat", "ReceiveChat");
-                if (OfficialAnticheatPolicy.Enabled) break;
-                ChatCommands.OnReceiveChat(__instance, "Some message from quick chat", out var canceledQuickChat);
-                if (canceledQuickChat) return false;
+                var quickPayload = new byte[subReader.BytesRemaining];
+                for (int i = 0; i < quickPayload.Length; i++) quickPayload[i] = subReader.ReadByte();
+                if (!OfficialAnticheatPolicy.Enabled)
+                {
+                    ChatCommands.OnReceiveChat(__instance, "Some message from quick chat", out var canceledQuickChat);
+                    if (canceledQuickChat) return false;
+                }
+                if (AmongUsClient.Instance.AmHost && !__instance.AmOwner) ChatManager.RecordQuickChat(__instance, quickPayload);
                 break;
             case RpcCalls.StartMeeting:
                 var p = Utils.GetPlayerById(subReader.ReadByte());
@@ -521,6 +531,25 @@ internal class RPCHandlerPatch
                 string body = reader.ReadString();
                 if (reader.BytesRemaining != 0) throw new System.IO.InvalidDataException("Invalid system chat payload");
                 if (isLocalRecipient) OfficialChat.ShowLocal(Utils.GetPlayerById(speakerId) ?? __instance, body, heading);
+                break;
+            case CustomRPC.ReplayPlayerChat:
+                bool quickChat = reader.ReadBoolean();
+                byte replaySpeakerId = reader.ReadByte();
+                string replayTitle = reader.ReadString();
+                bool textHasNamePadding = reader.ReadBoolean();
+                string replayText;
+                if (quickChat)
+                {
+                    int length = reader.ReadPackedInt32();
+                    if (length < 0 || length > reader.BytesRemaining) throw new System.IO.InvalidDataException("Invalid quick chat replay length");
+                    var payload = new byte[length];
+                    for (int i = 0; i < length; i++) payload[i] = reader.ReadByte();
+                    replayText = ChatManager.QuickChatText(payload);
+                }
+                else replayText = reader.ReadString();
+                if (reader.BytesRemaining != 0) throw new System.IO.InvalidDataException("Invalid player chat replay payload");
+                if (isLocalRecipient) OfficialChat.ShowLocal(Utils.GetPlayerById(replaySpeakerId) ?? __instance, replayText,
+                    replayTitle, censor: !quickChat, textHasNamePadding: textHasNamePadding);
                 break;
             case CustomRPC.SetDrawPlayer:
                 Revolutionist.ReceiveDrawPlayerRPC(reader);

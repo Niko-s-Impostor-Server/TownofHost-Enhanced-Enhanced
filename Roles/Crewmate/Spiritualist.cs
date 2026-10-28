@@ -1,5 +1,6 @@
 using static TOHE.Options;
 using static TOHE.Translator;
+using TOHE.Modules.ChatManager;
 
 namespace TOHE.Roles.Crewmate;
 
@@ -92,7 +93,7 @@ internal class Spiritualist : RoleBase
 
             TargetArrow.Add(spiritualist, target.PlayerId);
 
-            OfficialChat.Send(target, GetString("SpiritualistNoticeMessage"), target.PlayerId, GetString("SpiritualistNoticeTitle"));
+            ChatManager.SendSystem(target, GetString("SpiritualistNoticeMessage"), target.PlayerId, GetString("SpiritualistNoticeTitle"));
         }
     }
 

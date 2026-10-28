@@ -1,4 +1,5 @@
 ﻿using AmongUs.GameOptions;
+using TOHE.Modules.ChatManager;
 using TOHE.Roles.Core;
 using UnityEngine;
 using static TOHE.Options;
@@ -81,7 +82,7 @@ internal class Spiritcaller : RoleBase
 
             target.RpcSetCustomRole(CustomRoles.EvilSpirit);
 
-            OfficialChat.Send(target, GetString("SpiritcallerNoticeMessage"), target.PlayerId, GetString("SpiritcallerNoticeTitle"));
+            ChatManager.SendSystem(target, GetString("SpiritcallerNoticeMessage"), target.PlayerId, GetString("SpiritcallerNoticeTitle"));
         }
         return true;
     }

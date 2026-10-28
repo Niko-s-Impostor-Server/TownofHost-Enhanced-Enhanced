@@ -139,7 +139,7 @@ public class Main : BasePlugin
     public static readonly HashSet<byte> winnerList = [];
     public static readonly HashSet<string> winnerNameList = [];
     public static readonly HashSet<int> clientIdList = [];
-    public static readonly List<(string, byte, string)> MessagesToSend = [];
+    public static readonly List<(string Message, byte Recipient, string Title, bool NoReplay)> MessagesToSend = [];
     public static readonly Dictionary<string, int> PlayerQuitTimes = [];
     public static bool isChatCommand = false;
     public static bool MeetingIsStarted = false;

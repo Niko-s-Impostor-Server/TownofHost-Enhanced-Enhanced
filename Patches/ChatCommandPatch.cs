@@ -38,7 +38,16 @@ internal class ChatCommands
         if (__instance.quickChatField.visible == false && __instance.freeChatField.textArea.text == "") return false;
         // Quick Chat submissions are native phrase-builder sends. The hidden free-chat
         // field can retain stale text, so never let it enter command dispatch.
-        if (__instance.quickChatField.visible) return true;
+        if (__instance.quickChatField.visible)
+        {
+            if (AmongUsClient.Instance.AmHost && __instance.timeSinceLastMessage >= 3f && __instance.quickChatMenu.CanSend)
+            {
+                var data = __instance.quickChatMenu.BuildMessageData();
+                if (data != null && data.IsValid() && !string.IsNullOrWhiteSpace(data.ToChatText()))
+                    ChatManager.RecordQuickChat(PlayerControl.LocalPlayer, data);
+            }
+            return true;
+        }
         if (!GameStates.IsModHost && !AmongUsClient.Instance.AmHost) return true;
         var text = __instance.freeChatField.textArea.text;
         var historyText = text;
@@ -2550,7 +2559,7 @@ class ChatUpdatePatch
         //Logger.Info($"player is null? {player == null}", "ChatUpdatePatch");
         if (player == null) return;
 
-        (string msg, byte sendTo, string title) = Main.MessagesToSend[0];
+        (string msg, byte sendTo, string title, bool noReplay) = Main.MessagesToSend[0];
         //Logger.Info($"MessagesToSend - sendTo: {sendTo} - title: {title}", "ChatUpdatePatch");
 
         if (sendTo != byte.MaxValue && GameStates.IsLobby)
@@ -2571,7 +2580,7 @@ class ChatUpdatePatch
         }
         Main.MessagesToSend.RemoveAt(0);
 
-        OfficialChat.Send(player, msg, sendTo, title);
+        ChatManager.SendSystem(player, msg, sendTo, title, recordHistory: !noReplay);
         __instance.timeSinceLastMessage = 0f;
     }
 }
@@ -2631,7 +2640,7 @@ class RpcSendChatPatch
         {
             // Ordinary remote free chat stays on the game's owned-object native path.
             if (!AmongUsClient.Instance.AmHost) return true;
-            OfficialChat.Send(__instance, chatText);
+            ChatManager.SendPlayerText(__instance, chatText);
             __result = true;
             return false;
         }
@@ -2644,6 +2653,8 @@ class RpcSendChatPatch
         MessageWriter messageWriter = AmongUsClient.Instance.StartImmediate(__instance.NetId, (byte)RpcCalls.SendChat, SendOption.Reliable);
         messageWriter.Write(chatText);
         AmongUsClient.Instance.FinishImmediate(messageWriter);
+        if (AmongUsClient.Instance.AmHost && __instance.AmOwner)
+            ChatManager.RecordPlayerChat(__instance, chatText, textHasNamePadding: true);
         __result = true;
         return false;
     }
