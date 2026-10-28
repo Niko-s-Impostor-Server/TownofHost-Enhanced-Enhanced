@@ -18,6 +18,7 @@ internal static class CustomSoundMenu
     private static Sprite enabledIcon, mutedIcon, circle, white;
     private static GameObject panel;
     private static Transform listContent;
+    private static TextBoxTMP inputTemplate;
     private static TextBoxTMP masterInput;
     private static TextMeshPro previewLabel;
     private static string selectedSound = "Teleport";
@@ -28,11 +29,23 @@ internal static class CustomSoundMenu
     {
         if (entry != null) Object.Destroy(entry.gameObject);
         Close();
+        if (inputTemplate == null)
+        {
+            var template = UnityEngine.Resources.FindObjectsOfTypeAll<TextBoxTMP>()
+                .FirstOrDefault(x => x.name == "EnterCodeField" && x.gameObject.scene.name == "MainMenu");
+            if (template != null)
+            {
+                inputTemplate = Object.Instantiate(template);
+                inputTemplate.gameObject.SetActive(false);
+                inputTemplate.name = "TOHECustomSoundInputTemplate";
+                Object.DontDestroyOnLoad(inputTemplate.gameObject);
+            }
+        }
         if (!sceneHooked)
         {
             UnityEngine.SceneManagement.SceneManager.sceneUnloaded += (UnityAction<UnityEngine.SceneManagement.Scene>)(scene =>
             {
-                if (scene.name == "MainMenu") Close();
+                if (panel == null || panel.scene == scene) Close();
             });
             sceneHooked = true;
         }
@@ -133,22 +146,33 @@ internal static class CustomSoundMenu
 
     private static void Open(MainMenuManager menu)
     {
-        if (panel != null || !Main.EnableCustomSoundEffect.Value) return;
-        var inputTemplate = UnityEngine.Resources.FindObjectsOfTypeAll<TextBoxTMP>()
-            .FirstOrDefault(x => x.name == "EnterCodeField" && x.gameObject.scene.name == "MainMenu");
-        if (inputTemplate == null)
-        {
-            Logger.Warn("Main menu text input template is unavailable", "CustomSounds");
-            return;
-        }
-
         var options = UnityEngine.Resources.FindObjectsOfTypeAll<OptionsMenuBehaviour>()
             .FirstOrDefault(x => x.gameObject.scene.name == "MainMenu");
         if (options != null && options.gameObject.activeInHierarchy) return;
         var labelTemplate = options != null ? options.DisableMouseMovement.Text : menu.quitButton.GetComponentInChildren<TextMeshPro>(true);
+        Open(menu.transform, labelTemplate, labelTemplate.gameObject.layer, null);
+    }
+
+    internal static void Open(OptionsMenuBehaviour options)
+    {
+        if (options == null || !options.gameObject.activeInHierarchy) return;
+        Open(options.transform, options.DisableMouseMovement.Text, options.DisableMouseMovement.Text.gameObject.layer, options.DisableMouseMovement.Text);
+    }
+
+    private static void Open(Transform parent, TextMeshPro labelTemplate, int uiLayer, TextMeshPro inputStyle)
+    {
+        if (panel != null) return;
+        if (inputTemplate == null)
+        {
+            Logger.Warn("Custom sound text input template is unavailable", "CustomSounds");
+            return;
+        }
+
         panel = new GameObject(OverlayName);
-        panel.transform.SetParent(menu.transform, false);
+        panel.transform.SetParent(parent, false);
         panel.transform.localPosition = new Vector3(0f, 0f, -20f);
+        var sortingGroup = panel.AddComponent<UnityEngine.Rendering.SortingGroup>();
+        sortingGroup.sortingOrder = 100;
 
         var blocker = new GameObject("ClickBlocker");
         blocker.transform.SetParent(panel.transform, false);
@@ -171,9 +195,9 @@ internal static class CustomSoundMenu
         surface.size = new Vector2(7.2f, 5.5f);
 
         Label(panel.transform, "Title", Translator.GetString("CustomSoundsTitle"), new Vector3(-1.45f, 2.34f, -2f), new Vector2(3.5f, 0.5f), 2.7f, TextAlignmentOptions.Left);
-        previewLabel = Label(panel.transform, "PreviewSelection", string.Format(Translator.GetString("CustomSoundsPreview"), selectedSound), new Vector3(1.4f, 2.34f, -2f), new Vector2(2.3f, 0.4f), 1.55f, TextAlignmentOptions.Right);
+        previewLabel = Label(panel.transform, "PreviewSelection", string.Format(Translator.GetString("CustomSoundsPreview"), selectedSound), new Vector3(1.05f, 2.34f, -2f), new Vector2(2.3f, 0.4f), 1.55f, TextAlignmentOptions.Right);
         previewLabel.color = new Color32(180, 216, 215, 255);
-        var close = Button(panel.transform, "Close", new Vector3(3.15f, 2.3f, -3f), new Vector2(0.55f, 0.45f), "X", () => Close());
+        var close = Button(panel.transform, "Close", new Vector3(2.7f, 2.3f, -3f), new Vector2(0.55f, 0.45f), "X", () => Close());
         Surface(panel.transform, "HeaderDivider", new Vector3(0f, 2.03f, -1f), new Vector2(6.55f, 0.018f), new Color(0.36f, 0.48f, 0.5f, 0.75f));
         Label(panel.transform, "MasterLabel", Translator.GetString("CustomSoundsMaster"), new Vector3(-2.0f, 1.7f, -2f), new Vector2(2.4f, 0.45f), 2.2f, TextAlignmentOptions.Left);
         VolumeControl(panel.transform, null, 1.7f, out masterInput);
@@ -231,6 +255,7 @@ internal static class CustomSoundMenu
         Button(panel.transform, "ScrollDown", new Vector3(3.0f, -2.35f, -3f), new Vector2(0.9f, 0.34f), Translator.GetString("CustomSoundsDown"), () => scroller.ScrollRelative(new Vector2(0f, 3 * RowSpacing)));
         scrollObject.SetActive(true);
         Update();
+        foreach (var item in panel.GetComponentsInChildren<Transform>(true)) item.gameObject.layer = uiLayer;
         ControllerManager.Instance?.OpenOverlayMenu(OverlayName, close);
 
         SpriteRenderer Surface(Transform parent, string name, Vector3 position, Vector2 size, Color color)
@@ -344,6 +369,9 @@ internal static class CustomSoundMenu
             field.transform.localScale = Vector3.one;
             field.GetComponent<BoxCollider2D>().size = new Vector2(1.3f, 0.36f);
             field.Background.size = new Vector2(1.3f, 0.4f);
+            field.Background.maskInteraction = SpriteMaskInteraction.None;
+            TextMeshPro valueLabel = null;
+            if (inputStyle != null) field.outputText.GetComponent<Renderer>().enabled = false;
             field.outputText.transform.localScale = Vector3.one;
             field.outputText.fontSize = field.outputText.fontSizeMax = 1.9f;
             field.outputText.fontSizeMin = 0.8f;
@@ -359,15 +387,23 @@ internal static class CustomSoundMenu
             field.IpMode = false;
             field.AllowSymbols = true;
             field.AllowPaste = true;
-            field.ClearOnFocus = false;
+            field.ClearOnFocus = true;
             field.ClearOnlyPlaceholderOnFocus = false;
             field.SendOnFullChars = false;
             field.OnChange = new();
             field.OnEnter = new();
             field.OnFocusLost = new();
             field.OnFocus = new();
+            field.OnChange.AddListener((UnityAction)(() =>
+            {
+                if (valueLabel != null) valueLabel.text = field.text;
+            }));
             field.SetText(current.ToString(CultureInfo.InvariantCulture));
-            field.OnFocus.AddListener((UnityAction)(() => { if (id != null) SelectSound(id); }));
+            field.OnFocus.AddListener((UnityAction)(() =>
+            {
+                if (id != null) SelectSound(id);
+                if (valueLabel != null) valueLabel.text = field.text;
+            }));
             field.OnEnter.AddListener((UnityAction)Commit);
             field.OnFocusLost.AddListener((UnityAction)Commit);
             slider.OnValueChange.AddListener((UnityAction)(() =>
@@ -385,6 +421,11 @@ internal static class CustomSoundMenu
             slider.SetValue(current / 100f);
             sliderObject.SetActive(true);
             field.gameObject.SetActive(true);
+            if (inputStyle != null)
+            {
+                valueLabel = Label(field.transform, "Value", field.text, new Vector3(0f, 0f, 31f), new Vector2(1.2f, 0.35f), 1.9f, TextAlignmentOptions.Center);
+                valueLabel.ForceMeshUpdate(true, true);
+            }
             input = field;
 
             void Commit()
