@@ -22,6 +22,7 @@ class CheckForEndVotingPatch
     public static bool Prefix(MeetingHud __instance)
     {
         if (!AmongUsClient.Instance.AmHost) return true;
+        if (__instance.state is MeetingHud.MeetingStates.Results or MeetingHud.MeetingStates.Proceeding) return false;
 
         //Meeting Skip with vote counting on keystroke (m + delete)
         var shouldSkip = false;
@@ -74,21 +75,16 @@ class CheckForEndVotingPatch
                     ExileControllerWrapUpPatch.AntiBlackout_LastExiled = exiled;
                     Main.LastVotedPlayerInfo = exiled;
                     AntiBlackout.ExilePlayerId = exiled.PlayerId;
+                    AntiBlackout.PrepareVotingResult(exiled);
 
                     if (AntiBlackout.BlackOutIsActive)
                     {
-                        // Need check BlackOutIsActive again
-                        var isBlackOut = AntiBlackout.BlackOutIsActive;
-
-                        if (isBlackOut)
-                            __instance.AntiBlackRpcVotingComplete(states, exiled, false);
-                        else
-                            __instance.RpcVotingComplete(states, exiled, false, false, 0);
+                        __instance.AntiBlackRpcVotingComplete(states, exiled, false);
 
                         if (exiled != null)
                         {
-                            AntiBlackout.ShowExiledInfo = isBlackOut;
-                            ConfirmEjections(exiled, isBlackOut);
+                            AntiBlackout.ShowExiledInfo = true;
+                            ConfirmEjections(exiled, true);
                         }
                     }
                     else
@@ -109,7 +105,7 @@ class CheckForEndVotingPatch
 
                     voteTarget.SetRealKiller(pc);
 
-                    return true;
+                    return false;
                 }
 
                 if (pva.DidVote && pva.VotedForId.Value < 253 && pc.IsAlive())
@@ -370,21 +366,16 @@ class CheckForEndVotingPatch
             ExileControllerWrapUpPatch.AntiBlackout_LastExiled = exiledPlayer;
             Main.LastVotedPlayerInfo = exiledPlayer;
             if (exiledPlayer != null) AntiBlackout.ExilePlayerId = exiledPlayer.PlayerId;
+            AntiBlackout.PrepareVotingResult(exiledPlayer);
             //RPC
             if (AntiBlackout.BlackOutIsActive)
             {
-                // Need check BlackOutIsActive again
-                var isBlackOut = AntiBlackout.BlackOutIsActive;
-
-                if (isBlackOut)
-                    __instance.AntiBlackRpcVotingComplete(states, exiledPlayer, tie);
-                else
-                    __instance.RpcVotingComplete(states, exiledPlayer, tie, false, 0);
+                __instance.AntiBlackRpcVotingComplete(states, exiledPlayer, tie);
 
                 if (exiledPlayer != null)
                 {
-                    AntiBlackout.ShowExiledInfo = isBlackOut;
-                    ConfirmEjections(exiledPlayer, isBlackOut);
+                    AntiBlackout.ShowExiledInfo = true;
+                    ConfirmEjections(exiledPlayer, true);
                 }
             }
             else
@@ -1058,11 +1049,11 @@ class MeetingHudStartPatch
             AntiBlackout.ShowExiledInfo = false;
             if (AntiBlackout.StoreExiledMessage != "")
             {
-                AntiBlackout.StoreExiledMessage = GetString("Warning.ShowAntiBlackExiledPlayer") + AntiBlackout.StoreExiledMessage;
+                var message = GetString("Warning.ShowAntiBlackExiledPlayer") + AntiBlackout.StoreExiledMessage;
+                AntiBlackout.StoreExiledMessage = "";
                 _ = new LateTask(() =>
                 {
-                    SendMessage(AntiBlackout.StoreExiledMessage, 255, ColorString(Color.red, GetString("DefaultSystemMessageTitle")), noReplay: true);
-                    AntiBlackout.StoreExiledMessage = "";
+                    SendMessage(message, 255, ColorString(Color.red, GetString("DefaultSystemMessageTitle")), noReplay: true);
                 }, 5.5f, "AntiBlackout.StoreExiledMessage");
             }
         }

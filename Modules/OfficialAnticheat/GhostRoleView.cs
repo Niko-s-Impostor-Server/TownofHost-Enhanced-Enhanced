@@ -53,7 +53,8 @@ internal static class GhostRoleView
         var netId = target.NetId;
         var ownerId = target.OwnerId;
         var views = Main.AllPlayerControls
-            .Where(seer => seer != null && seer.Data != null && !seer.Data.Disconnected && seer.GetClientId() >= 0)
+            .Where(seer => seer != null && seer.Data != null && !seer.Data.Disconnected && seer.GetClientId() >= 0
+                && (!AntiBlackout.ProtectingVanilla || seer.IsModded()))
             .Select(seer => (Seer: seer, ClientId: seer.GetClientId(), Role: ForRecipient(target, seer))).ToArray();
         var barrier = CustomRpcTransport.CaptureBarrier();
         if (barrier.IsComplete) SendViews();
