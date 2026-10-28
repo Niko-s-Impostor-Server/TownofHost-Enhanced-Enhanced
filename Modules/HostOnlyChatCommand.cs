@@ -5,12 +5,43 @@ namespace TOHE;
 // /cmd is a transport envelope, not a new command or a permission grant.
 internal static class HostOnlyChatCommand
 {
+    private static readonly string[] ExactRoleCommands =
+    [
+        "/id", "/guesslist", "/gl", "/duel", "/finish", "/reveal",
+        "/编号", "/玩家编号", "/玩家id", "/id列表", "/玩家列表", "/列表", "/所有id", "/全部id", "/編號", "/玩家編號",
+        "/结束", "/结束会议", "/結束", "/結束會議", "/展示"
+    ];
+
+    private static readonly string[] RoleCommandPrefixes =
+    [
+        "/shoot", "/guess", "/bet", "/st", "/gs", "/bt", "/猜", "/赌", "/賭",
+        "/compare", "/cmp", "/比较", "/比較",
+        "/sp", "/jj", "/tl", "/trial", "/murder", "/审判", "/判", "/审", "/審判", "/審",
+        "/sw", "/swap", "/换票", "/换", "/換票", "/換"
+    ];
+
     [ThreadStatic] private static int depth;
     internal static bool IsActive => depth > 0;
 
     // Match the server's case-sensitive prefix, including malformed /cmdfoo.
     // Such messages must never enter public history even though they cannot execute.
     internal static bool IsEnvelope(string text) => text != null && text.StartsWith("/cmd", StringComparison.Ordinal);
+
+    internal static bool IsRoleCommand(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text) || text.IndexOfAny(new[] { '\r', '\n' }) >= 0) return false;
+        string command = text.Trim();
+        foreach (string exact in ExactRoleCommands)
+            if (string.Equals(command, exact, StringComparison.OrdinalIgnoreCase)) return true;
+        foreach (string prefix in RoleCommandPrefixes)
+            if (command.Equals(prefix, StringComparison.OrdinalIgnoreCase)
+                || (command.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+                    && command.Length > prefix.Length
+                    && char.IsWhiteSpace(command[prefix.Length]))) return true;
+        return false;
+    }
+
+    internal static string CreateEnvelope(string command) => "/cmd " + command.Trim();
 
     internal static bool TryGetCommand(string text, out string command)
     {

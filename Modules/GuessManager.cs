@@ -39,7 +39,9 @@ public static class GuessManager
             }
             else
             {
-                if (msg.StartsWith("/" + comm))
+                string prefix = "/" + comm;
+                if (msg.StartsWith(prefix, StringComparison.Ordinal)
+                    && (msg.Length == prefix.Length || char.IsWhiteSpace(msg[prefix.Length])))
                 {
                     msg = msg[(comm.Length + 1)..];
                     return true;
@@ -90,6 +92,21 @@ public static class GuessManager
 
     public static readonly Dictionary<byte, int> GuesserGuessed = [];
     public static bool GuesserMsg(PlayerControl pc, string msg, bool isUI = false) => HandleGuess(pc, msg, isUI);
+
+    internal static bool HandleChatGuessCommand(PlayerControl pc, string msg)
+    {
+        if (pc == null || !pc.AmOwner || AmongUsClient.Instance == null || AmongUsClient.Instance.AmHost || !GameStates.IsModHost)
+            return false;
+
+        msg = msg.ToLowerInvariant().Trim();
+        if (!CheckCommond(ref msg, "shoot|guess|bet|st|gs|bt|猜|赌|賭", false)) return false;
+        if (!MsgToPlayerAndRoles(msg, out byte targetId, out CustomRoles[] candidates, out _) || candidates.Length != 1)
+            return false;
+        if (!GameStates.IsMeeting) return true;
+
+        SendRPC(targetId, candidates[0]);
+        return true;
+    }
 
     private static bool HandleGuess(PlayerControl pc, string msg, bool isUI, byte? selectedTarget = null, CustomRoles? selectedRole = null)
     {
@@ -161,18 +178,6 @@ public static class GuessManager
         else if (operate == 2)
         {
 
-            if (
-            NiceGuesser.NeedHideMsg(pc) ||
-            EvilGuesser.NeedHideMsg(pc) ||
-            Doomsayer.NeedHideMsg(pc) ||
-            (pc.Is(CustomRoles.Guesser) && Guesser.GTryHideMsg.GetBool()) ||
-            (Options.GuesserMode.GetBool() && Options.HideGuesserCommands.GetBool())
-            )
-            {
-                ChatBufferCover.Send(ChatBufferCover.Kind.Guess);
-            }
-            else if (!HostOnlyChatCommand.IsActive && pc.AmOwner && !isUI) Utils.SendMessage(originMsg, 255, pc.GetRealName());
-
             byte targetId;
             CustomRoles[] candidates;
             string error;
@@ -205,6 +210,19 @@ public static class GuessManager
             {
                 pc.ShowInfoMessage(isUI, GetString(GetCandidateError(pc, target, candidates[0])));
                 return true;
+            }
+            if (!isUI && (
+                NiceGuesser.NeedHideMsg(pc) ||
+                EvilGuesser.NeedHideMsg(pc) ||
+                Doomsayer.NeedHideMsg(pc) ||
+                (pc.Is(CustomRoles.Guesser) && Guesser.GTryHideMsg.GetBool()) ||
+                (Options.GuesserMode.GetBool() && Options.HideGuesserCommands.GetBool())))
+            {
+                ChatBufferCover.Send(ChatBufferCover.Kind.Guess);
+            }
+            else if (!HostOnlyChatCommand.IsActive && pc.AmOwner && !isUI)
+            {
+                Utils.SendMessage(originMsg, 255, pc.GetRealName());
             }
             // Prefer an actual legal main role/add-on. A miss uses one legal candidate once.
             var role = selected.Value;

@@ -73,6 +73,12 @@ internal class ChatCommands
         Logger.Info(text, "SendChat");
         AfkMonitor.RecordActivity(PlayerControl.LocalPlayer);
         if (FeatureChatCommands.TryHandle(PlayerControl.LocalPlayer, text)) goto Canceled;
+        if (!AmongUsClient.Instance.AmHost && GuessManager.HandleChatGuessCommand(PlayerControl.LocalPlayer, text)) goto Canceled;
+        if (!AmongUsClient.Instance.AmHost && HostOnlyChatCommand.IsRoleCommand(text))
+        {
+            __instance.freeChatField.textArea.SetText(HostOnlyChatCommand.CreateEnvelope(text), string.Empty);
+            return true;
+        }
         if ((Options.NewHideMsg.GetBool() || Blackmailer.HasEnabled) && AmongUsClient.Instance.AmHost) // Blackmailer.ForBlackmailer.Contains(PlayerControl.LocalPlayer.PlayerId)) && PlayerControl.LocalPlayer.IsAlive())
         {
             ChatManager.SendMessage(PlayerControl.LocalPlayer, text);
@@ -141,6 +147,12 @@ internal class ChatCommands
                 break;
 
             default:
+                // A malformed or unknown slash command stays local; never publish it as player chat.
+                if (text.StartsWith("/", StringComparison.Ordinal))
+                {
+                    canceled = true;
+                    __instance.AddChat(PlayerControl.LocalPlayer, $"Unknown command: {args[0]}");
+                }
                 Main.isChatCommand = false;
                 break;
         }
