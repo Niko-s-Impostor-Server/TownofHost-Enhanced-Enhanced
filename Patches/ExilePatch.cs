@@ -139,16 +139,9 @@ class ExileControllerWrapUpPatch
             {
                 if (GameStates.IsEnded) return;
 
-                exiled = AntiBlackout_LastExiled;
-                AntiBlackout.SendGameData();
-                AntiBlackout.SetRealPlayerRoles();
-
-                if (AntiBlackout.BlackOutIsActive && // State in which the expulsion target is overwritten (need not be executed if the expulsion target is not overwritten)
-                    exiled != null && // exiled is not null
-                    exiled.Object != null) //exiled.Object is not null
-                {
-                    exiled.Object.RpcExileV2();
-                }
+                // Restore the recipient's ghost roles before the real death flags.
+                // A living-to-ghost transition performs the native death effects.
+                AntiBlackout.SetRealPlayerRoles(sendGameDataAfter: true);
             }, 0.7f, "Restore IsDead Task");
 
             _ = new LateTask(() =>

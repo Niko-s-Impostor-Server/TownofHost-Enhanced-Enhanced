@@ -1,4 +1,5 @@
 {
+  "AntiBlackoutUnavailable": "警告：本次會議 AntiBlackOut 無法生效。\n原版客戶端將會黑屏。",
   "LanguageID": "14",
   "HostText": "房主",
   "HostColor": "#902efd",

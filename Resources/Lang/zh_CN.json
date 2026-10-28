@@ -1,4 +1,5 @@
 {
+  "AntiBlackoutUnavailable": "警告：本次会议 AntiBlackOut 无法生效。\n原版客户端将会黑屏。",
   "OfficialAnticheatSupport": "官方反作弊兼容",
   "OfficialAnticheatForced": "已强制启用",
   "OfficialAnticheatNextLobby": "已保存，将在下个房间生效。",

@@ -1,4 +1,5 @@
 {
+  "AntiBlackoutUnavailable": "Warning: AntiBlackOut is unavailable.\nVanilla clients will see a black screen.",
   "OfficialAnticheatSupport": "Official Anticheat Support",
   "OfficialAnticheatForced": "Forced on",
   "OfficialAnticheatNextLobby": "Change saved; takes effect in the next lobby.",

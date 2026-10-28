@@ -48,8 +48,27 @@ public class ErrorText : MonoBehaviour
     public Camera Camera;
     public List<ErrorData> AllErrors = [];
     public Vector3 TextOffset = new(0, 0.3f, -1000f);
+    private float antiBlackoutWarningTime;
+    private Vector2 originalWarningSize;
+    private float originalWarningFontSize;
+    private bool originalWarningAutoSizing;
+    private Color originalWarningColor;
+    private float originalWarningOutline;
     public void Update()
     {
+        if (antiBlackoutWarningTime > 0f)
+        {
+            antiBlackoutWarningTime -= Time.deltaTime;
+            if (antiBlackoutWarningTime <= 0f)
+            {
+                Text.rectTransform.sizeDelta = originalWarningSize;
+                Text.fontSize = originalWarningFontSize;
+                Text.enableAutoSizing = originalWarningAutoSizing;
+                Text.color = originalWarningColor;
+                Text.outlineWidth = originalWarningOutline;
+                UpdateText();
+            }
+        }
         foreach (var error in AllErrors.ToArray())
         {
             error.IncreaseTimer();
@@ -64,6 +83,24 @@ public class ErrorText : MonoBehaviour
                 Destroy(this.gameObject);
         }
     }
+    public void ShowAntiBlackoutWarning()
+    {
+        if (antiBlackoutWarningTime <= 0f)
+        {
+            originalWarningSize = Text.rectTransform.sizeDelta;
+            originalWarningFontSize = Text.fontSize;
+            originalWarningAutoSizing = Text.enableAutoSizing;
+            originalWarningColor = Text.color;
+            originalWarningOutline = Text.outlineWidth;
+            Text.rectTransform.sizeDelta = new Vector2(8f, 0.8f);
+            Text.enableAutoSizing = false;
+            Text.fontSize = 2f;
+            Text.color = Color.white;
+            Text.outlineWidth = 0.2f;
+        }
+        antiBlackoutWarningTime = 30f;
+        UpdateText();
+    }
     public void LateUpdate()
     {
         if (Text == null || !Text.enabled) return;
@@ -72,7 +109,14 @@ public class ErrorText : MonoBehaviour
 
         if (Camera != null)
         {
-            transform.position = AspectPosition.ComputeWorldPosition(Camera, AspectPosition.EdgeAlignments.Top, TextOffset);
+            var offset = TextOffset;
+            var alignment = AspectPosition.EdgeAlignments.Top;
+            if (antiBlackoutWarningTime > 0f)
+            {
+                alignment = AspectPosition.EdgeAlignments.Bottom;
+                offset.y = MeetingHud.Instance != null ? 0.35f : 1.15f;
+            }
+            transform.position = AspectPosition.ComputeWorldPosition(Camera, alignment, offset);
         }
     }
     // ErrorCode is a managed mod enum; only managed callers use this method.
@@ -111,8 +155,15 @@ public class ErrorText : MonoBehaviour
                 text = SBDetected ? GetString("EAC.CheatDetected.HighLevel") : GetString("EAC.CheatDetected.LowLevel");
             Text.enabled = true;
         }
-        if (GameStates.IsInGame && maxLevel != 3 && !CheatDetected)
+        if (GameStates.IsInGame && maxLevel > 0 && maxLevel != 3 && !CheatDetected)
             text += $"\n{GetString("TerminateCommand")}: Shift+L+Enter";
+        if (antiBlackoutWarningTime > 0f)
+        {
+            if (!string.IsNullOrEmpty(text)) text = $"<color=red>{text}</color>\n";
+            var warning = GetString("AntiBlackoutUnavailable").Replace("\n", "</color>\n<color=white>");
+            text += $"<b><color=#ff5555>{warning}</color></b>";
+            Text.enabled = true;
+        }
         Text.text = text;
     }
     public void Clear()

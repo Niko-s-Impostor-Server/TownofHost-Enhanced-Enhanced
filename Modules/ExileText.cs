@@ -96,7 +96,7 @@ internal static class ExileText
     internal static void BeforeClose(MeetingHud meeting)
     {
         var entry = pending;
-        if (entry == null || !entry.Context.Current() || AmongUsClient.Instance.AmHost != true
+        if (entry == null || entry.AntiBlackout || !entry.Context.Current() || AmongUsClient.Instance.AmHost != true
             || meeting == null || entry.Context.Meeting != meeting.NetId || entry.Context.MeetingPointer != meeting.Pointer
             || entry.Renamed) return;
         var player = Utils.GetPlayerById(entry.PlayerId);

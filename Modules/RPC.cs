@@ -123,6 +123,7 @@ enum CustomRPC : uint
     Fragment,
     // 194 was the removed SetNativeRole RPC; do not reuse it.
     SystemChat = 195,
+    AntiBlackoutUnavailable,
 }
 public enum Sounds
 {
@@ -236,6 +237,10 @@ internal class RPCHandlerPatch
             case CustomRPC.SyncExileText:
                 if (isLocalRecipient && __instance.OwnerId == AmongUsClient.Instance.HostId)
                     ExileText.Receive(__instance, reader);
+                break;
+            case CustomRPC.AntiBlackoutUnavailable:
+                if (isLocalRecipient && __instance.OwnerId == AmongUsClient.Instance.HostId)
+                    ErrorText.Instance?.ShowAntiBlackoutWarning();
                 break;
             case CustomRPC.AntiBlackout:
                 Logger.Fatal($"{__instance?.Data?.PlayerName}({__instance.PlayerId}): Error: {reader.ReadString()} - end the game according to the setting", "Anti-black");

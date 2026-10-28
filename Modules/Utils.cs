@@ -2192,11 +2192,11 @@ public static class Utils
         PlayerGameOptionsSender.SetDirtyToAll();
         GameOptionsSender.SendAllGameOptions();
     }
-    public static void SendGameData()
+    public static void SendGameData(SendOption sendOption = SendOption.None)
     {
         foreach (var playerinfo in GameData.Instance.AllPlayers)
         {
-            using var owner = new OfficialPacketBuilder.BoundedWriter(SendOption.None, OfficialAnticheatPolicy.Enabled);
+            using var owner = new OfficialPacketBuilder.BoundedWriter(sendOption, OfficialAnticheatPolicy.Enabled);
             var writer = owner.Writer;
             writer.StartMessage(5); //0x05 GameData
             writer.Write(AmongUsClient.Instance.GameId);
