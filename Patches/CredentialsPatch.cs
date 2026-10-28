@@ -183,15 +183,38 @@ class PingTrackerUpdatePatch
         if (hud.MatchInfoButton) AddStatusObstacles(hud.MatchInfoButton.gameObject, camera);
         if (hud.MapButton) AddStatusObstacles(hud.MapButton.gameObject, camera);
         if (hud.Chat && hud.Chat.chatButton) AddStatusObstacles(hud.Chat.chatButton.gameObject, camera);
+        if (hud.Chat && hud.Chat.chatScreen && hud.Chat.chatScreen.activeInHierarchy && hud.Chat.backgroundImage)
+            AddStatusObstacles(hud.Chat.backgroundImage.gameObject, camera);
+        if (hud.GameMenu && hud.GameMenu.IsOpen && hud.GameMenu.Background)
+            AddStatusObstacles(hud.GameMenu.Background.gameObject, camera);
+        var actionButtons = hud.transform.Find("Buttons/BottomRight");
+        if (actionButtons) AddStatusObstacles(actionButtons.gameObject, camera);
         AddStatusObstacles(hud.TaskStuff, camera);
         if (hud.TaskPanel) AddStatusObstacles(hud.TaskPanel.gameObject, camera);
         if (LobbySettingsPreview.Text) AddStatusObstacles(LobbySettingsPreview.Text.gameObject, camera);
+        if (LobbyInfoPane.InstanceExists && LobbyInfoPane.Instance.InfoPaneBackground)
+            AddStatusObstacles(LobbyInfoPane.Instance.InfoPaneBackground.gameObject, camera);
+        if (ModManager.InstanceExists && ModManager.Instance.ModStamp)
+            AddStatusObstacles(ModManager.Instance.ModStamp.gameObject, camera);
         if (meeting)
         {
             if (meeting.TitleText) AddStatusObstacles(meeting.TitleText.gameObject, camera);
             if (meeting.TimerText) AddStatusObstacles(meeting.TimerText.gameObject, camera);
+            if (meeting.SkipVoteButton) AddStatusObstacles(meeting.SkipVoteButton.gameObject, camera);
+            if (meeting.ProceedButton) AddStatusObstacles(meeting.ProceedButton.gameObject, camera);
+            if (meeting.MeetingAbilityButton) AddStatusObstacles(meeting.MeetingAbilityButton.gameObject, camera);
             foreach (var area in meeting.playerStates)
                 if (area) AddStatusObstacles(area.gameObject, camera);
+            var phone = meeting.transform.Find("MeetingContents/PhoneUI");
+            if (phone)
+            {
+                var battery = phone.Find("UI_Icon_Battery");
+                if (battery) AddStatusObstacles(battery.gameObject, camera);
+                var wifi = phone.Find("UI_Icon_Wifi");
+                if (wifi) AddStatusObstacles(wifi.gameObject, camera);
+                var button = phone.Find("UI_Phone_Button");
+                if (button) AddStatusObstacles(button.gameObject, camera);
+            }
         }
 
         bool moved = layoutObstacles.Count != previousLayoutObstacles.Count;
@@ -219,10 +242,12 @@ class PingTrackerUpdatePatch
         if (changedLayout) text.ForceMeshUpdate();
         var renderer = text.GetComponent<Renderer>();
         if (!renderer) return;
+        renderer.enabled = true;
         var bounds = StatusScreenBounds(renderer.bounds, camera);
         float lineHeight = bounds.Height / Mathf.Max(1, text.textInfo.lineCount);
         float gap = Mathf.Max(2f, lineHeight * 0.35f);
-        if (!HudStatusLayout.TryPlace(safe, bounds.Width, bounds.Height, layoutObstacles, gap, out var position))
+        bool placed = HudStatusLayout.TryPlace(safe, bounds.Width, bounds.Height, layoutObstacles, gap, out var position);
+        if (!placed)
         {
             // A narrow viewport can need wrapping rather than moving over task/vote UI.
             // Keep the font size; progressively reduce the block width to find a free column.
@@ -234,9 +259,18 @@ class PingTrackerUpdatePatch
                 text.rectTransform.sizeDelta = new Vector2(width, wrapped.y);
                 text.ForceMeshUpdate();
                 bounds = StatusScreenBounds(renderer.bounds, camera);
-                if (HudStatusLayout.TryPlace(safe, bounds.Width, bounds.Height, layoutObstacles, gap, out position)) break;
-                if (step == 8) return;
+                placed = HudStatusLayout.TryPlace(safe, bounds.Width, bounds.Height, layoutObstacles, gap, out position);
+                if (placed) break;
             }
+        }
+        if (!placed)
+        {
+            // A busy screen may have no free spot. Keep the full-size text visible
+            // at its current position and allow unavoidable overlap.
+            text.enableWordWrapping = false;
+            text.rectTransform.sizeDelta = preferred;
+            text.ForceMeshUpdate();
+            return;
         }
         if (tracker.aspectPosition) tracker.aspectPosition.enabled = false;
         // Use the rendered glyph bounds, rather than assuming TMP pivot/parent scaling.
@@ -337,11 +371,12 @@ class VersionShowerStartPatch
         credentials.alignment = TextAlignmentOptions.Bottom;
         credentials.rectTransform.pivot = new Vector2(0.5f, 0f);
         credentials.rectTransform.sizeDelta = new Vector2(4.8f, 0.9f);
-        credentials.fontSize = credentials.fontSizeMax = credentials.fontSizeMin = 2f;
+        bool matchmaking = __instance.gameObject.scene.name == "MatchMaking";
+        credentials.fontSize = credentials.fontSizeMax = credentials.fontSizeMin = matchmaking ? 1.7f : 2f;
         // Keep the title artwork and account bar clear; the center footer is unused.
         var position = credentials.GetComponent<AspectPosition>() ?? credentials.gameObject.AddComponent<AspectPosition>();
         position.Alignment = AspectPosition.EdgeAlignments.Bottom;
-        position.DistanceFromEdge = new Vector3(0f, 0.1f, __instance.text.transform.position.z);
+        position.DistanceFromEdge = new Vector3(0f, matchmaking ? 0.03f : 0.1f, __instance.text.transform.position.z);
         position.AdjustPosition();
         if (__instance.gameObject.scene.name == "MainMenu") AddCredentialsBackground(credentials);
 
