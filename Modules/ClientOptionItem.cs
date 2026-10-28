@@ -124,7 +124,7 @@ public class ClientOptionItem
 
         var isForced = forced?.Invoke() == true;
         ToggleButton.Text.text = Translator.GetString(optionName) + (isForced ? $" ({Translator.GetString("OfficialAnticheatForced")})" : "");
-        var color = (isForced || (Config != null && Config.Value)) ? new Color32(255, 192, 203, byte.MaxValue) : new Color32(77, 77, 77, byte.MaxValue);
+        var color = (Config == null || isForced || Config.Value) ? new Color32(255, 192, 203, byte.MaxValue) : new Color32(77, 77, 77, byte.MaxValue);
         ToggleButton.Background.color = color;
         ToggleButton.Rollover?.ChangeOutColor(color);
     }

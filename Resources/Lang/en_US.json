@@ -1228,6 +1228,7 @@
   "AutoStart": "Auto start",
   "EnableCustomButton": "Enable Custom Button Images",
   "EnableCustomSoundEffect": "Enable Custom Sound Effects",
+  "CustomSoundsManage": "Custom Sound Settings...",
   "CustomSoundsTitle": "Custom Sounds",
   "CustomSoundsMaster": "Master volume",
   "CustomSoundsOn": "ON",

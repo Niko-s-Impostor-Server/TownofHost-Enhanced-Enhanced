@@ -11,6 +11,7 @@ public static class CustomSoundOptionsMenuOpenPatch
 [HarmonyPatch(typeof(OptionsMenuBehaviour), nameof(OptionsMenuBehaviour.Close))]
 public static class CustomSoundOptionsMenuClosePatch
 {
+    public static void Prefix() => CustomSoundMenu.Close();
     public static void Postfix() => CustomSoundMenu.SyncMenuVisibility(
         MainMenuManagerStartPatch.ToheLogo != null && MainMenuManagerStartPatch.ToheLogo.gameObject.activeInHierarchy);
 }
@@ -32,6 +33,7 @@ public static class OptionsMenuBehaviourStartPatch
     private static ClientOptionItem ForceOwnLanguageRoleName;
     private static ClientOptionItem EnableCustomButton;
     private static ClientOptionItem EnableCustomSoundEffect;
+    private static ClientOptionItem CustomSoundsManage;
     private static ClientOptionItem EnableCustomDecorations;
     private static ClientOptionItem SwitchVanilla;
 
@@ -136,6 +138,10 @@ public static class OptionsMenuBehaviourStartPatch
         if (EnableCustomSoundEffect == null || EnableCustomSoundEffect.ToggleButton == null)
         {
             EnableCustomSoundEffect = ClientOptionItem.Create("EnableCustomSoundEffect", Main.EnableCustomSoundEffect, __instance, CustomSoundMenu.RefreshEnabled);
+        }
+        if (CustomSoundsManage == null || CustomSoundsManage.ToggleButton == null)
+        {
+            CustomSoundsManage = ClientOptionItem.Create("CustomSoundsManage", null, __instance, () => CustomSoundMenu.Open(__instance));
         }
         if (EnableCustomDecorations == null || EnableCustomDecorations.ToggleButton == null)
         {

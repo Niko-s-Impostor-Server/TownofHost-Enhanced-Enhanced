@@ -23,6 +23,7 @@ class HudManagerPatch
     public static GameObject TempLowerInfoText;
     public static void Postfix(HudManager __instance)
     {
+        CustomSoundMenu.Update();
         FeatureChatCommands.UpdateSession();
         BlackScreenFix.Tick();
         AfkMonitor.Tick();
