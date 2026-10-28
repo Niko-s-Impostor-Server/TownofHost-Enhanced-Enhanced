@@ -100,8 +100,7 @@ internal class Swapper : RoleBase
         {
             if (TryHideMsg.GetBool())
             {
-                GuessManager.TryHideMsg();
-                ChatManager.SendPreviousMessagesToAll();
+                ChatBufferCover.Send(ChatBufferCover.Kind.Guess);
             }
             else if (!HostOnlyChatCommand.IsActive && pc.AmOwner && !isUI) Utils.SendMessage(originMsg, 255, pc.GetRealName());
 

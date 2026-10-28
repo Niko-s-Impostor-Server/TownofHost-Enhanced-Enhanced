@@ -169,10 +169,7 @@ public static class GuessManager
             (Options.GuesserMode.GetBool() && Options.HideGuesserCommands.GetBool())
             )
             {
-                //if (Options.NewHideMsg.GetBool()) ChatManager.SendPreviousMessagesToAll();
-                //else TryHideMsg(); 
-                TryHideMsg();
-                ChatManager.SendPreviousMessagesToAll();
+                ChatBufferCover.Send(ChatBufferCover.Kind.Guess);
             }
             else if (!HostOnlyChatCommand.IsActive && pc.AmOwner && !isUI) Utils.SendMessage(originMsg, 255, pc.GetRealName());
 
@@ -539,49 +536,6 @@ public static class GuessManager
     {
         if (targetId < byte.MinValue || targetId > byte.MaxValue) return;
         HandleGuess(pc, "", true, (byte)targetId, role);
-    }
-
-    public static void TryHideMsg()
-    {
-        if (HostOnlyChatCommand.IsActive) return;
-        ChatUpdatePatch.DoBlockChat = true;
-        var roles = CustomRolesHelper.AllRoles.Where(x => x is not CustomRoles.NotAssigned).ToArray();
-        var rd = IRandom.Instance;
-        string msg;
-        string[] command = ["bet", "bt", "guess", "gs", "shoot", "st", "赌", "猜", "审判", "tl", "判", "审"];
-        for (int i = 0; i < 20; i++)
-        {
-            msg = "/";
-            if (rd.Next(1, 100) < 20)
-            {
-                msg += "id";
-            }
-            else
-            {
-                msg += command[rd.Next(0, command.Length - 1)];
-                msg += rd.Next(1, 100) < 50 ? string.Empty : " ";
-                msg += rd.Next(0, 15).ToString();
-                msg += rd.Next(1, 100) < 50 ? string.Empty : " ";
-                CustomRoles role = roles.RandomElement();
-                msg += rd.Next(1, 100) < 50 ? string.Empty : " ";
-                msg += Utils.GetRoleName(role);
-            }
-            var player = Main.AllAlivePlayerControls.RandomElement();
-            if (OfficialAnticheatPolicy.Enabled)
-            {
-                OfficialChat.Send(player, msg);
-                continue;
-            }
-            DestroyableSingleton<HudManager>.Instance.Chat.AddChat(player, msg);
-            var writer = CustomRpcSender.Create("MessagesToSend", SendOption.None);
-            writer.StartMessage(-1);
-            writer.StartRpc(player.NetId, (byte)RpcCalls.SendChat)
-                .Write(msg)
-                .EndRpc();
-            writer.EndMessage();
-            writer.SendMessage();
-        }
-        ChatUpdatePatch.DoBlockChat = false;
     }
 
     [HarmonyPatch(typeof(MeetingHud), nameof(MeetingHud.Start))]

@@ -113,10 +113,7 @@ internal class Judge : RoleBase
 
             if (TryHideMsg.GetBool())
             {
-                //if (Options.NewHideMsg.GetBool()) ChatManager.SendPreviousMessagesToAll();
-                //else GuessManager.TryHideMsg();
-                GuessManager.TryHideMsg();
-                ChatManager.SendPreviousMessagesToAll();
+                ChatBufferCover.Send(ChatBufferCover.Kind.Guess);
             }
             else if (!HostOnlyChatCommand.IsActive && pc.AmOwner) SendMessage(originMsg, 255, pc.GetRealName());
 

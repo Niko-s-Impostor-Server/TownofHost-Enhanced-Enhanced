@@ -162,129 +162,25 @@ namespace TOHE.Modules.ChatManager
         {
             if (HostOnlyChatCommand.IsActive) return;
             if (!AmongUsClient.Instance.AmHost || !GameStates.IsModHost) return;
+            int bufferSize = DestroyableSingleton<HudManager>.Instance.Chat.chatBubblePool.poolSize;
+            var history = GetReplayableHistory(bufferSize);
             //This should never function for non host
-            if (GameStates.IsExilling && chatHistory.Count < 20)
+            if (GameStates.IsExilling && history.Length < bufferSize)
             {
                 var firstAlivePlayer = Main.AllAlivePlayerControls.OrderBy(x => x.PlayerId).FirstOrDefault();
                 if (firstAlivePlayer == null) return;
 
                 var title = "<color=#aaaaff>" + GetString("DefaultSystemMessageTitle") + "</color>";
-                var name = firstAlivePlayer?.Data?.PlayerName;
                 string spamMsg = GetString("ExileSpamMsg");
 
-                for (int i = 0; i < 20 - chatHistory.Count; i++)
+                for (int i = 0; i < bufferSize - history.Length; i++)
                 {
-                    if (OfficialAnticheatPolicy.Enabled)
-                    {
-                        OfficialChat.Send(firstAlivePlayer, spamMsg, title: title);
-                        continue;
-                    }
-                    int clientId = -1; //sendTo == byte.MaxValue ? -1 : Utils.GetPlayerById(sendTo).GetClientId();
-                    //if (clientId == -1)
-                    //{
-                    firstAlivePlayer.SetName(title);
-                    DestroyableSingleton<HudManager>.Instance.Chat.AddChat(firstAlivePlayer, spamMsg);
-                    firstAlivePlayer.SetName(name);
-                    //}
-                    var writer = CustomRpcSender.Create("MessagesToSend", SendOption.None);
-                    writer.StartMessage(clientId);
-                    writer.StartRpc(firstAlivePlayer.NetId, (byte)RpcCalls.SetName)
-                        .Write(firstAlivePlayer.Data.NetId)
-                        .Write(title)
-                        .EndRpc();
-                    writer.StartRpc(firstAlivePlayer.NetId, (byte)RpcCalls.SendChat)
-                        .Write(spamMsg)
-                        .EndRpc();
-                    writer.StartRpc(firstAlivePlayer.NetId, (byte)RpcCalls.SetName)
-                        .Write(firstAlivePlayer.Data.NetId)
-                        .Write(name)
-                        .EndRpc();
-                    writer.EndMessage();
-                    writer.SendMessage();
-                    //DestroyableSingleton<HudManager>.Instance.Chat.AddChat(firstAlivePlayer, spamMsg);
-                    //var writer = CustomRpcSender.Create("MessagesToSend", SendOption.None);
-
-                    //writer.StartMessage(-1);
-                    //writer.StartRpc(firstAlivePlayer.NetId, (byte)RpcCalls.SendChat)
-                    //    .Write(spamMsg)
-                    //    .EndRpc()
-                    //    .EndMessage()
-                    //    .SendMessage();
+                    OfficialChat.Send(firstAlivePlayer, spamMsg, title: title);
                 }
             }
-            //var rd = IRandom.Instance;
-            //CustomRoles[] roles = (CustomRoles[])Enum.GetValues(typeof(CustomRoles));
-            //string[] specialTexts = new string[] { "bet", "bt", "guess", "gs", "shoot", "st", "赌", "猜", "审判", "tl", "判", "审", "trial" };
-            //int numPlayers = Main.AllAlivePlayerControls.Count();
-            //var allAlivePlayers = Main.AllAlivePlayerControls.ToArray();
-            //int roleCount = roles.Length;
-
-            //for (int i = chatHistory.Count; i < 30; i++)
-            //{
-            //    StringBuilder msgBuilder = new();
-            //    msgBuilder.Append('/');
-            //    if (rd.Next(1, 100) < 20)
-            //    {
-            //        msgBuilder.Append("id");
-            //    }
-            //    else
-            //    {
-            //        msgBuilder.Append(specialTexts[rd.Next(specialTexts.Length)]);
-            //        msgBuilder.Append(rd.Next(1, 100) < 50 ? string.Empty : " ");
-            //        msgBuilder.Append(rd.Next(15));
-            //        msgBuilder.Append(rd.Next(1, 100) < 50 ? string.Empty : " ");
-            //        CustomRoles role = roles[rd.Next(roleCount)];
-            //        msgBuilder.Append(rd.Next(1, 100) < 50 ? string.Empty : " ");
-            //        msgBuilder.Append(Utils.GetRoleName(role));
-            //    }
-            //    string msg = msgBuilder.ToString();
-
-            //    var player = allAlivePlayers[rd.Next(numPlayers)];
-            //    DestroyableSingleton<HudManager>.Instance.Chat.AddChat(player, msg);
-            //    var writer = CustomRpcSender.Create("MessagesToSend", SendOption.None);
-
-            //    writer.StartMessage(-1);
-            //    writer.StartRpc(player.NetId, (byte)RpcCalls.SendChat)
-            //        .Write(msg)
-            //        .EndRpc()
-            //        .EndMessage()
-            //        .SendMessage();
-            //}
-
-            for (int i = 0; i < chatHistory.Count; i++)
+            foreach (var (senderPlayer, senderMessage) in history)
             {
-                var entry = chatHistory[i];
-                var senderId = entry.Keys.First();
-                var senderMessage = entry[senderId];
-                var senderPlayer = senderId.GetPlayer();
-                if (senderPlayer == null) continue;
-
-                if (OfficialAnticheatPolicy.Enabled)
-                {
-                    OfficialChat.Send(senderPlayer, senderMessage);
-                    continue;
-                }
-
-                var playerDead = !senderPlayer.IsAlive();
-                if (playerDead)
-                {
-                    senderPlayer.Revive();
-                }
-
-                DestroyableSingleton<HudManager>.Instance.Chat.AddChat(senderPlayer, senderMessage);
-                var writer = CustomRpcSender.Create("MessagesToSend", SendOption.None);
-
-                writer.StartMessage(-1);
-                writer.StartRpc(senderPlayer.NetId, (byte)RpcCalls.SendChat)
-                    .Write(senderMessage)
-                    .EndRpc()
-                    .EndMessage()
-                    .SendMessage();
-
-                if (playerDead)
-                {
-                    senderPlayer.Die(DeathReason.Kill, true);
-                }
+                OfficialChat.Send(senderPlayer, senderMessage);
             }
             foreach (var playerId in LastSystemChatMsg.Keys.ToArray())
             {
@@ -294,5 +190,15 @@ namespace TOHE.Modules.ChatManager
                 Utils.SendMessage(LastSystemChatMsg[playerId], playerId, title: title, noReplay: true);
             }
         }
+
+        internal static int GetChatBufferFillCount()
+        {
+            int bufferSize = DestroyableSingleton<HudManager>.Instance.Chat.chatBubblePool.poolSize;
+            return bufferSize - GetReplayableHistory(bufferSize).Length;
+        }
+
+        private static (PlayerControl Sender, string Message)[] GetReplayableHistory(int bufferSize) =>
+            chatHistory.Select(entry => (Sender: entry.Keys.First().GetPlayer(), Message: entry.Values.First()))
+                .Where(entry => entry.Sender?.Data != null).TakeLast(bufferSize).ToArray();
     }
 }

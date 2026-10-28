@@ -93,10 +93,7 @@ internal class Councillor : RoleBase
         {
             if (TryHideMsg.GetBool())
             {
-                //if (Options.NewHideMsg.GetBool()) ChatManager.SendPreviousMessagesToAll();
-                //else GuessManager.TryHideMsg();
-                GuessManager.TryHideMsg();
-                ChatManager.SendPreviousMessagesToAll();
+                ChatBufferCover.Send(ChatBufferCover.Kind.Guess);
             }
             else if (!HostOnlyChatCommand.IsActive && pc.AmOwner) Utils.SendMessage(originMsg, 255, pc.GetRealName());
 

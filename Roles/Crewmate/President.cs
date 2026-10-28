@@ -62,38 +62,6 @@ internal class President : RoleBase
     public static bool CheckReveal(byte targetId) => CheckPresidentReveal.TryGetValue(targetId, out var canBeReveal) && canBeReveal;
     public override string GetProgressText(byte PlayerId, bool comms) => Utils.ColorString(EndLimit[PlayerId] > 0 ? Utils.GetRoleColor(CustomRoles.President) : Color.gray, EndLimit.TryGetValue(PlayerId, out var endLimit) ? $"({endLimit})" : "Invalid");
 
-    public static void TryHideMsgForPresident()
-    {
-        if (HostOnlyChatCommand.IsActive) return;
-        ChatUpdatePatch.DoBlockChat = true;
-
-        var rd = IRandom.Instance;
-        string msg;
-        for (int i = 0; i < 20; i++)
-        {
-            msg = "/";
-            if (rd.Next(1, 100) < 20)
-                msg += "finish";
-            else
-                msg += "reveal";
-            var player = Main.AllAlivePlayerControls.RandomElement();
-            if (OfficialAnticheatPolicy.Enabled)
-            {
-                OfficialChat.Send(player, msg);
-                continue;
-            }
-            DestroyableSingleton<HudManager>.Instance.Chat.AddChat(player, msg);
-            var writer = CustomRpcSender.Create("MessagesToSend", SendOption.None);
-            writer.StartMessage(-1);
-            writer.StartRpc(player.NetId, (byte)RpcCalls.SendChat)
-                .Write(msg)
-                .EndRpc();
-            writer.EndMessage();
-            writer.SendMessage();
-        }
-        ChatUpdatePatch.DoBlockChat = false;
-    }
-
     public static bool EndMsg(PlayerControl pc, string msg)
     {
         var originMsg = msg;
@@ -119,10 +87,7 @@ internal class President : RoleBase
 
             if (HidePresidentEndCommand.GetBool())
             {
-                //if (Options.NewHideMsg.GetBool()) ChatManager.SendPreviousMessagesToAll();
-                //else TryHideMsgForPresident();
-                TryHideMsgForPresident();
-                ChatManager.SendPreviousMessagesToAll();
+                ChatBufferCover.Send(ChatBufferCover.Kind.President);
             }
             else if (!HostOnlyChatCommand.IsActive && pc.AmOwner) Utils.SendMessage(originMsg, 255, pc.GetRealName());
 
@@ -150,10 +115,7 @@ internal class President : RoleBase
 
             if (HidePresidentEndCommand.GetBool())
             {
-                //if (Options.NewHideMsg.GetBool()) ChatManager.SendPreviousMessagesToAll();
-                //else TryHideMsgForPresident();
-                TryHideMsgForPresident();
-                ChatManager.SendPreviousMessagesToAll();
+                ChatBufferCover.Send(ChatBufferCover.Kind.President);
             }
             else if (!HostOnlyChatCommand.IsActive && pc.AmOwner) Utils.SendMessage(originMsg, 255, pc.GetRealName());
 

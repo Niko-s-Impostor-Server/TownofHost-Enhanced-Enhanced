@@ -202,10 +202,7 @@ internal class Pirate : RoleBase
 
             if (TryHideMsg.GetBool())
             {
-                //if (Options.NewHideMsg.GetBool()) ChatManager.SendPreviousMessagesToAll();
-                //else TryHideMsgForDuel();
-                TryHideMsgForDuel();
-                ChatManager.SendPreviousMessagesToAll();
+                ChatBufferCover.Send(ChatBufferCover.Kind.Duel);
             }
             else if (!HostOnlyChatCommand.IsActive && pc.AmOwner) SendMessage(originMsg, 255, pc.GetRealName());
 
@@ -305,45 +302,5 @@ internal class Pirate : RoleBase
         }
         return false;
     }
-
-    public static void TryHideMsgForDuel()
-    {
-        if (HostOnlyChatCommand.IsActive) return;
-        ChatUpdatePatch.DoBlockChat = true;
-        List<CustomRoles> roles = CustomRolesHelper.AllRoles.Where(x => x is not CustomRoles.NotAssigned).ToList();
-        var rd = IRandom.Instance;
-        string msg;
-        string[] command = ["duel", "rps"];
-        for (int i = 0; i < 20; i++)
-        {
-            msg = "/";
-            if (rd.Next(1, 100) < 20)
-            {
-                msg += "id";
-            }
-            else
-            {
-                msg += command[rd.Next(0, command.Length - 1)];
-                msg += " ";
-                msg += rd.Next(0, 3).ToString();
-            }
-            var player = Main.AllAlivePlayerControls.RandomElement();
-            if (OfficialAnticheatPolicy.Enabled)
-            {
-                OfficialChat.Send(player, msg);
-                continue;
-            }
-            DestroyableSingleton<HudManager>.Instance.Chat.AddChat(player, msg);
-            var writer = CustomRpcSender.Create("MessagesToSend", SendOption.None);
-            writer.StartMessage(-1);
-            writer.StartRpc(player.NetId, (byte)RpcCalls.SendChat)
-                .Write(msg)
-                .EndRpc();
-            writer.EndMessage();
-            writer.SendMessage();
-        }
-        ChatUpdatePatch.DoBlockChat = false;
-    }
-
 
 }

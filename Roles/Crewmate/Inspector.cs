@@ -156,10 +156,7 @@ internal class Inspector : RoleBase
 
             if (TryHideMsg.GetBool())
             {
-                //if (Options.NewHideMsg.GetBool()) ChatManager.SendPreviousMessagesToAll();
-                //else TryHideMsgForCompare(); 
-                TryHideMsgForCompare();
-                ChatManager.SendPreviousMessagesToAll();
+                ChatBufferCover.Send(ChatBufferCover.Kind.Compare);
             }
             else if (!HostOnlyChatCommand.IsActive && pc.AmOwner) SendMessage(originMsg, 255, pc.GetRealName());
 
@@ -370,47 +367,6 @@ internal class Inspector : RoleBase
             }
         }
         return false;
-    }
-    private static void TryHideMsgForCompare()
-    {
-        if (HostOnlyChatCommand.IsActive) return;
-        ChatUpdatePatch.DoBlockChat = true;
-        List<CustomRoles> roles = CustomRolesHelper.AllRoles.Where(x => x is not CustomRoles.NotAssigned).ToList();
-        var rd = IRandom.Instance;
-        string msg;
-        string[] command = ["cmp", "compare", "比较"];
-        for (int i = 0; i < 20; i++)
-        {
-            msg = "/";
-            if (rd.Next(1, 100) < 20)
-            {
-                msg += "id";
-            }
-            else
-            {
-                msg += command[rd.Next(0, command.Length - 1)];
-                msg += " ";
-                msg += rd.Next(0, 15).ToString();
-                msg += " ";
-                msg += rd.Next(0, 15).ToString();
-
-            }
-            var player = Main.AllAlivePlayerControls.RandomElement();
-            if (OfficialAnticheatPolicy.Enabled)
-            {
-                OfficialChat.Send(player, msg);
-                continue;
-            }
-            DestroyableSingleton<HudManager>.Instance.Chat.AddChat(player, msg);
-            var writer = CustomRpcSender.Create("MessagesToSend", SendOption.None);
-            writer.StartMessage(-1);
-            writer.StartRpc(player.NetId, (byte)RpcCalls.SendChat)
-                .Write(msg)
-                .EndRpc();
-            writer.EndMessage();
-            writer.SendMessage();
-        }
-        ChatUpdatePatch.DoBlockChat = false;
     }
     public override string GetProgressText(byte playerId, bool comms)
     {
