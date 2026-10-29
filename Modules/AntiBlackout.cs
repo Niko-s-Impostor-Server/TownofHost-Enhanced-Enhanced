@@ -168,8 +168,11 @@ public static class AntiBlackout
                     }
                     sender.Write(byte.MaxValue);
                     sender.Write(true);
-                    sender.Write(wasOverruled);
-                    sender.Write(overruleNonce);
+                    // Vanilla dereferences exiled when wasOverruled is true.
+                    // A hidden exile must remain a plain tie; the host retains
+                    // the consumed use and locks any reconstructed Judge role.
+                    sender.Write(false);
+                    sender.Write((ushort)0);
                     sender.EndRpc();
                 }
             }

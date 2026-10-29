@@ -77,6 +77,7 @@ class CheckForEndVotingPatch
                     ExileControllerWrapUpPatch.AntiBlackout_LastExiled = exiled;
                     Main.LastVotedPlayerInfo = exiled;
                     AntiBlackout.ExilePlayerId = exiled.PlayerId;
+                    VanillaMeetingRoles.RestoreAll();
                     AntiBlackout.PrepareVotingResult(exiled);
 
                     if (AntiBlackout.BlackOutIsActive)
@@ -381,6 +382,7 @@ class CheckForEndVotingPatch
             ExileControllerWrapUpPatch.AntiBlackout_LastExiled = exiledPlayer;
             Main.LastVotedPlayerInfo = exiledPlayer;
             if (exiledPlayer != null) AntiBlackout.ExilePlayerId = exiledPlayer.PlayerId;
+            VanillaMeetingRoles.RestoreAll();
             AntiBlackout.PrepareVotingResult(exiledPlayer);
             //RPC
             if (AntiBlackout.BlackOutIsActive)

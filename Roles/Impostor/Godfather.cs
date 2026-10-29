@@ -4,7 +4,7 @@ using static TOHE.Utils;
 
 namespace TOHE.Roles.Impostor;
 
-internal class Godfather : RoleBase
+internal class Godfather : RoleBase, IMeetingTargetAbility
 {
     //===========================SETUP================================\\
     private const int Id = 3400;
@@ -16,9 +16,11 @@ internal class Godfather : RoleBase
     //==================================================================\\
 
     private static OptionItem GodfatherChangeOpt;
+    private static OptionItem VanillaMeetingAbilityTriggerOpt;
 
     private static readonly HashSet<byte> GodfatherTarget = [];
     private bool Didvote = false;
+    public MeetingAbilityTrigger Trigger => (MeetingAbilityTrigger)VanillaMeetingAbilityTriggerOpt.GetValue();
 
     private enum GodfatherChangeModeList
     {
@@ -31,6 +33,7 @@ internal class Godfather : RoleBase
         Options.SetupRoleOptions(Id, TabGroup.ImpostorRoles, CustomRoles.Godfather);
         GodfatherChangeOpt = StringOptionItem.Create(Id + 2, "GodfatherTargetCountMode", EnumHelper.GetAllNames<GodfatherChangeModeList>(), 0, TabGroup.ImpostorRoles, false)
             .SetParent(Options.CustomRoleSpawnChances[CustomRoles.Godfather]);
+        VanillaMeetingAbilityTriggerOpt = MeetingAbilities.CreateTriggerOption(Id + 3, CustomRoles.Godfather, TabGroup.ImpostorRoles);
     }
 
     public override void Init()
@@ -58,14 +61,19 @@ internal class Godfather : RoleBase
         }
     }
     public override void AfterMeetingTasks() => Didvote = false;
-    public override bool CheckVote(PlayerControl votePlayer, PlayerControl voteTarget)
-    {
-        if (votePlayer == null || voteTarget == null) return true;
-        if (Didvote == true) return false;
-        Didvote = true;
 
-        GodfatherTarget.Add(voteTarget.PlayerId);
-        SendMessage(GetString("VoteHasReturned"), votePlayer.PlayerId, title: ColorString(GetRoleColor(CustomRoles.Godfather), string.Format(GetString("VoteAbilityUsed"), GetString("Godfather"))));
-        return false;
+    public bool CanUseMeetingAbility(PlayerControl actor) => actor && actor.Is(CustomRoles.Godfather) && !Didvote;
+
+    public bool CanTargetMeetingAbility(PlayerControl actor, PlayerControl target) => target && target.IsAlive();
+
+    public bool UseMeetingAbility(PlayerControl actor, PlayerControl target)
+    {
+        Didvote = true;
+        GodfatherTarget.Add(target.PlayerId);
+        if (!MeetingAbilities.UsesSeparateAbility(actor))
+            SendMessage(GetString("VoteHasReturned"), actor.PlayerId, title: ColorString(GetRoleColor(CustomRoles.Godfather), string.Format(GetString("VoteAbilityUsed"), GetString("Godfather"))));
+        return true;
     }
+
+    public override bool CheckVote(PlayerControl voter, PlayerControl target) => !MeetingAbilities.TryUse(voter, target);
 }

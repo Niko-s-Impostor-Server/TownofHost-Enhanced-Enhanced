@@ -49,6 +49,8 @@ internal static class GhostRoleView
 
     internal static void Publish(PlayerControl target)
     {
+        // Publishing the authoritative ghost replaces any temporary Judge view.
+        VanillaMeetingRoles.Forget(target);
         var context = OfficialSessionContext.Capture();
         var netId = target.NetId;
         var ownerId = target.OwnerId;

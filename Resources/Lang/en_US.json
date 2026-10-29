@@ -1573,6 +1573,8 @@
   "DetectiveSuspectLimit": "Suspect Limit",
   "JudgeTaskRequirement": "Task Requirement Percentage",
   "VanillaMeetingAbilityTrigger": "Vanilla Client Meeting Ability Trigger",
+  "EnableVanillaJudgeMeetings": "Enable Judge Meeting Abilities for Vanilla Clients",
+  "EnableVanillaImpostorJudge": "Allow Impostors to Use Judge During Meetings",
   "MeetingAbilityVote": "Vote",
   "MeetingAbilityJudgeButton": "Judge Button",
   "MeetingAbilityRejected": "That ability cannot be used on this target now. No use was consumed.",

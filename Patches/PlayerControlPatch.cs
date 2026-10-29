@@ -858,6 +858,8 @@ class ReportDeadBodyPatch
     }
     public static void AfterReportTasks(PlayerControl player, NetworkedPlayerInfo target, bool force = false)
     {
+        if (AmongUsClient.Instance.AmHost && target == null)
+            VanillaMeetingRoles.RecordEmergency(player);
         //=============================================
         // Hereinafter, it is assumed that the button is confirmed to be pressed
         //=============================================

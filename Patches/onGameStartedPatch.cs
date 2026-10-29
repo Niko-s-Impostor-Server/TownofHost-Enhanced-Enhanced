@@ -215,6 +215,7 @@ internal class ChangeRoleSettings
             FallFromLadder.Reset();
             CustomWinnerHolder.Reset();
             AntiBlackout.Reset();
+            VanillaMeetingRoles.Reset();
             NameNotifyManager.Reset();
 
             SabotageSystemPatch.SabotageSystemTypeRepairDamagePatch.Initialize();

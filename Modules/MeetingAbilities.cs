@@ -30,6 +30,16 @@ internal static class MeetingAbilities
     private static readonly Dictionary<byte, HostSlot> hostSlots = [];
     private static readonly MeetingAbilityReplayWindow replay = new();
     private static LocalSlot local;
+    private static OptionItem enabled;
+    private static OptionItem impostorsEnabled;
+
+    internal static void SetupOptions()
+    {
+        enabled = BooleanOptionItem.Create(60748, "EnableVanillaJudgeMeetings", true, TabGroup.ModSettings, false)
+            .SetGameMode(CustomGameMode.Standard);
+        impostorsEnabled = BooleanOptionItem.Create(60749, "EnableVanillaImpostorJudge", false, TabGroup.ModSettings, false)
+            .SetParent(enabled).SetGameMode(CustomGameMode.Standard);
+    }
 
     private sealed class HostSlot(PlayerControl actor, IMeetingTargetAbility ability)
     {
@@ -59,19 +69,25 @@ internal static class MeetingAbilities
 
     // Resolve this per player, before initial role publication. Mod clients keep their own UI.
     internal static RoleTypes GetNativeRole(CustomRoles role, PlayerControl actor, RoleTypes original) =>
-        !actor.IsModded() && original == RoleTypes.Crewmate && role.GetStaticRoleClass() is IMeetingTargetAbility { Trigger: MeetingAbilityTrigger.JudgeButton }
+        enabled.GetBool() && !actor.IsModded() && original == RoleTypes.Crewmate && role.GetStaticRoleClass() is IMeetingTargetAbility { Trigger: MeetingAbilityTrigger.JudgeButton }
             ? RoleTypes.Judge : original;
 
-    private static bool NativeButtonConfigured(PlayerControl actor) => actor && !actor.IsModded() &&
+    internal static bool NativeButtonConfigured(PlayerControl actor) => enabled.GetBool() && actor && !actor.IsModded() &&
         actor.GetRoleClass() is IMeetingTargetAbility { Trigger: MeetingAbilityTrigger.JudgeButton } &&
-        actor.GetCustomRole().GetRoleTypes() == RoleTypes.Crewmate;
+        (actor.GetCustomRole().GetRoleTypes() == RoleTypes.Crewmate ||
+            impostorsEnabled.GetBool() && actor.Is(Custom_Team.Impostor));
+
+    internal static bool NeedsTemporaryRole(PlayerControl actor) => NativeButtonConfigured(actor) && actor.Is(Custom_Team.Impostor);
 
     internal static bool UsesSeparateAbility(PlayerControl actor) => actor && actor.GetRoleClass() is IMeetingTargetAbility &&
         (actor.IsModded() || NativeButtonConfigured(actor) && !Utils.IsActive(SystemTypes.Comms));
 
     internal static void ApplyGameOptions(PlayerControl actor, IGameOptions options)
     {
-        if (NativeButtonConfigured(actor)) options.SetFloat(FloatOptionNames.JudgeTaskRequirementPercentage, 0);
+        if (!NativeButtonConfigured(actor)) return;
+        options.SetFloat(FloatOptionNames.JudgeTaskRequirementPercentage, 0);
+        options.SetInt(Int32OptionNames.NumEmergencyMeetings, System.Math.Max(0,
+            options.GetInt(Int32OptionNames.NumEmergencyMeetings) - VanillaMeetingRoles.EmergenciesUsed(actor.PlayerId)));
     }
 
     internal static bool TryUse(PlayerControl actor, PlayerControl target) =>
@@ -135,6 +151,7 @@ internal static class MeetingAbilities
         meeting = instance;
         gameId = AmongUsClient.Instance.GameId;
         replay.Begin(gameId, instance.NetId);
+        if (AmongUsClient.Instance.AmHost) VanillaMeetingRoles.Begin();
         var actor = PlayerControl.LocalPlayer;
         local = Alive(actor) && actor.GetRoleClass() is IMeetingTargetAbility ? new LocalSlot(actor) : null;
         if (AmongUsClient.Instance.AmHost)
@@ -185,8 +202,8 @@ internal static class MeetingAbilities
 
     private static void CreateButtons()
     {
-        // The custom Judge already owns its ShootButton and /tl RPC path.
-        if (local.Actor.Is(CustomRoles.Judge)) return;
+        // These roles already own their meeting buttons and RPC paths.
+        if (local.Actor.Is(CustomRoles.Judge) || local.Actor.Is(CustomRoles.DoubleAgent)) return;
         foreach (var area in meeting.playerStates)
         {
             byte targetId = area.PlayerId.Value;
@@ -291,6 +308,7 @@ internal static class MeetingAbilities
     internal static void EndMeeting(MeetingHud instance)
     {
         if (instance == null || meeting == null || instance.Pointer != meeting.Pointer) return;
+        if (AmongUsClient.Instance && AmongUsClient.Instance.AmHost) VanillaMeetingRoles.RestoreAll();
         if (local != null)
             foreach (var button in local.Buttons) if (button) Object.Destroy(button);
         local = null;

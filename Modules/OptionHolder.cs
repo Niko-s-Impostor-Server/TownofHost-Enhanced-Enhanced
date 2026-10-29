@@ -1740,6 +1740,7 @@ public static class Options
         TextOptionItem.Create(10000030, "MenuTitle.Meeting", TabGroup.ModSettings)
             .SetGameMode(CustomGameMode.Standard)
             .SetColor(new Color32(147, 241, 240, byte.MaxValue));
+        MeetingAbilities.SetupOptions();
         // Sync Button
         SyncButtonMode = BooleanOptionItem.Create(60700, "SyncButtonMode", false, TabGroup.ModSettings, false)
             .SetHeader(true)

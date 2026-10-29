@@ -11,7 +11,7 @@ using static TOHE.Utils;
 
 namespace TOHE.Roles.Impostor;
 
-internal class DoubleAgent : RoleBase
+internal class DoubleAgent : RoleBase, IMeetingTargetAbility
 {
     //===========================SETUP================================\\
     private const int Id = 29000;
@@ -29,11 +29,13 @@ internal class DoubleAgent : RoleBase
     public static bool StartedWithMoreThanOneImp = false;
 
     public static OptionItem DoubleAgentCanDiffuseBombs;
+    private static OptionItem VanillaMeetingAbilityTriggerOpt;
     private static OptionItem ClearBombedOnMeetingCall;
     private static OptionItem CanUseAbilityInCalledMeeting;
     private static OptionItem BombExplosionTimer;
     private static OptionItem ExplosionRadius;
     private static OptionItem ChangeRoleToOnLast;
+    public MeetingAbilityTrigger Trigger => (MeetingAbilityTrigger)VanillaMeetingAbilityTriggerOpt.GetValue();
 
     private enum ChangeRolesSelectOnLast
     {
@@ -64,6 +66,7 @@ internal class DoubleAgent : RoleBase
             .SetParent(CustomRoleSpawnChances[CustomRoles.DoubleAgent])
             .SetValueFormat(OptionFormat.Multiplier);
         ChangeRoleToOnLast = StringOptionItem.Create(Id + 15, "DoubleAgentChangeRoleTo", EnumHelper.GetAllNames<ChangeRolesSelectOnLast>(), 1, TabGroup.ImpostorRoles, false).SetParent(CustomRoleSpawnChances[CustomRoles.DoubleAgent]);
+        VanillaMeetingAbilityTriggerOpt = MeetingAbilities.CreateTriggerOption(Id + 17, CustomRoles.DoubleAgent, TabGroup.ImpostorRoles);
     }
     public override void Init()
     {
@@ -123,24 +126,23 @@ internal class DoubleAgent : RoleBase
 
     public override bool CanUseKillButton(PlayerControl pc) => false;
 
-    public override bool CheckVote(PlayerControl voter, PlayerControl target)
+    public bool CanUseMeetingAbility(PlayerControl actor) => actor && actor.Is(CustomRoles.DoubleAgent) && CanBombInMeeting && !BombIsActive;
+
+    public bool CanTargetMeetingAbility(PlayerControl actor, PlayerControl target) => actor && target &&
+        actor != target && target.IsAlive() && !target.Is(Custom_Team.Impostor);
+
+    public bool UseMeetingAbility(PlayerControl actor, PlayerControl target)
     {
-        if (voter.IsModded() || !CanBombInMeeting) return true;
-
-        if (!BombIsActive)
-        {
-            if (target.Is(Custom_Team.Impostor)) return false;
-            if (voter == target) return false;
-
-            CurrentBombedTime = -1;
-            CurrentBombedPlayers.Add(target.PlayerId);
-            BombIsActive = true;
-            SendRPC(true, target.PlayerId);
-            SendMessage(GetString("VoteHasReturned"), voter.PlayerId, title: ColorString(GetRoleColor(CustomRoles.DoubleAgent), string.Format(GetString("VoteAbilityUsed"), GetString("DoubleAgent"))));
-            return false;
-        }
+        CurrentBombedTime = -1;
+        CurrentBombedPlayers.Add(target.PlayerId);
+        BombIsActive = true;
+        SendRPC(true, target.PlayerId);
+        if (!MeetingAbilities.UsesSeparateAbility(actor))
+            SendMessage(GetString("VoteHasReturned"), actor.PlayerId, title: ColorString(GetRoleColor(CustomRoles.DoubleAgent), string.Format(GetString("VoteAbilityUsed"), GetString("DoubleAgent"))));
         return true;
     }
+
+    public override bool CheckVote(PlayerControl voter, PlayerControl target) => !MeetingAbilities.TryUse(voter, target);
 
     // Clear active bombed players on meeting call if ClearBombedOnMeetingCall is enabled.
     public override void OnReportDeadBody(PlayerControl reporter, NetworkedPlayerInfo target)
@@ -358,15 +360,14 @@ internal class DoubleAgent : RoleBase
 
     internal static void ReceivePlantRequest(PlayerControl actor, byte targetId)
     {
-        if (!AmongUsClient.Instance.AmHost || !GameStates.IsMeeting || actor == null || !actor.IsAlive()
-            || !actor.Is(CustomRoles.DoubleAgent) || !CanBombInMeeting || BombIsActive) return;
+        // This existing mod button also works during Discussion. Voting and
+        // native Judge inputs use TryUse's stricter voting-phase boundary.
+        if (!AmongUsClient.Instance.AmHost || !GameStates.IsMeeting || !actor || !actor.IsAlive() ||
+            actor.Data.Disconnected || actor.GetRoleClass() is not DoubleAgent ability) return;
         var target = GetPlayerById(targetId);
-        if (target == null || !target.IsAlive() || target.Data.Disconnected || target == actor || target.Is(Custom_Team.Impostor)) return;
-
-        CurrentBombedTime = -1;
-        CurrentBombedPlayers.Add(targetId);
-        BombIsActive = true;
-        ((DoubleAgent)actor.GetRoleClass()).SendRPC(true, targetId);
+        if (!target || !target.IsAlive() || target.Data.Disconnected) return;
+        if (ability.CanUseMeetingAbility(actor) && ability.CanTargetMeetingAbility(actor, target))
+            ability.UseMeetingAbility(actor, target);
     }
 
     private static void DestroyButtons(GameObject pressedButton)
