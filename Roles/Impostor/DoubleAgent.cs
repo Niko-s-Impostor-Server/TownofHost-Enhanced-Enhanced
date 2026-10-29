@@ -135,6 +135,7 @@ internal class DoubleAgent : RoleBase
             CurrentBombedTime = -1;
             CurrentBombedPlayers.Add(target.PlayerId);
             BombIsActive = true;
+            SendRPC(true, target.PlayerId);
             SendMessage(GetString("VoteHasReturned"), voter.PlayerId, title: ColorString(GetRoleColor(CustomRoles.DoubleAgent), string.Format(GetString("VoteAbilityUsed"), GetString("DoubleAgent"))));
             return false;
         }
@@ -151,8 +152,8 @@ internal class DoubleAgent : RoleBase
 
         if (BombIsActive && ClearBombedOnMeetingCall.GetBool())
         {
+            if (!CanUseAbilityInCalledMeeting.GetBool()) CanBombInMeeting = false;
             ClearBomb();
-            if (ClearBombedOnMeetingCall.GetBool() && !CanUseAbilityInCalledMeeting.GetBool()) CanBombInMeeting = false;
         }
         else
             CurrentBombedTime = -1;
@@ -289,6 +290,7 @@ internal class DoubleAgent : RoleBase
         writer.Write(addData);
         writer.Write(targetId);
         writer.WritePacked((int)CurrentBombedTime);
+        writer.Write(CanBombInMeeting);
         CustomRpcTransport.Finish(writer);
     }
 
@@ -298,9 +300,18 @@ internal class DoubleAgent : RoleBase
         bool addData = reader.ReadBoolean();
         byte targetId = reader.ReadByte();
         var timer = reader.ReadPackedInt32();
+        CanBombInMeeting = reader.ReadBoolean();
 
         if (addData)
+        {
             CurrentBombedPlayers.Add(targetId);
+            BombIsActive = true;
+        }
+        else if (timer < 0)
+        {
+            CurrentBombedPlayers.Clear();
+            BombIsActive = false;
+        }
 
         CurrentBombedTime = timer;
     }
@@ -339,11 +350,23 @@ internal class DoubleAgent : RoleBase
 
     private static void PlantBombOnClick(byte targetId /*, MeetingHud __instance*/)
     {
-        if (BombIsActive) return;
+        if (AmongUsClient.Instance.AmHost)
+            ReceivePlantRequest(PlayerControl.LocalPlayer, targetId);
+        else
+            CustomRpcTransport.Send(CustomRPC.DoubleAgentPlant, writer => writer.Write(targetId), AmongUsClient.Instance.HostId);
+    }
+
+    internal static void ReceivePlantRequest(PlayerControl actor, byte targetId)
+    {
+        if (!AmongUsClient.Instance.AmHost || !GameStates.IsMeeting || actor == null || !actor.IsAlive()
+            || !actor.Is(CustomRoles.DoubleAgent) || !CanBombInMeeting || BombIsActive) return;
+        var target = GetPlayerById(targetId);
+        if (target == null || !target.IsAlive() || target.Data.Disconnected || target == actor || target.Is(Custom_Team.Impostor)) return;
 
         CurrentBombedTime = -1;
         CurrentBombedPlayers.Add(targetId);
         BombIsActive = true;
+        ((DoubleAgent)actor.GetRoleClass()).SendRPC(true, targetId);
     }
 
     private static void DestroyButtons(GameObject pressedButton)

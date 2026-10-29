@@ -102,6 +102,7 @@ internal class ChatCommands
         {
             goto Canceled;
         }
+        bool handledLocally = true;
         switch (args[0])
         {
             case "/dump":
@@ -147,11 +148,12 @@ internal class ChatCommands
                 break;
 
             default:
-                // A malformed or unknown slash command stays local; never publish it as player chat.
-                if (text.StartsWith("/", StringComparison.Ordinal))
+                handledLocally = false;
+                // Commands handled by the host use the same private route as role commands.
+                if (!AmongUsClient.Instance.AmHost && text.StartsWith("/", StringComparison.Ordinal))
                 {
-                    canceled = true;
-                    __instance.AddChat(PlayerControl.LocalPlayer, $"Unknown command: {args[0]}");
+                    __instance.freeChatField.textArea.SetText(HostOnlyChatCommand.CreateEnvelope(text), string.Empty);
+                    return true;
                 }
                 Main.isChatCommand = false;
                 break;
@@ -300,7 +302,7 @@ internal class ChatCommands
                         case "a":
                         case "all":
                         case "tudo":
-                            Utils.ShowAllActiveSettings();
+                            Utils.ShowAllActiveSettings(page: args.Length > 2 && int.TryParse(args[2], out var settingsPage) ? settingsPage : null);
                             break;
                         default:
                             Utils.ShowActiveSettings();
@@ -1281,6 +1283,11 @@ internal class ChatCommands
                     break;
 
                 default:
+                    if (!handledLocally && text.StartsWith("/", StringComparison.Ordinal))
+                    {
+                        canceled = true;
+                        __instance.AddChat(PlayerControl.LocalPlayer, $"Unknown command: {args[0]}");
+                    }
                     Main.isChatCommand = false;
                     break;
             }
@@ -1760,9 +1767,9 @@ internal class ChatCommands
         if (Pirate.DuelCheckMsg(player, text)) { canceled = true; Logger.Info($"Is Pirate command", "OnReceiveChat"); return; }
         if (player.GetRoleClass() is Councillor cl && cl.MurderMsg(player, text)) { canceled = true; Logger.Info($"Is Councillor command", "OnReceiveChat"); return; }
         if (player.GetRoleClass() is Swapper sw && sw.SwapMsg(player, text)) { canceled = true; Logger.Info($"Is Swapper command", "OnReceiveChat"); return; }
-        if (Medium.MsMsg(player, text)) { Logger.Info($"Is Medium command", "OnReceiveChat"); return; }
-        if (Nemesis.NemesisMsgCheck(player, text)) { Logger.Info($"Is Nemesis Revenge command", "OnReceiveChat"); return; }
-        if (Retributionist.RetributionistMsgCheck(player, text)) { Logger.Info($"Is Retributionist Revenge command", "OnReceiveChat"); return; }
+        if (Medium.MsMsg(player, text)) { canceled = true; Logger.Info($"Is Medium command", "OnReceiveChat"); return; }
+        if (Nemesis.NemesisMsgCheck(player, text)) { canceled = true; Logger.Info($"Is Nemesis Revenge command", "OnReceiveChat"); return; }
+        if (Retributionist.RetributionistMsgCheck(player, text)) { canceled = true; Logger.Info($"Is Retributionist Revenge command", "OnReceiveChat"); return; }
 
         Directory.CreateDirectory(sponsorTagsFiles);
 
@@ -1939,7 +1946,7 @@ internal class ChatCommands
                     case "a":
                     case "all":
                     case "tudo":
-                        Utils.ShowAllActiveSettings(player.PlayerId);
+                        Utils.ShowAllActiveSettings(player.PlayerId, args.Length > 2 && int.TryParse(args[2], out var settingsPage) ? settingsPage : null);
                         break;
                     default:
                         Utils.ShowActiveSettings(player.PlayerId);
@@ -2536,6 +2543,8 @@ internal class ChatCommands
 
 
             default:
+                if (HostOnlyChatCommand.IsActive && text.StartsWith("/", StringComparison.Ordinal))
+                    Utils.SendMessage($"Unknown command: {args[0]}", player.PlayerId);
                 if (!HostOnlyChatCommand.IsActive && SpamManager.CheckSpam(player, text)) return;
                 break;
         }

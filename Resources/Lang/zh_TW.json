@@ -1,4 +1,5 @@
 {
+  "AllSettingsPage": "全部設定第 {0}/{1} 頁。下一頁：/n all {2}",
   "AntiBlackoutUnavailable": "警告：本次會議 AntiBlackOut 無法生效。\n原版客戶端將會黑屏。",
   "LanguageID": "14",
   "HostText": "房主",

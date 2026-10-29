@@ -1,4 +1,5 @@
 {
+  "AllSettingsPage": "全部设置第 {0}/{1} 页。下一页：/n all {2}",
   "AntiBlackoutUnavailable": "警告：本次会议 AntiBlackOut 无法生效。\n原版客户端将会黑屏。",
   "OfficialAnticheatSupport": "官方反作弊兼容",
   "OfficialAnticheatForced": "已强制启用",

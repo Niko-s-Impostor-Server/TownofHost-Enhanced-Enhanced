@@ -20,7 +20,7 @@ internal static class OfficialChat
 
     // Transport only. Higher-level modules decide whether a delivered page belongs in history.
     internal static SentPage[] Send(PlayerControl actor, string text, byte recipient = byte.MaxValue, string title = null,
-        bool preserveDeadActor = false)
+        bool preserveDeadActor = false, Action<MessageWriter> send = null)
     {
         var client = AmongUsClient.Instance;
         if (client == null || !client.AmHost || actor?.Data == null) return [];
@@ -136,7 +136,8 @@ internal static class OfficialChat
                         Logger.Test($"recipient={seer.PlayerId}, page={++pageIndex}/{pages.Length}, " +
                             $"setCarrierNameUtf8Bytes={Encoding.UTF8.GetByteCount(padding + page)}, " +
                             $"packetBytes={packet.Writer.Length}", "OfficialChat.Pagination");
-                        OfficialNetworkSend.Send(client, packet.Writer);
+                        if (send == null) OfficialNetworkSend.Send(client, packet.Writer);
+                        else send(packet.Writer);
                         sentPages.Add(new(speakerId, seer, heading, page));
                     }
                 }
@@ -156,7 +157,7 @@ internal static class OfficialChat
             ? name : actor.Data.PlayerName;
 
     internal static (string Heading, string[] Pages) ShowLocal(PlayerControl actor, string text, string title, bool censor = false,
-        bool textHasNamePadding = false)
+        bool textHasNamePadding = false, bool allowDeadSpeaker = false)
     {
         if (actor?.Data == null || !DestroyableSingleton<HudManager>.Instance) return (title ?? string.Empty, []);
         title ??= actor.Data.PlayerName;
@@ -165,16 +166,24 @@ internal static class OfficialChat
         string padding = textHasNamePadding ? string.Empty : TitlePadding(heading);
         var previousActor = DisplayActor;
         string previousTitle = DisplayTitle;
+        bool showDeadSpeaker = allowDeadSpeaker && actor.Data.IsDead && PlayerControl.LocalPlayer?.Data != null
+            && !PlayerControl.LocalPlayer.Data.IsDead;
         try
         {
             // Override only the bubble's name at the native presentation boundary. Player data,
             // cosmetics, notifications and name caches continue to see the real player name.
             DisplayActor = actor;
             DisplayTitle = heading;
+            if (showDeadSpeaker) actor.Data.IsDead = false;
             foreach (string page in pages)
                 DestroyableSingleton<HudManager>.Instance.Chat.AddChat(actor, padding + page, censor);
         }
-        finally { DisplayActor = previousActor; DisplayTitle = previousTitle; }
+        finally
+        {
+            if (showDeadSpeaker) actor.Data.IsDead = true;
+            DisplayActor = previousActor;
+            DisplayTitle = previousTitle;
+        }
         return (heading, pages);
     }
 

@@ -126,6 +126,7 @@ enum CustomRPC : uint
     SystemChat = 195,
     AntiBlackoutUnavailable,
     ReplayPlayerChat,
+    DoubleAgentPlant,
 }
 public enum Sounds
 {
@@ -171,7 +172,8 @@ internal class RPCHandlerPatch
         or CustomRPC.DumpLog
         or CustomRPC.SetFriendCode
         or CustomRPC.BetterCheck
-        or CustomRPC.MeetingAbilityRequest;
+        or CustomRPC.MeetingAbilityRequest
+        or CustomRPC.DoubleAgentPlant;
     public static bool Prefix(PlayerControl __instance, [HarmonyArgument(0)] byte callId, [HarmonyArgument(1)] MessageReader reader)
     {
         if (callId is RpcPayloadSnapshot.OuterCallId or RpcPayloadSnapshot.PackedOuterCallId)
@@ -544,12 +546,17 @@ internal class RPCHandlerPatch
                     if (length < 0 || length > reader.BytesRemaining) throw new System.IO.InvalidDataException("Invalid quick chat replay length");
                     var payload = new byte[length];
                     for (int i = 0; i < length; i++) payload[i] = reader.ReadByte();
-                    replayText = ChatManager.QuickChatText(payload);
+                    int namesCount = reader.ReadPackedInt32();
+                    if (namesCount < 0 || namesCount > reader.BytesRemaining / 2) throw new System.IO.InvalidDataException("Invalid quick chat name count");
+                    var names = new ChatViewHistory.ReferencedName[namesCount];
+                    for (int i = 0; i < namesCount; i++) names[i] = new(reader.ReadByte(), reader.ReadString());
+                    replayText = ChatManager.QuickChatText(payload, names);
                 }
                 else replayText = reader.ReadString();
                 if (reader.BytesRemaining != 0) throw new System.IO.InvalidDataException("Invalid player chat replay payload");
-                if (isLocalRecipient) OfficialChat.ShowLocal(Utils.GetPlayerById(replaySpeakerId) ?? __instance, replayText,
-                    replayTitle, censor: !quickChat, textHasNamePadding: textHasNamePadding);
+                var replaySpeaker = Utils.GetPlayerById(replaySpeakerId);
+                if (isLocalRecipient && replaySpeaker?.Data != null) OfficialChat.ShowLocal(replaySpeaker, replayText,
+                    replayTitle, censor: !quickChat, textHasNamePadding: textHasNamePadding, allowDeadSpeaker: true);
                 break;
             case CustomRPC.SetDrawPlayer:
                 Revolutionist.ReceiveDrawPlayerRPC(reader);
@@ -744,6 +751,11 @@ internal class RPCHandlerPatch
                 break;
             case CustomRPC.RetributionistRevenge:
                 Retributionist.ReceiveRPC_Custom(reader, __instance);
+                break;
+            case CustomRPC.DoubleAgentPlant:
+                byte bombTarget = reader.ReadByte();
+                if (isLocalRecipient && reader.BytesRemaining == 0)
+                    DoubleAgent.ReceivePlantRequest(__instance, bombTarget);
                 break;
             case CustomRPC.SetChameleonTimer:
                 Chameleon.ReceiveRPC_Custom(reader);

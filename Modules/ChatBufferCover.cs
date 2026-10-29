@@ -26,8 +26,12 @@ internal static class ChatBufferCover
         {
             foreach (var view in views)
             {
+                var batch = !view.Recipient.AmOwner && !view.Recipient.IsModded()
+                    ? new ChatManager.VanillaReplayBatch(view.Recipient) : null;
+                System.Action<Hazel.MessageWriter> send = batch == null ? null : batch.Add;
                 var fillerActor = Main.AllAlivePlayerControls.OrderBy(x => x.PlayerId).FirstOrDefault() ?? view.Recipient;
-                for (int i = 0; i < bufferSize - view.Entries.Length; i++)
+                int replayCount = view.Entries.Count(entry => ChatManager.CanReplay(view, entry));
+                for (int i = 0; i < bufferSize - replayCount; i++)
                 {
                     string msg = "/";
                     if (kind == Kind.President)
@@ -49,9 +53,10 @@ internal static class ChatBufferCover
                     else
                         msg += duelCommands[rd.Next(duelCommands.Length)] + " " + rd.Next(0, 3);
 
-                    OfficialChat.Send(fillerActor, msg, view.Recipient.PlayerId);
+                    OfficialChat.Send(fillerActor, msg, view.Recipient.PlayerId, send: send);
                 }
-                ChatManager.Replay(view);
+                ChatManager.Replay(view, send);
+                batch?.Send();
             }
         }
         finally { ChatUpdatePatch.DoBlockChat = false; }

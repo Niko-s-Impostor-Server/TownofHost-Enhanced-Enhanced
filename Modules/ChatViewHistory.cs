@@ -6,9 +6,10 @@ namespace TOHE;
 internal sealed class ChatViewHistory
 {
     internal enum Kind { System, PlayerText, QuickChat }
+    internal readonly record struct ReferencedName(byte PlayerId, string Name);
 
     internal sealed record Entry(Kind Type, byte SpeakerId, string Title, string Text, byte[] QuickChatPayload,
-        bool TextHasNamePadding);
+        bool TextHasNamePadding, ReferencedName[] ReferencedNames);
 
     private readonly Dictionary<int, List<Entry>> entriesByRecipient = [];
 
@@ -37,5 +38,5 @@ internal sealed class ChatViewHistory
     internal void Remove(int recipientId) => entriesByRecipient.Remove(recipientId);
 
     private static Entry Copy(Entry entry)
-        => entry with { QuickChatPayload = entry.QuickChatPayload.ToArray() };
+        => entry with { QuickChatPayload = entry.QuickChatPayload.ToArray(), ReferencedNames = entry.ReferencedNames.ToArray() };
 }

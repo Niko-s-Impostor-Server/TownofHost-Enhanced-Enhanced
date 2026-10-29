@@ -1,4 +1,5 @@
 {
+  "AllSettingsPage": "Settings page {0}/{1}. Next: /n all {2}",
   "AntiBlackoutUnavailable": "Warning: AntiBlackOut is unavailable.\nVanilla clients will see a black screen.",
   "OfficialAnticheatSupport": "Official Anticheat Support",
   "OfficialAnticheatForced": "Forced on",

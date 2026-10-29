@@ -809,7 +809,7 @@ public static class Utils
         SendMessage(sb.ToString(), PlayerId);
     }
 
-    public static void ShowAllActiveSettings(byte PlayerId = byte.MaxValue)
+    public static void ShowAllActiveSettings(byte PlayerId = byte.MaxValue, int? page = null)
     {
         if (Options.HideGameSettings.GetBool() && PlayerId != byte.MaxValue)
         {
@@ -839,7 +839,20 @@ public static class Utils
             sb.Clear().Append(text.RemoveHtmlTags());
         }
 
-        SendMessage(sb.ToString(), PlayerId);
+        string allSettings = sb.ToString();
+        bool includesVanilla = Main.AllPlayerControls.Any(player => player?.Data != null && !player.Data.Disconnected
+            && !player.IsModded() && (PlayerId == byte.MaxValue || player.PlayerId == PlayerId));
+        int automaticPages = includesVanilla ? 1 : ChatManager.BufferSize;
+        if (page == null && OfficialChat.Paginate(allSettings, 850).Count() <= automaticPages)
+        {
+            SendMessage(allSettings, PlayerId);
+            return;
+        }
+
+        var pages = OfficialChat.Paginate(allSettings, 700).ToArray();
+        int current = Math.Clamp(page ?? 1, 1, pages.Length);
+        int next = current == pages.Length ? 1 : current + 1;
+        SendMessage(pages[current - 1] + "\n\n" + string.Format(GetString("AllSettingsPage"), current, pages.Length, next), PlayerId);
     }
     public static void CopyCurrentSettings()
     {
@@ -1804,7 +1817,8 @@ public static class Utils
     private static readonly StringBuilder TargetMark = new(20);
     public static async void NotifyRoles(PlayerControl SpecifySeer = null, PlayerControl SpecifyTarget = null, bool isForMeeting = false, bool NoCache = false, bool ForceLoop = true, bool CamouflageIsForMeeting = false, bool MushroomMixupIsActive = false)
     {
-        if (!AmongUsClient.Instance.AmHost || GameStates.IsHideNSeek || Main.AllPlayerControls == null || SetUpRoleTextPatch.IsInIntro) return;
+        if (!AmongUsClient.Instance.AmHost || GameStates.IsHideNSeek || Main.AllPlayerControls == null
+            || SetUpRoleTextPatch.IsInIntro && !isForMeeting) return;
         if (GameStates.IsMeeting)
         {
             // When the meeting window is active and game is not ended
@@ -1826,7 +1840,8 @@ public static class Utils
     }
     public static Task DoNotifyRoles(PlayerControl SpecifySeer = null, PlayerControl SpecifyTarget = null, bool isForMeeting = false, bool NoCache = false, bool ForceLoop = true, bool CamouflageIsForMeeting = false, bool MushroomMixupIsActive = false)
     {
-        if (!AmongUsClient.Instance.AmHost || GameStates.IsHideNSeek || Main.AllPlayerControls == null || SetUpRoleTextPatch.IsInIntro) return Task.CompletedTask;
+        if (!AmongUsClient.Instance.AmHost || GameStates.IsHideNSeek || Main.AllPlayerControls == null
+            || SetUpRoleTextPatch.IsInIntro && !isForMeeting) return Task.CompletedTask;
         if (GameStates.IsMeeting)
         {
             // When the meeting window is active and game is not ended

@@ -116,12 +116,14 @@ internal class Chronomancer : RoleBase
     {
         ChargedTime = 0;
         IsInMassacre = false;
+        SendChargedTimeRPC();
         _Player?.ResetKillCooldown();
     }
     public override void AfterMeetingTasks()
     {
         ChargedTime = 0;
         IsInMassacre = false;
+        SendChargedTimeRPC();
         _Player?.ResetKillCooldown();
     }
     public override bool OnCheckMurderAsKiller(PlayerControl killer, PlayerControl target)
@@ -176,6 +178,7 @@ internal class Chronomancer : RoleBase
     {
         // Cant directly write Ability Limit, create another method to send it
         // Only send to the target to prevent logging in other's
+        if (!AmongUsClient.Instance.AmHost || _Player?.Data == null || _Player.Data.Disconnected || !_Player.IsNonHostModdedClient()) return;
         var writer = CustomRpcTransport.Start(CustomRPC.SyncRoleSkill, SendOption.Reliable, _Player.OwnerId);
         writer.WriteNetObject(_Player);
         writer.Write(ChargedTime);

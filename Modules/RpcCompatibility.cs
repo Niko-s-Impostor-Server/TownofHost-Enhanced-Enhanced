@@ -2,6 +2,7 @@ namespace TOHE;
 
 internal static class RpcCompatibility
 {
+    private const byte ProtocolVersion = 2;
     private static readonly Dictionary<int, int> PackedClients = new();
     private static readonly HashSet<int> IncompatibleClients = new();
     private static bool declared;
@@ -12,7 +13,7 @@ internal static class RpcCompatibility
     internal static byte[] CreateDeclarationPayload()
     {
         var payload = new byte[33];
-        payload[0] = 1;
+        payload[0] = ProtocolVersion;
         BuildFingerprint.CopyTo(payload, 1);
         return payload;
     }
@@ -37,7 +38,7 @@ internal static class RpcCompatibility
     {
         CustomRpcTransport.Send(CustomRPC.ProtocolCapabilities, writer =>
         {
-            writer.Write((byte)1);
+            writer.Write(ProtocolVersion);
             writer.Write(new Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppStructArray<byte>(BuildFingerprint));
         });
         declared = true;
@@ -49,7 +50,7 @@ internal static class RpcCompatibility
         byte protocol = reader.ReadByte();
         var fingerprint = new byte[32];
         for (int index = 0; index < fingerprint.Length; index++) fingerprint[index] = reader.ReadByte();
-        if (protocol != 1 || !fingerprint.SequenceEqual(BuildFingerprint))
+        if (protocol != ProtocolVersion || !fingerprint.SequenceEqual(BuildFingerprint))
         {
             PackedClients.Remove(sender.OwnerId);
             IncompatibleClients.Add(sender.OwnerId);
