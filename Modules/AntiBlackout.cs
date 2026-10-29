@@ -29,14 +29,14 @@ public static class AntiBlackout
     private static OfficialSessionContext meetingContext;
     private static uint meetingGeneration;
     private static bool votingResultPending;
-    private static bool settling;
     private static bool publishing;
     private static bool serializing;
     private static bool warnedUnavailable;
 
     public static bool IsBuffered(byte playerId) => bufferedPlayers.Contains(playerId);
     public static bool IsProtectedRecipient(byte playerId) => protectedRecipients.Contains(playerId);
-    internal static bool RedirectingPlayerData => ProtectingVanilla && !serializing;
+    internal static bool WaitingForGhostViews => votingResultPending && GhostRoleView.HasPendingPublications;
+    internal static bool RedirectingPlayerData => (ProtectingVanilla || WaitingForGhostViews) && !serializing;
 
     // Evaluate the real post-meeting matrix, never the temporary mask. The role
     // prototype supplies native IsImpostor; custom kill-button access is unrelated.
@@ -164,6 +164,7 @@ public static class AntiBlackout
 
     internal static void SendPlayerData(NetworkedPlayerInfo info, OfficialPacketBuilder.Batch batch = null)
     {
+        if (WaitingForGhostViews) return;
         bool ownsBatch = batch == null;
         batch ??= new OfficialPacketBuilder.Batch();
         foreach (var seer in Main.AllPlayerControls)
@@ -199,7 +200,7 @@ public static class AntiBlackout
     {
         if (publishing || !votingResultPending) return false;
         var seer = Main.AllPlayerControls.FirstOrDefault(player => player.GetClientId() == clientId);
-        if (seer == null || seer.IsModded() || !(settling || IsProtectedRecipient(seer.PlayerId))) return false;
+        if (seer == null || seer.IsModded() || !IsProtectedRecipient(seer.PlayerId)) return false;
         deferredRoles[(seer.PlayerId, target.PlayerId)] = role;
         return true;
     }
@@ -303,7 +304,11 @@ public static class AntiBlackout
 
     internal static void CompleteAfterMeeting(Action settle)
     {
-        if (!votingResultPending) return;
+        if (!votingResultPending || GameStates.IsEnded) return;
+        // CheckExile/OnPlayerExiled can add deaths after voting. Protect those
+        // views before the delayed business callbacks publish any of the deaths.
+        RefreshProtection();
+        SendGameData();
         var generation = meetingGeneration;
         var context = meetingContext;
         Main.Instance.StartCoroutine(Complete());
@@ -314,9 +319,7 @@ public static class AntiBlackout
             // PrespawnStep, never the WrapUpAndSpawn iterator factory.
             yield return new UnityEngine.WaitForSeconds(1.2f);
             if (!Current()) yield break;
-            settling = true;
-            try { settle(); }
-            finally { settling = false; }
+            settle();
             if (!Current()) yield break;
             RefreshProtection();
             SendGameData();
@@ -324,7 +327,7 @@ public static class AntiBlackout
             // The first 1.2 seconds above already belongs to this two-second hold.
             if (bufferedPlayers.Count > 0) yield return new UnityEngine.WaitForSeconds(0.8f);
             var barrier = CustomRpcTransport.CaptureBarrier();
-            while (!barrier.IsComplete)
+            while (!barrier.IsComplete || GhostRoleView.HasPendingPublications)
             {
                 if (!Current() || barrier.IsCancelled) yield break;
                 yield return null;
@@ -445,7 +448,8 @@ public static class AntiBlackout
         hiddenRecipients.Clear();
         deferredRoles.Clear();
         sentMask.Clear();
-        settling = publishing = serializing = false;
+        publishing = serializing = false;
+        GhostRoleView.ResetPending();
         IsCached = false;
         ShowExiledInfo = false;
         StoreExiledMessage = "";
@@ -469,8 +473,13 @@ internal static class AntiBlackoutPlayerInfoPatch
     private static bool Prefix(NetworkedPlayerInfo __instance, [HarmonyArgument(1)] bool initialState, ref bool __result)
     {
         if (initialState || !AmongUsClient.Instance.AmHost || !AntiBlackout.RedirectingPlayerData) return true;
-        AntiBlackout.SendPlayerData(__instance);
-        __instance.ClearOrDecrementDirt();
+        // Retain dirt until the queued native ghost publication has run. Sending
+        // IsDead first makes RoleManager skip the native Die transition.
+        if (!AntiBlackout.WaitingForGhostViews)
+        {
+            AntiBlackout.SendPlayerData(__instance);
+            __instance.ClearOrDecrementDirt();
+        }
         __result = false;
         return false;
     }

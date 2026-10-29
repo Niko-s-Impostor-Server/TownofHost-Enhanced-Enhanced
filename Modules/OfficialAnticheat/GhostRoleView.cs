@@ -10,6 +10,9 @@ namespace TOHE.Modules;
 internal static class GhostRoleView
 {
     private static PlayerControl localExile;
+    private static readonly HashSet<object> pendingPublications = [];
+    internal static bool HasPendingPublications => pendingPublications.Count > 0;
+    internal static void ResetPending() => pendingPublications.Clear();
 
     internal static bool SuppressNativeAssignment(PlayerControl player) => player != null && player == localExile;
 
@@ -58,7 +61,12 @@ internal static class GhostRoleView
             .Select(seer => (Seer: seer, ClientId: seer.GetClientId(), Role: ForRecipient(target, seer))).ToArray();
         var barrier = CustomRpcTransport.CaptureBarrier();
         if (barrier.IsComplete) SendViews();
-        else Main.Instance.StartCoroutine(WaitAndPublish());
+        else
+        {
+            var pending = new object();
+            pendingPublications.Add(pending);
+            Main.Instance.StartCoroutine(WaitAndPublish(pending));
+        }
 
         bool Current() => !barrier.IsCancelled && context.IsCurrent() && AmongUsClient.Instance.AmHost
             && target != null && target.Data != null && target.Data.IsDead
@@ -77,16 +85,20 @@ internal static class GhostRoleView
             }
         }
 
-        IEnumerator WaitAndPublish()
+        IEnumerator WaitAndPublish(object pending)
         {
-            // The death remains local and immediate. Its metadata must be sent from
-            // the native queue before recipients install their native ghost view.
-            while (!barrier.IsComplete)
+            try
             {
-                if (!Current()) yield break;
-                yield return null;
+                // Keep the real death local until role metadata can leave the
+                // queue. Meeting snapshots must follow this native ghost view.
+                while (!barrier.IsComplete)
+                {
+                    if (!Current()) yield break;
+                    yield return null;
+                }
+                SendViews();
             }
-            SendViews();
+            finally { pendingPublications.Remove(pending); }
         }
     }
 
