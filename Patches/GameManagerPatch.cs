@@ -12,7 +12,7 @@ class GameManagerSerializeFix
         {
             GameLogicComponent logicComponent = __instance.LogicComponents[index];
             // Per-player options are sent through CustomSyncSettings after initial spawn.
-            if (logicComponent is LogicOptions && !initialState)
+            if (logicComponent.TryCast<LogicOptions>() != null && !initialState)
             {
                 logicComponent.ClearDirtyFlag();
                 continue;
