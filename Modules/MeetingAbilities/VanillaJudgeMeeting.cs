@@ -47,8 +47,11 @@ internal static class VanillaJudgeMeeting
             meeting.judgeOverrulesQueue.Remove(entry);
             if (!actor || !actor.IsAlive() || actor.Data.Disconnected) continue;
             var vote = meeting.playerStates.FirstOrDefault(area => area.PlayerId.Value == actor.PlayerId);
-            if (vote) vote.UnsetHasVoted();
-            meeting.RpcClearVoteDelay(actor.GetClientId(), onlyIfUncast: true);
+            if (vote && vote.VotedForId.Value == byte.MaxValue)
+            {
+                vote.UnsetHasVoted();
+                meeting.RpcClearVoteDelay(actor.GetClientId(), onlyIfUncast: true);
+            }
         }
     }
 

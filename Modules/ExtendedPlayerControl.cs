@@ -356,7 +356,7 @@ static class ExtendedPlayerControl
                 var voterId = AmongUsClient.Instance.ClientId == clientId
                     ? PlayerControl.LocalPlayer.PlayerId
                     : AmongUsClient.Instance.GetClient(clientId)?.Character?.PlayerId;
-                if (!voterId.HasValue || meeting.playerStates.FirstOrDefault(area => area.PlayerId.Value == voterId.Value)?.VotedForId != byte.MaxValue)
+                if (!voterId.HasValue || meeting.playerStates.FirstOrDefault(area => area.PlayerId.Value == voterId.Value)?.VotedForId.Value != byte.MaxValue)
                     return;
             }
             if (AmongUsClient.Instance.ClientId == clientId)
