@@ -1,4 +1,4 @@
-using AmongUs.GameOptions;
+﻿using AmongUs.GameOptions;
 using Hazel;
 using InnerNet;
 using System;
@@ -54,7 +54,7 @@ static class ExtendedPlayerControl
     }
     public static void RpcSetRoleDesync(this PlayerControl player, RoleTypes role,/* bool canOverride,*/ int clientId)
     {
-        if (player == null) return;
+        if (player == null || AntiBlackout.DeferRole(player, role, clientId)) return;
         if (AmongUsClient.Instance.ClientId == clientId)
         {
             player.SetRole(role, true);

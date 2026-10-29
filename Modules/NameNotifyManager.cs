@@ -38,6 +38,12 @@ public static class NameNotifyManager
     }
     public static bool GetNameNotify(PlayerControl player, out string name)
     {
+        if (AntiBlackout.IsBuffered(player.PlayerId))
+        {
+            name = "<size=1.9>AntiBlackOutWokring</size>";
+            return true;
+        }
+
         name = string.Empty;
         if (!Notice.TryGetValue(player.PlayerId, out (string Text, long TimeStamp) value)) return false;
         name = value.Text;

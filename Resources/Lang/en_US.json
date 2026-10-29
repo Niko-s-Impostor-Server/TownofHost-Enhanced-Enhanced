@@ -1,6 +1,11 @@
 {
   "AllSettingsPage": "Settings page {0}/{1}. Next: /n all {2}",
   "AntiBlackoutUnavailable": "Warning: AntiBlackOut is unavailable.\nVanilla clients will see a black screen.",
+  "AntiBlackoutBufferMode": "Anti-Blackout Buffer Scope",
+  "AntiBlackoutBufferMode.AllPlayers": "All Players",
+  "AntiBlackoutBufferMode.VanillaPlayers": "All Vanilla Players",
+  "AntiBlackoutBufferMode.NecessaryOnly": "Necessary Players Only",
+  "AntiBlackoutBufferMode.Disabled": "Disabled",
   "OfficialAnticheatSupport": "Official Anticheat Support",
   "OfficialAnticheatForced": "Forced on",
   "OfficialAnticheatNextLobby": "Change saved; takes effect in the next lobby.",

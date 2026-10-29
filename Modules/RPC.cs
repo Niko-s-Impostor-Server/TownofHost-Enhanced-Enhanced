@@ -1,4 +1,4 @@
-using AmongUs.GameOptions;
+﻿using AmongUs.GameOptions;
 using Hazel;
 using InnerNet;
 using System;
@@ -127,6 +127,7 @@ enum CustomRPC : uint
     AntiBlackoutUnavailable,
     ReplayPlayerChat,
     DoubleAgentPlant,
+    AntiBlackoutBuffer,
 }
 public enum Sounds
 {
@@ -723,6 +724,9 @@ internal class RPCHandlerPatch
                 break;
             case CustomRPC.SyncFFANameNotify:
                 FFAManager.ReceiveRPCSyncNameNotify(reader);
+                break;
+            case CustomRPC.AntiBlackoutBuffer:
+                AntiBlackout.ReceiveBuffer(reader);
                 break;
             case CustomRPC.SyncNameNotify:
                 NameNotifyManager.ReceiveRPC(reader);

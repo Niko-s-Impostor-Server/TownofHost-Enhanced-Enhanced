@@ -1,4 +1,4 @@
-using AmongUs.Data;
+﻿using AmongUs.Data;
 using AmongUs.GameOptions;
 using Hazel;
 using InnerNet;
@@ -2207,6 +2207,11 @@ public static class Utils
     public static void SendGameData(SendOption sendOption = SendOption.Reliable)
     {
         if (sendOption != SendOption.Reliable) throw new ArgumentOutOfRangeException(nameof(sendOption));
+        if (AntiBlackout.RedirectingPlayerData)
+        {
+            AntiBlackout.SendGameData();
+            return;
+        }
         var batch = new OfficialPacketBuilder.Batch();
         foreach (var playerinfo in GameData.Instance.AllPlayers)
         {

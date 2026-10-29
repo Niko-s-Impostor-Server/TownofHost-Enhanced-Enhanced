@@ -230,7 +230,7 @@ public static class Options
 
     public static OptionItem NoGameEnd;
     public static OptionItem AllowConsole;
-    //public static OptionItem DisableAntiBlackoutProtects;
+    public static StringOptionItem AntiBlackoutBufferMode;
 
     public static OptionItem RoleAssigningAlgorithm;
     public static OptionItem KPDCamouflageMode;
@@ -1140,9 +1140,13 @@ public static class Options
             .SetHeader(true);
         AllowConsole = BooleanOptionItem.Create(60382, "AllowConsole", false, TabGroup.SystemSettings, false)
             .SetColor(Color.red);
-        /* DisableAntiBlackoutProtects = BooleanOptionItem.Create(60384, "DisableAntiBlackoutProtects", false, TabGroup.SystemSettings, false)
-             .SetGameMode(CustomGameMode.Standard)
-             .SetColor(Color.red);*/
+        AntiBlackoutBufferMode = StringOptionItem.Create(60384, "AntiBlackoutBufferMode",
+        [
+            "AntiBlackoutBufferMode.AllPlayers",
+            "AntiBlackoutBufferMode.VanillaPlayers",
+            "AntiBlackoutBufferMode.NecessaryOnly",
+            "AntiBlackoutBufferMode.Disabled"
+        ], 2, TabGroup.SystemSettings, false);
 
         RoleAssigningAlgorithm = StringOptionItem.Create(60400, "RoleAssigningAlgorithm", roleAssigningAlgorithms, 4, TabGroup.SystemSettings, true)
             .RegisterUpdateValueEvent((object obj, OptionItem.UpdateValueEventArgs args) => IRandom.SetInstanceById(args.CurrentValue))

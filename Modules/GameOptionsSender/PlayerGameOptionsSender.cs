@@ -168,6 +168,12 @@ public class PlayerGameOptionsSender(PlayerControl player) : GameOptionsSender
         AURoleOptions.ProtectionDurationSeconds = 0f;
         AURoleOptions.ImpostorsCanSeeProtect = false;
 
+        if (AntiBlackout.IsBuffered(player.PlayerId))
+        {
+            opt.SetFloat(FloatOptionNames.PlayerSpeedMod, Main.MinSpeed);
+            opt.SetInt(Int32OptionNames.KillDistance, 0);
+        }
+
         return opt;
     }
 
