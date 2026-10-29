@@ -351,6 +351,8 @@ static class ExtendedPlayerControl
                 Logger.Info($"Cannot be cleared because meetinghud is null", "RpcClearVoteDelay");
                 return;
             }
+            if (meeting.CurrentState is not (MeetingHud.MeetingStates.NotVoted or MeetingHud.MeetingStates.Voted))
+                return;
             if (onlyIfUncast)
             {
                 var voterId = AmongUsClient.Instance.ClientId == clientId
