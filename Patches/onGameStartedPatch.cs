@@ -366,10 +366,15 @@ internal class StartGameHostPatch
         // must already be known so each owner receives its own Judge threshold.
         var optionsManager = GameOptionsManager.Instance;
         var current = optionsManager.CurrentGameOptions;
+        // The lobby's NormalGameOptionsSender broadcasts the host's LogicOptions
+        // on later streamed-object sends. Replace it before publishing distinct
+        // owner options so that startup cannot overwrite another Judge's cache.
+        GameOptionsSender.AllSenders.Clear();
         var optionsBatch = new OfficialPacketBuilder.Batch();
         foreach (var pc in PlayerControl.AllPlayerControls.GetFastEnumerator())
         {
             if (pc == null || pc.Data == null || pc.Data.Disconnected) continue;
+            GameOptionsSender.AllSenders.Add(new PlayerGameOptionsSender(pc));
             var opt = Main.RealOptionsData.Restore(
                 optionsManager.gameOptionsFactory.FromBytes(optionsManager.gameOptionsFactory.ToBytes(current, false)));
             AURoleOptions.SetOpt(opt);
@@ -393,6 +398,7 @@ internal class StartGameHostPatch
             new InitialGameOptionsSender(pc, opt).SendGameOptions(optionsBatch);
         }
         optionsBatch.Send();
+        AURoleOptions.SetOpt(optionsManager.CurrentGameOptions);
         return true;
     }
 
