@@ -30,6 +30,7 @@ class OnGameJoinedPatch
     public static void Postfix(AmongUsClient __instance)
     {
         var generation = ++Generation;
+        ForeignVersionCheck.Reset();
         VanillaPresetOptions.BeginLobby();
         if (Options.IsLoaded) InitializeSession(__instance);
         else Main.Instance.StartCoroutine(WaitForOptions(__instance, generation));
@@ -350,7 +351,11 @@ class OnPlayerLeftPatch
     static void Prefix([HarmonyArgument(0)] ClientData data)
     {
         StartingProcessing = true;
-        if (data != null) ChatManager.RemoveRecipient(data.Id);
+        if (data != null)
+        {
+            ForeignVersionCheck.Remove(data.Id);
+            ChatManager.RemoveRecipient(data.Id);
+        }
         LeftPlayerId = data?.Character?.PlayerId ?? byte.MaxValue;
 
         if (data?.Character == null) return;

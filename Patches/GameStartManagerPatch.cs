@@ -273,6 +273,7 @@ public class GameStartManagerPatch
         }
         private static bool MatchVersions(int clientId, bool acceptVanilla = false)
         {
+            if (ForeignVersionCheck.IsIncompatible(clientId)) return false;
             if (!Main.playerVersion.TryGetValue(clientId, out var version)) return acceptVanilla;
             return Main.ForkId == version.forkId
                 && Main.version.CompareTo(version.version) == 0

@@ -176,6 +176,16 @@ internal class RPCHandlerPatch
         or CustomRPC.DoubleAgentPlant;
     public static bool Prefix(PlayerControl __instance, [HarmonyArgument(0)] byte callId, [HarmonyArgument(1)] MessageReader reader)
     {
+        if (callId == 102)
+        {
+            ForeignVersionCheck.ReceiveEhrVersion(__instance, reader);
+            return false;
+        }
+        if (callId == 203)
+        {
+            ForeignVersionCheck.ReceiveLotusRpc(__instance, reader);
+            return false;
+        }
         if (callId is RpcPayloadSnapshot.OuterCallId or RpcPayloadSnapshot.PackedOuterCallId)
         {
             CustomRpcReceiver.Receive(__instance, reader, callId == RpcPayloadSnapshot.PackedOuterCallId);
@@ -365,21 +375,7 @@ internal class RPCHandlerPatch
                     if (AmongUsClient.Instance.AmHost)
                     {
                         if (!IsVersionMatch(__instance.GetClientId()) && !Main.VersionCheat.Value)
-                        {
-                            var generation = OnGameJoinedPatch.Generation;
-                            var targetClient = __instance.GetClient();
-                            _ = new LateTask(() =>
-                            {
-                                if (!OnGameJoinedPatch.IsCurrentClient(targetClient, generation) || !AmongUsClient.Instance.AmHost) return;
-                                if (__instance?.Data?.Disconnected is not null and not true)
-                                {
-                                    var msg = string.Format(GetString("KickBecauseDiffrentVersionOrMod"), __instance?.Data?.PlayerName);
-                                    Logger.Warn(msg, "Version Kick");
-                                    Logger.SendInGame(msg);
-                                    AmongUsClient.Instance.KickPlayer(__instance.GetClientId(), false);
-                                }
-                            }, 5f, "Kick Because Diffrent Version Or Mod");
-                        }
+                            ScheduleVersionMismatchKick(__instance);
                     }
                     // Kick Unmached Player End
                 }
@@ -819,6 +815,23 @@ internal class RPCHandlerPatch
                 AfkMonitor.ReceiveState(__instance, reader);
                 break;
         }
+    }
+
+    internal static void ScheduleVersionMismatchKick(PlayerControl player)
+    {
+        var generation = OnGameJoinedPatch.Generation;
+        var targetClient = player.GetClient();
+        _ = new LateTask(() =>
+        {
+            if (!OnGameJoinedPatch.IsCurrentClient(targetClient, generation) || !AmongUsClient.Instance.AmHost) return;
+            if (player?.Data?.Disconnected is not null and not true)
+            {
+                var msg = string.Format(GetString("KickBecauseDiffrentVersionOrMod"), player.Data.PlayerName);
+                Logger.Warn(msg, "Version Kick");
+                Logger.SendInGame(msg);
+                AmongUsClient.Instance.KickPlayer(targetClient.Id, false);
+            }
+        }, 5f, "Kick Because Diffrent Version Or Mod");
     }
 
     private static bool IsVersionMatch(int ClientId)
