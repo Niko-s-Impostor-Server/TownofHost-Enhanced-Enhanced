@@ -116,11 +116,28 @@ internal class Eraser : RoleBase, IMeetingTargetAbility
                 Logger.Info($"Canceled {player.GetNameWithRole()} because player have ghost role", "Eraser");
                 return;
             }
-            var erasedRole = GetErasedRole(player.GetCustomRole().GetRoleTypes(), player.GetCustomRole());
-            if (erasedRole != player.GetCustomRole() &&
+            var oldRole = player.GetCustomRole();
+            var erasedRole = GetErasedRole(oldRole.GetRoleTypes(), oldRole);
+            if (erasedRole != oldRole &&
                 RpcSetRoleReplacer.RoleMap.TryGetValue((player.PlayerId, player.PlayerId), out var selfView) &&
-                selfView.roleType == RoleTypes.Judge)
-                player.RpcChangeRoleBasis(erasedRole);
+                (selfView.roleType == RoleTypes.Judge || MeetingAbilities.NativeButtonConfigured(player)))
+            {
+                if (player.Data.IsDead || !player.IsAlive())
+                {
+                    // SetRole with a living basis revives a dead target. Keep the
+                    // native ghost view and update only the future alive basis.
+                    foreach (var seer in Main.AllPlayerControls)
+                    {
+                        var key = (seer.PlayerId, player.PlayerId);
+                        if (!RpcSetRoleReplacer.RoleMap.TryGetValue(key, out var view)) continue;
+                        var roleType = view.roleType == RoleTypes.Judge ? erasedRole.GetRoleTypes() : view.roleType;
+                        RpcSetRoleReplacer.RoleMap[key] = (roleType, erasedRole);
+                    }
+                    player.Data.RoleWhenAlive = new Il2CppSystem.Nullable<RoleTypes>(erasedRole.GetRoleTypes());
+                    player.Data.MarkDirty();
+                }
+                else player.RpcChangeRoleBasis(erasedRole);
+            }
             player.RpcSetCustomRole(erasedRole);
             player.ResetKillCooldown();
             player.SetKillCooldown();
