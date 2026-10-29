@@ -106,7 +106,8 @@ internal static class MeetingAbilities
         // TryOverrule has already locked the vanilla UI. ClearVote also calls
         // ClearOverrule, so both a cancellation and a successful skill return the real vote.
         // Its nonce is deliberately reusable: vanilla retries keep the same nonce.
-        if (Alive(actor) && VotingPhase()) instance.RpcClearVoteDelay(actor.GetClientId());
+        if (Alive(actor) && VotingPhase() && vote && !vote.DidVote)
+            instance.RpcClearVoteDelay(actor.GetClientId());
         return true;
     }
 

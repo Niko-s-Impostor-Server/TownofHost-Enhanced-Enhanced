@@ -346,11 +346,16 @@ static class ExtendedPlayerControl
         var gameId = AmongUsClient.Instance.GameId;
         _ = new LateTask(() =>
         {
-            if (meeting == null || !AmongUsClient.Instance.AmHost || AmongUsClient.Instance.GameId != gameId)
+            if (meeting == null || MeetingHud.Instance != meeting || !AmongUsClient.Instance.AmHost || AmongUsClient.Instance.GameId != gameId)
             {
                 Logger.Info($"Cannot be cleared because meetinghud is null", "RpcClearVoteDelay");
                 return;
             }
+            var voterId = AmongUsClient.Instance.ClientId == clientId
+                ? PlayerControl.LocalPlayer.PlayerId
+                : AmongUsClient.Instance.GetClient(clientId)?.Character?.PlayerId;
+            if (!voterId.HasValue || meeting.playerStates.FirstOrDefault(area => area.PlayerId.Value == voterId.Value)?.VotedForId != byte.MaxValue)
+                return;
             if (AmongUsClient.Instance.ClientId == clientId)
             {
                 meeting.ClearVote(PlayerControl.LocalPlayer.PlayerId, true);

@@ -31,7 +31,7 @@ internal static class VanillaJudgeMeeting
             var tasks = Main.PlayerStates[actor.PlayerId].TaskState;
             allowed = tasks.CompletedTasksCount * 100 >= System.Math.Max(0, tasks.AllTasksCount) * JudgeTOHE.TaskRequirementPercentage;
         }
-        if (!allowed && actor && !actor.Data.Disconnected && GameStates.IsVoting)
+        if (!allowed && actor && !actor.Data.Disconnected && GameStates.IsVoting && vote && !vote.DidVote)
             meeting.RpcClearVoteDelay(actor.GetClientId());
         return allowed;
     }
