@@ -87,6 +87,7 @@ internal class ChangeRoleSettings
 
             ChatManager.ResetHistory();
             ReportDeadBodyPatch.CanReport.Clear();
+            ReportDeadBodyPatch.ResetEmergencyRequest();
             Options.UsedButtonCount = 0;
 
             if (GameStates.IsNormalGame)

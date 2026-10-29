@@ -723,6 +723,57 @@ class ReportDeadBodyPatch
 {
     public static Dictionary<byte, bool> CanReport = [];
     public static Dictionary<byte, List<NetworkedPlayerInfo>> WaitReport = [];
+    private static PlayerControl redirectedEmergencyOrigin;
+    private static PlayerControl pendingEmergencyReporter;
+    private static PlayerControl pendingEmergencyOrigin;
+    private static PlayerControl pendingInternalReporter;
+
+    public static void ResetEmergencyRequest()
+    {
+        redirectedEmergencyOrigin = null;
+        pendingEmergencyReporter = null;
+        pendingEmergencyOrigin = null;
+        pendingInternalReporter = null;
+    }
+
+    public static void RedirectEmergency(PlayerControl origin, PlayerControl proxy)
+    {
+        var previous = redirectedEmergencyOrigin;
+        redirectedEmergencyOrigin = origin;
+        try { proxy.CmdReportDeadBody(null); }
+        finally { redirectedEmergencyOrigin = previous; }
+    }
+
+    public static PlayerControl TakeEmergencyOrigin(PlayerControl reporter, NetworkedPlayerInfo target)
+    {
+        if (target != null || reporter != pendingEmergencyReporter) return null;
+        var origin = pendingEmergencyOrigin;
+        pendingEmergencyReporter = null;
+        pendingEmergencyOrigin = null;
+        return origin;
+    }
+
+    public static void StartInternalMeeting(PlayerControl reporter, NetworkedPlayerInfo target)
+    {
+        var previous = pendingInternalReporter;
+        pendingInternalReporter = reporter;
+        try { reporter.RpcStartMeeting(target); }
+        finally { pendingInternalReporter = previous; }
+    }
+
+    public static bool IsInternalEmergency(PlayerControl reporter, NetworkedPlayerInfo target)
+        => target == null && reporter == pendingInternalReporter;
+
+    public static PlayerControl RedirectedEmergencyOrigin(PlayerControl reporter, NetworkedPlayerInfo target)
+        => target == null && redirectedEmergencyOrigin != reporter ? redirectedEmergencyOrigin : null;
+
+    public static void Postfix(PlayerControl __instance)
+    {
+        if (__instance != pendingEmergencyReporter) return;
+        pendingEmergencyReporter = null;
+        pendingEmergencyOrigin = null;
+    }
+
     public static bool Prefix(PlayerControl __instance, [HarmonyArgument(0)] NetworkedPlayerInfo target)
     {
         if (GameStates.IsMeeting || GameStates.IsHideNSeek) return false;
@@ -734,6 +785,15 @@ class ReportDeadBodyPatch
         }
         if (Options.DisableMeeting.GetBool()) return false;
         if (Options.CurrentGameMode == CustomGameMode.FFA) return false;
+        if (AmongUsClient.Instance.AmHost && target == null)
+        {
+            if (!VanillaMeetingRoles.CanCallEmergency(redirectedEmergencyOrigin ?? __instance)) return false;
+            if (Options.SyncButtonMode.GetBool() && Options.SyncedButtonCount.GetFloat() <= Options.UsedButtonCount)
+            {
+                Logger.Info("The button has been canceled because the maximum number of available buttons has been exceeded", "ReportDeadBody");
+                return false;
+            }
+        }
 
         if (!CanReport[__instance.PlayerId])
         {
@@ -829,21 +889,6 @@ class ReportDeadBodyPatch
                 }
             }
 
-            if (Options.SyncButtonMode.GetBool() && target == null)
-            {
-                Logger.Info($"Option: {Options.SyncedButtonCount.GetInt()}, has button count: {Options.UsedButtonCount}", "ReportDeadBody");
-                if (Options.SyncedButtonCount.GetFloat() <= Options.UsedButtonCount)
-                {
-                    Logger.Info("The button has been canceled because the maximum number of available buttons has been exceeded", "ReportDeadBody");
-                    return false;
-                }
-                else Options.UsedButtonCount++;
-
-                if (Options.SyncedButtonCount.GetFloat() == Options.UsedButtonCount)
-                {
-                    Logger.Info("The maximum number of meeting buttons has been reached", "ReportDeadBody");
-                }
-            }
         }
         catch (Exception e)
         {
@@ -851,6 +896,11 @@ class ReportDeadBodyPatch
         }
 
         AfterReportTasks(__instance, target);
+        if (target == null)
+        {
+            pendingEmergencyReporter = __instance;
+            pendingEmergencyOrigin = redirectedEmergencyOrigin ?? __instance;
+        }
 
         // InnerSloth added CheckTaskCompletion() => CheckEndGameViaTasks() in report dead body.
         // This is patched in CheckGameEndPatch
@@ -858,8 +908,6 @@ class ReportDeadBodyPatch
     }
     public static void AfterReportTasks(PlayerControl player, NetworkedPlayerInfo target, bool force = false)
     {
-        if (AmongUsClient.Instance.AmHost && target == null)
-            VanillaMeetingRoles.RecordEmergency(player);
         //=============================================
         // Hereinafter, it is assumed that the button is confirmed to be pressed
         //=============================================
@@ -948,6 +996,39 @@ class ReportDeadBodyPatch
         _ = new LateTask(Utils.SyncAllSettings, 3f, "Sync all settings after report");
     }
 }
+[HarmonyPatch(typeof(PlayerControl), nameof(PlayerControl.StartMeeting))]
+internal static class ManualEmergencyStartedPatch
+{
+    [HarmonyPostfix]
+    private static void Postfix(PlayerControl __instance, [HarmonyArgument(0)] NetworkedPlayerInfo target)
+    {
+        if (!AmongUsClient.Instance.AmHost) return;
+        var origin = ReportDeadBodyPatch.TakeEmergencyOrigin(__instance, target);
+        if (!origin) return;
+        VanillaMeetingRoles.RecordManualEmergency(origin);
+        if (Options.SyncButtonMode.GetBool()) Options.UsedButtonCount++;
+    }
+}
+
+[HarmonyPatch(typeof(PlayerControl), nameof(PlayerControl.RpcStartMeeting))]
+internal static class InternalEmergencyStartPatch
+{
+    [HarmonyPostfix]
+    private static void Postfix(PlayerControl __instance, [HarmonyArgument(0)] NetworkedPlayerInfo info)
+    {
+        if (!AmongUsClient.Instance.AmHost || info != null) return;
+        // RpcStartMeeting has published the start message before these targeted
+        // role initializations, so the native decrement cannot run after them.
+        if (ReportDeadBodyPatch.IsInternalEmergency(__instance, info))
+            VanillaMeetingRoles.SyncEmergencyView(__instance);
+        else if (ReportDeadBodyPatch.RedirectedEmergencyOrigin(__instance, info) is { } origin)
+        {
+            VanillaMeetingRoles.SyncEmergencyView(__instance);
+            VanillaMeetingRoles.SyncEmergencyView(origin);
+        }
+    }
+}
+
 [HarmonyPatch(typeof(PlayerControl), nameof(PlayerControl.FixedUpdate))]
 class FixedUpdateInNormalGamePatch
 {

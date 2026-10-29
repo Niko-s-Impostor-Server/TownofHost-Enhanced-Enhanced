@@ -210,7 +210,7 @@ internal class DollMaster : RoleBase
             UnPossess(DollMasterTarget, controllingTarget);
             GetPlayersPositions(DollMasterTarget);
             SwapPlayersPositions(DollMasterTarget);
-            controllingTarget.CmdReportDeadBody(null);
+            ReportDeadBodyPatch.RedirectEmergency(reporter, controllingTarget);
             return false;
         }
 

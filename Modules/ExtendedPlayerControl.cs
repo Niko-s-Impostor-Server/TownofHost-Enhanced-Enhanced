@@ -1259,7 +1259,7 @@ static class ExtendedPlayerControl
         ReportDeadBodyPatch.AfterReportTasks(reporter, target, true);
         MeetingRoomManager.Instance.AssignSelf(reporter, target);
         DestroyableSingleton<HudManager>.Instance.OpenMeetingRoom(reporter);
-        reporter.RpcStartMeeting(target);
+        ReportDeadBodyPatch.StartInternalMeeting(reporter, target);
     }
     public static bool IsHost(this InnerNetObject innerObject) => innerObject.OwnerId == AmongUsClient.Instance.HostId;
     public static bool IsHost(this byte playerId) => playerId.GetPlayer()?.OwnerId == AmongUsClient.Instance.HostId;

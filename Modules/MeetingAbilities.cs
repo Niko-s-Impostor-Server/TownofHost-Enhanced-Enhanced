@@ -88,8 +88,6 @@ internal static class MeetingAbilities
     {
         if (!NativeButtonConfigured(actor)) return;
         AURoleOptions.JudgeTaskRequirementPercentage = 0f;
-        options.SetInt(Int32OptionNames.NumEmergencyMeetings, System.Math.Max(0,
-            options.GetInt(Int32OptionNames.NumEmergencyMeetings) - VanillaMeetingRoles.EmergenciesUsed(actor.PlayerId)));
     }
 
     internal static bool TryUse(PlayerControl actor, PlayerControl target) =>

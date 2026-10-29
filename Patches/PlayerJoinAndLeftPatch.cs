@@ -370,6 +370,8 @@ class OnPlayerLeftPatch
 
         if (!AmongUsClient.Instance.AmHost) return;
 
+        VanillaMeetingRoles.ForgetDisconnected(data.Character.PlayerId);
+
         if (Main.AssignRolesIsStarted)
         {
             Logger.Warn($"Assign roles not ended, try remove player {data.Character.PlayerId} from role assign", "OnPlayerLeft");

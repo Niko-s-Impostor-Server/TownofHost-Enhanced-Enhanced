@@ -7,17 +7,35 @@ namespace TOHE;
 internal static class VanillaMeetingRoles
 {
     private static readonly Dictionary<byte, PlayerControl> presented = [];
-    private static readonly Dictionary<byte, int> emergenciesUsed = [];
+    private static readonly Dictionary<byte, int> manualEmergenciesUsed = [];
 
-    internal static int EmergenciesUsed(byte id) => emergenciesUsed.GetValueOrDefault(id);
+    internal static int ManualEmergenciesUsed(byte id) => manualEmergenciesUsed.GetValueOrDefault(id);
 
-    internal static void RecordEmergency(PlayerControl reporter)
-        => emergenciesUsed[reporter.PlayerId] = EmergenciesUsed(reporter.PlayerId) + 1;
+    internal static int EmergenciesRemaining(byte id) => System.Math.Max(0,
+        Main.RealOptionsData.GetInt(Int32OptionNames.NumEmergencyMeetings) - ManualEmergenciesUsed(id));
+
+    internal static bool CanCallEmergency(PlayerControl origin) => origin && EmergenciesRemaining(origin.PlayerId) > 0;
+
+    internal static void RecordManualEmergency(PlayerControl origin)
+        => manualEmergenciesUsed[origin.PlayerId] = ManualEmergenciesUsed(origin.PlayerId) + 1;
+
+    internal static void ForgetDisconnected(byte id)
+    {
+        manualEmergenciesUsed.Remove(id);
+    }
+
+    internal static void SyncEmergencyView(PlayerControl reporter)
+    {
+        if (!reporter || reporter.Data == null || reporter.Data.IsDead || reporter.Data.Disconnected) return;
+        if (!RpcSetRoleReplacer.RoleMap.TryGetValue((reporter.PlayerId, reporter.PlayerId), out var view)) return;
+        new PlayerGameOptionsSender(reporter).SendGameOptions();
+        reporter.RpcSetRoleDesync(view.roleType, reporter.GetClientId());
+    }
 
     internal static void Reset()
     {
         presented.Clear();
-        emergenciesUsed.Clear();
+        manualEmergenciesUsed.Clear();
     }
 
     internal static void HideExhaustedJudge(PlayerControl actor)
@@ -25,6 +43,7 @@ internal static class VanillaMeetingRoles
         var key = (actor.PlayerId, actor.PlayerId);
         if (!RpcSetRoleReplacer.RoleMap.TryGetValue(key, out var view) || view.roleType != RoleTypes.Judge) return;
         RpcSetRoleReplacer.RoleMap[key] = (RoleTypes.Crewmate, view.customRole);
+        new PlayerGameOptionsSender(actor).SendGameOptions();
         actor.RpcSetRoleDesync(RoleTypes.Crewmate, actor.GetClientId());
     }
 
