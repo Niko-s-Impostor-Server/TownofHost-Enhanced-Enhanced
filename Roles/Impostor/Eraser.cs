@@ -116,7 +116,12 @@ internal class Eraser : RoleBase, IMeetingTargetAbility
                 Logger.Info($"Canceled {player.GetNameWithRole()} because player have ghost role", "Eraser");
                 return;
             }
-            player.RpcSetCustomRole(GetErasedRole(player.GetCustomRole().GetRoleTypes(), player.GetCustomRole()));
+            var erasedRole = GetErasedRole(player.GetCustomRole().GetRoleTypes(), player.GetCustomRole());
+            if (erasedRole != player.GetCustomRole() &&
+                RpcSetRoleReplacer.RoleMap.TryGetValue((player.PlayerId, player.PlayerId), out var selfView) &&
+                selfView.roleType == RoleTypes.Judge)
+                player.RpcChangeRoleBasis(erasedRole);
+            player.RpcSetCustomRole(erasedRole);
             player.ResetKillCooldown();
             player.SetKillCooldown();
             Logger.Info($"{player.GetNameWithRole()} Erase by Eraser", "Eraser");
