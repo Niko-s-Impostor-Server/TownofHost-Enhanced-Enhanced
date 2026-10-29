@@ -185,6 +185,8 @@ internal static class MeetingAbilities
 
     private static void CreateButtons()
     {
+        // The custom Judge already owns its ShootButton and /tl RPC path.
+        if (local.Actor.Is(CustomRoles.Judge)) return;
         foreach (var area in meeting.playerStates)
         {
             byte targetId = area.PlayerId.Value;
