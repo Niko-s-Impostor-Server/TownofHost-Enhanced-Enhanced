@@ -285,21 +285,15 @@ public static class AntiBlackout
             }
         }
 
-        try
+        var context = meetingContext;
+        var generation = meetingGeneration;
+        _ = new LateTask(() =>
         {
-            _ = new LateTask(() =>
-            {
-                foreach (var pc in Main.AllAlivePlayerControls)
-                {
-                    pc.GetRoleClass()?.NotifyAfterMeeting();
-                }
-            }, timeNotify + 0.2f, "Notify AfterMeetingTasks");
-        }
-        catch (Exception error)
-        {
-            Logger.Error($"{error}", "AntiBlackout.AfterMeetingTasks");
-        }
+            if (generation != meetingGeneration || !context.IsCurrent() || GameStates.IsEnded) return;
+            foreach (var pc in Main.AllAlivePlayerControls) pc.GetRoleClass()?.NotifyAfterMeeting();
+        }, timeNotify + 0.2f, "Notify AfterMeetingTasks");
     }
+
     internal static void CompleteAfterMeeting(Action settle)
     {
         if (!votingResultPending) return;

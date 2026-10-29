@@ -279,7 +279,7 @@ static class ExtendedPlayerControl
     }
     public static void RpcExile(this PlayerControl player)
     {
-        if (OfficialAnticheatPolicy.Enabled)
+        if (OfficialAnticheatPolicy.Enabled || AntiBlackout.ProtectingVanilla)
         {
             GhostRoleView.Exile(player, susceptible: false);
             return;
@@ -293,7 +293,7 @@ static class ExtendedPlayerControl
         if (player == null || seer == null) return;
         var clientId = seer.GetClientId();
         if (clientId < 0) return;
-        if (OfficialAnticheatPolicy.Enabled)
+        if (OfficialAnticheatPolicy.Enabled || AntiBlackout.ProtectingVanilla)
         {
             // Phantom's hiding trick is a remote view only. Applying a native ghost
             // role to our authoritative host object would run Die via RoleManager.
@@ -312,7 +312,7 @@ static class ExtendedPlayerControl
     }
     public static void RpcExileV2(this PlayerControl player)
     {
-        if (OfficialAnticheatPolicy.Enabled)
+        if (OfficialAnticheatPolicy.Enabled || AntiBlackout.ProtectingVanilla)
         {
             GhostRoleView.Exile(player, susceptible: true);
             return;
