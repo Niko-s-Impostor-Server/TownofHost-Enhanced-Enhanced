@@ -189,6 +189,7 @@ class AddTaskButtonPatch
             RoleTypes.Phantom => CustomRoles.Phantom,
             RoleTypes.Tracker => CustomRoles.Tracker,
             RoleTypes.Detective => CustomRoles.DetectiveTOHE,
+            RoleTypes.Judge => CustomRoles.JudgeTOHE,
             RoleTypes.Viper => CustomRoles.ViperTOHE,
             _ => CustomRoles.NotAssigned
         };

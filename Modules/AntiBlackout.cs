@@ -125,11 +125,12 @@ public static class AntiBlackout
         if (ProtectingVanilla) RevivePlayersAndSetDummyImp();
         SendGameData();
     }
-    public static void AntiBlackRpcVotingComplete(this MeetingHud __instance, MeetingHud.VoterState[] states, NetworkedPlayerInfo exiled, bool tie)
+    public static void AntiBlackRpcVotingComplete(this MeetingHud __instance, MeetingHud.VoterState[] states, NetworkedPlayerInfo exiled, bool tie,
+        bool wasOverruled = false, ushort overruleNonce = 0)
     {
         if (AmongUsClient.Instance.AmClient)
         {
-            __instance.VotingComplete(states, exiled, tie, false, 0);
+            __instance.VotingComplete(states, exiled, tie, wasOverruled, overruleNonce);
         }
 
         using var sender = CustomRpcSender.Create("AntiBlack RpcVotingComplete", SendOption.Reliable);
@@ -149,8 +150,8 @@ public static class AntiBlackout
                     }
                     sender.Write(exiled != null ? exiled.PlayerId : byte.MaxValue);
                     sender.Write(tie);
-                    sender.Write(false); // wasOverruled
-                    sender.Write((ushort)0); // overruleNonce
+                    sender.Write(wasOverruled);
+                    sender.Write(overruleNonce);
                     sender.EndRpc();
                 }
             }
@@ -167,8 +168,8 @@ public static class AntiBlackout
                     }
                     sender.Write(byte.MaxValue);
                     sender.Write(true);
-                    sender.Write(false);
-                    sender.Write((ushort)0);
+                    sender.Write(wasOverruled);
+                    sender.Write(overruleNonce);
                     sender.EndRpc();
                 }
             }

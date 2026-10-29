@@ -253,6 +253,7 @@ internal class StartGameHostPatch
             { RoleTypes.Phantom, RoleAssign.AddPhantomNum },
             { RoleTypes.Tracker, RoleAssign.AddTrackerNum },
             { RoleTypes.Detective, RoleAssign.AddDetectiveNum },
+            { RoleTypes.Judge, RoleAssign.AddJudgeNum },
             { RoleTypes.Viper, RoleAssign.AddViperNum }
         };
     }
@@ -468,6 +469,7 @@ internal class StartGameHostPatch
                     RoleTypes.Phantom => CustomRoles.Phantom,
                     RoleTypes.Tracker => CustomRoles.Tracker,
                     RoleTypes.Detective => CustomRoles.DetectiveTOHE,
+                    RoleTypes.Judge => CustomRoles.JudgeTOHE,
                     RoleTypes.Viper => CustomRoles.ViperTOHE,
                     _ => CustomRoles.NotAssigned
                 };

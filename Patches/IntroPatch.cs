@@ -440,6 +440,9 @@ class BeginCrewmatePatch
             case CustomRoles.DetectiveTOHE:
                 PlayerControl.LocalPlayer.Data.Role.IntroSound = GetIntroSound(RoleTypes.Detective);
                 break;
+            case CustomRoles.JudgeTOHE:
+                PlayerControl.LocalPlayer.Data.Role.IntroSound = GetIntroSound(RoleTypes.Judge);
+                break;
             case CustomRoles.ViperTOHE:
                 PlayerControl.LocalPlayer.Data.Role.IntroSound = GetIntroSound(RoleTypes.Viper);
                 break;

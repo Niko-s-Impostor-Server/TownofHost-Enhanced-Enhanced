@@ -1955,6 +1955,7 @@ class PlayerControlLocalSetRolePatch
                 RoleTypes.Phantom => CustomRoles.PhantomTOHE,
                 RoleTypes.Tracker => CustomRoles.TrackerTOHE,
                 RoleTypes.Detective => CustomRoles.DetectiveTOHE,
+                RoleTypes.Judge => CustomRoles.JudgeTOHE,
                 RoleTypes.Viper => CustomRoles.ViperTOHE,
                 RoleTypes.SpiritGuide => CustomRoles.SpiritGuideTOHE,
                 _ => CustomRoles.NotAssigned,

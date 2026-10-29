@@ -849,6 +849,7 @@ public static class StringOptionPatch
                 if (Enum.GetValues<CustomRoles>().Find(x => GetString($"{x}") == name.RemoveHtmlTags(), out var role))
                 {
                     var roleName = role == CustomRoles.DetectiveVanilla ? nameof(CustomRoles.DetectiveTOHE)
+                        : role == CustomRoles.JudgeVanilla ? nameof(CustomRoles.JudgeTOHE)
                         : role.IsVanilla() ? role + "TOHE" : role.ToString();
                     var str = GetString($"{roleName}InfoLong");
                     int size = str.Length > 500 ? str.Length > 550 ? 65 : 70 : 100;
