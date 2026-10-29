@@ -387,9 +387,9 @@ internal class StartGameHostPatch
             opt.RoleOptions.SetRoleRate(RoleTypes.SpiritGuide, 0, 0);
             if (Options.DisableVanillaRoles.GetBool())
             {
-                foreach (var role in new[] { RoleTypes.Scientist, RoleTypes.Engineer, RoleTypes.Shapeshifter,
+                foreach (var vanillaRole in new[] { RoleTypes.Scientist, RoleTypes.Engineer, RoleTypes.Shapeshifter,
                                             RoleTypes.Noisemaker, RoleTypes.Phantom, RoleTypes.Tracker })
-                    opt.RoleOptions.SetRoleRate(role, 0, 0);
+                    opt.RoleOptions.SetRoleRate(vanillaRole, 0, 0);
             }
             var role = RoleAssign.RoleResult[pc.PlayerId];
             if (role == CustomRoles.JudgeTOHE)
