@@ -9,6 +9,7 @@ using TOHE.Modules.ChatManager;
 using TOHE.Patches;
 using TOHE.Roles.Core;
 using TOHE.Roles.Core.AssignManager;
+using TOHE.Roles.Vanilla;
 using UnityEngine;
 using static TOHE.Translator;
 
@@ -348,7 +349,7 @@ internal class StartGameHostPatch
         }
         thiz.SendClientReady();
         yield return new WaitForSeconds(2f);
-        if (!Current() || !OnGameJoinedPatch.IsCurrentSession(generation) || !SyncInitialGameOptions()) yield break;
+        if (!Current() || !OnGameJoinedPatch.IsCurrentSession(generation)) yield break;
         yield return AssignRoles();
         //ShipStatus.Instance.Begin(); // Tasks sets in IntroPatch
         yield break;
@@ -361,28 +362,34 @@ internal class StartGameHostPatch
             !GameStates.IsModHost || !GameStates.IsNormalGame || GameStates.IsFreePlay ||
             Main.RealOptionsData == null || GameManager.Instance == null) return false;
 
-        // SetRole initializes native ability timers from current game options.
-        // Send the temporary values only after Started, on an independent clone.
+        // SetRole initializes native ability state from LogicOptions. RoleResult
+        // must already be known so each owner receives its own Judge threshold.
         var optionsManager = GameOptionsManager.Instance;
         var current = optionsManager.CurrentGameOptions;
-        var opt = Main.RealOptionsData.Restore(
-            optionsManager.gameOptionsFactory.FromBytes(optionsManager.gameOptionsFactory.ToBytes(current, false)));
-        opt.SetFloat(FloatOptionNames.KillCooldown, 0f);
-        opt.SetFloat(FloatOptionNames.ShapeshifterCooldown, 0f);
-        opt.SetFloat(FloatOptionNames.GuardianAngelCooldown, 0f);
-        opt.SetBool(BoolOptionNames.ImpostorsCanSeeProtect, false);
-        opt.RoleOptions.SetRoleRate(RoleTypes.GuardianAngel, 0, 0);
-        opt.RoleOptions.SetRoleRate(RoleTypes.SpiritGuide, 0, 0);
-        if (Options.DisableVanillaRoles.GetBool())
-        {
-            foreach (var role in new[] { RoleTypes.Scientist, RoleTypes.Engineer, RoleTypes.Shapeshifter,
-                                        RoleTypes.Noisemaker, RoleTypes.Phantom, RoleTypes.Tracker })
-                opt.RoleOptions.SetRoleRate(role, 0, 0);
-        }
         var optionsBatch = new OfficialPacketBuilder.Batch();
         foreach (var pc in PlayerControl.AllPlayerControls.GetFastEnumerator())
         {
             if (pc == null || pc.Data == null || pc.Data.Disconnected) continue;
+            var opt = Main.RealOptionsData.Restore(
+                optionsManager.gameOptionsFactory.FromBytes(optionsManager.gameOptionsFactory.ToBytes(current, false)));
+            AURoleOptions.SetOpt(opt);
+            AURoleOptions.KillCooldown = 0f;
+            AURoleOptions.ShapeshifterCooldown = 0f;
+            AURoleOptions.GuardianAngelCooldown = 0f;
+            AURoleOptions.ImpostorsCanSeeProtect = false;
+            opt.RoleOptions.SetRoleRate(RoleTypes.GuardianAngel, 0, 0);
+            opt.RoleOptions.SetRoleRate(RoleTypes.SpiritGuide, 0, 0);
+            if (Options.DisableVanillaRoles.GetBool())
+            {
+                foreach (var role in new[] { RoleTypes.Scientist, RoleTypes.Engineer, RoleTypes.Shapeshifter,
+                                            RoleTypes.Noisemaker, RoleTypes.Phantom, RoleTypes.Tracker })
+                    opt.RoleOptions.SetRoleRate(role, 0, 0);
+            }
+            var role = RoleAssign.RoleResult[pc.PlayerId];
+            if (role == CustomRoles.JudgeTOHE)
+                AURoleOptions.JudgeTaskRequirementPercentage = JudgeTOHE.TaskRequirementPercentage;
+            else if (MeetingAbilities.GetNativeRole(role, pc, role.GetRoleTypes()) == RoleTypes.Judge)
+                AURoleOptions.JudgeTaskRequirementPercentage = 0f;
             new InitialGameOptionsSender(pc, opt).SendGameOptions(optionsBatch);
         }
         optionsBatch.Send();
@@ -423,6 +430,10 @@ internal class StartGameHostPatch
             // Select custom roles / add-ons
             EAC.OriginalRoles = [];
             RoleAssign.StartSelect();
+
+            // Publish owner-specific options before any native SetRole initializes
+            // JudgeRole's cached task requirement.
+            if (!SyncInitialGameOptions()) yield break;
 
             // Set count vanilla roles
             RoleAssign.CalculateVanillaRoleCount();

@@ -1,4 +1,5 @@
 using AmongUs.GameOptions;
+using TOHE.Modules;
 
 namespace TOHE.Roles.Vanilla;
 
@@ -23,5 +24,7 @@ internal sealed class JudgeTOHE : RoleBase
     public override void ApplyGameOptions(IGameOptions opt, byte playerId)
         // AntiBlackout reconstructs native role objects. Keep an exhausted Judge
         // locked even when that reconstruction resets the native one-use flag.
-        => opt.SetFloat(FloatOptionNames.JudgeTaskRequirementPercentage, AbilityLimit < 1 ? 101 : taskRequirement.GetFloat());
+    {
+        AURoleOptions.JudgeTaskRequirementPercentage = AbilityLimit < 1 ? 101 : taskRequirement.GetFloat();
+    }
 }

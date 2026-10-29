@@ -85,7 +85,7 @@ internal static class MeetingAbilities
     internal static void ApplyGameOptions(PlayerControl actor, IGameOptions options)
     {
         if (!NativeButtonConfigured(actor)) return;
-        options.SetFloat(FloatOptionNames.JudgeTaskRequirementPercentage, 0);
+        AURoleOptions.JudgeTaskRequirementPercentage = 0f;
         options.SetInt(Int32OptionNames.NumEmergencyMeetings, System.Math.Max(0,
             options.GetInt(Int32OptionNames.NumEmergencyMeetings) - VanillaMeetingRoles.EmergenciesUsed(actor.PlayerId)));
     }
