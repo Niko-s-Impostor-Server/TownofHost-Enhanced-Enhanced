@@ -101,4 +101,24 @@ public static class AURoleOptions
         get => Opt.GetFloat(FloatOptionNames.TrackerDelay);
         set => Opt.SetFloat(FloatOptionNames.TrackerDelay, value);
     }
+    public static float ViperDissolveTime
+    {
+        get => Opt.GetFloat(FloatOptionNames.ViperDissolveTime);
+        set => Opt.SetFloat(FloatOptionNames.ViperDissolveTime, value);
+    }
+    public static float DetectiveSuspectLimit
+    {
+        get => Opt.GetFloat(FloatOptionNames.DetectiveSuspectLimit);
+        set => Opt.SetFloat(FloatOptionNames.DetectiveSuspectLimit, value);
+    }
+    public static float JudgeTaskRequirementPercentage
+    {
+        get => Opt.GetFloat(FloatOptionNames.JudgeTaskRequirementPercentage);
+        set => Opt.SetFloat(FloatOptionNames.JudgeTaskRequirementPercentage, value);
+    }
+    public static float SpiritGuideCooldownSeconds
+    {
+        get => Opt.GetFloat(FloatOptionNames.SpiritGuideCooldownSeconds);
+        set => Opt.SetFloat(FloatOptionNames.SpiritGuideCooldownSeconds, value);
+    }
 }
