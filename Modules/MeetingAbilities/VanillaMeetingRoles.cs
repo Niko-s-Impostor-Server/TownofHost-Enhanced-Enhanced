@@ -20,6 +20,30 @@ internal static class VanillaMeetingRoles
         emergenciesUsed.Clear();
     }
 
+    internal static void HideExhaustedJudge(PlayerControl actor)
+    {
+        var key = (actor.PlayerId, actor.PlayerId);
+        if (!RpcSetRoleReplacer.RoleMap.TryGetValue(key, out var view) || view.roleType != RoleTypes.Judge) return;
+        RpcSetRoleReplacer.RoleMap[key] = (RoleTypes.Crewmate, view.customRole);
+        actor.RpcSetRoleDesync(RoleTypes.Crewmate, actor.GetClientId());
+    }
+
+    internal static void RefreshBorrowedRoles()
+    {
+        foreach (var actor in Main.AllAlivePlayerControls)
+        {
+            if (!MeetingAbilities.NativeButtonConfigured(actor) || actor.Is(Custom_Team.Impostor)) continue;
+            var key = (actor.PlayerId, actor.PlayerId);
+            if (!RpcSetRoleReplacer.RoleMap.TryGetValue(key, out var view)) continue;
+            var role = ((IMeetingTargetAbility)actor.GetRoleClass()).CanUseMeetingAbility(actor)
+                ? RoleTypes.Judge : RoleTypes.Crewmate;
+            if (view.roleType == role) continue;
+            RpcSetRoleReplacer.RoleMap[key] = (role, view.customRole);
+            new PlayerGameOptionsSender(actor).SendGameOptions();
+            actor.RpcSetRoleDesync(role, actor.GetClientId());
+        }
+    }
+
     internal static void Begin()
     {
         foreach (var actor in Main.AllAlivePlayerControls)

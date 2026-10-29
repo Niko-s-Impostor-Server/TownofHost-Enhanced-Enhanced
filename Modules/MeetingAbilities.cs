@@ -77,7 +77,9 @@ internal static class MeetingAbilities
         (actor.GetCustomRole().GetRoleTypes() == RoleTypes.Crewmate ||
             impostorsEnabled.GetBool() && actor.Is(Custom_Team.Impostor));
 
-    internal static bool NeedsTemporaryRole(PlayerControl actor) => NativeButtonConfigured(actor) && actor.Is(Custom_Team.Impostor);
+    internal static bool NeedsTemporaryRole(PlayerControl actor) => NativeButtonConfigured(actor) &&
+        actor.Is(Custom_Team.Impostor) && actor.GetRoleClass() is IMeetingTargetAbility ability &&
+        ability.CanUseMeetingAbility(actor);
 
     internal static bool UsesSeparateAbility(PlayerControl actor) => actor && actor.GetRoleClass() is IMeetingTargetAbility &&
         (actor.IsModded() || NativeButtonConfigured(actor) && !Utils.IsActive(SystemTypes.Comms));

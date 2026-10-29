@@ -889,6 +889,7 @@ class ReportDeadBodyPatch
                     Logger.SendInGame($"Error: {error}");
                 }
             }
+            if (AmongUsClient.Instance.AmHost) VanillaMeetingRoles.RefreshBorrowedRoles();
             Rebirth.OnReportDeadBody();
 
             // Alchemist & Bloodlust

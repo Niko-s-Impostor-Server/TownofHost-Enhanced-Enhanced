@@ -22,9 +22,13 @@ internal sealed class JudgeTOHE : RoleBase
     public override void Add(byte playerId) => AbilityLimit = 1;
 
     public override void ApplyGameOptions(IGameOptions opt, byte playerId)
-        // AntiBlackout reconstructs native role objects. Keep an exhausted Judge
-        // locked even when that reconstruction resets the native one-use flag.
     {
-        AURoleOptions.JudgeTaskRequirementPercentage = AbilityLimit < 1 ? 101 : taskRequirement.GetFloat();
+        AURoleOptions.JudgeTaskRequirementPercentage = taskRequirement.GetFloat();
+    }
+
+    public override void AfterMeetingTasks()
+    {
+        if (AbilityLimit < 1 && _Player && _Player.IsAlive())
+            VanillaMeetingRoles.HideExhaustedJudge(_Player);
     }
 }
