@@ -109,7 +109,7 @@ internal static class MeetingAbilities
         // ClearOverrule, so both a cancellation and a successful skill return the real vote.
         // Its nonce is deliberately reusable: vanilla retries keep the same nonce.
         if (Alive(actor) && VotingPhase() && vote && !vote.DidVote)
-            instance.RpcClearVoteDelay(actor.GetClientId());
+            instance.RpcClearVoteDelay(actor.GetClientId(), onlyIfUncast: true);
         return true;
     }
 

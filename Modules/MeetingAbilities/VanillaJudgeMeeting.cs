@@ -32,7 +32,7 @@ internal static class VanillaJudgeMeeting
             allowed = tasks.CompletedTasksCount * 100 >= System.Math.Max(0, tasks.AllTasksCount) * JudgeTOHE.TaskRequirementPercentage;
         }
         if (!allowed && actor && !actor.Data.Disconnected && GameStates.IsVoting && vote && !vote.DidVote)
-            meeting.RpcClearVoteDelay(actor.GetClientId());
+            meeting.RpcClearVoteDelay(actor.GetClientId(), onlyIfUncast: true);
         return allowed;
     }
 
@@ -48,7 +48,7 @@ internal static class VanillaJudgeMeeting
             if (!actor || !actor.IsAlive() || actor.Data.Disconnected) continue;
             var vote = meeting.playerStates.FirstOrDefault(area => area.PlayerId.Value == actor.PlayerId);
             if (vote) vote.UnsetHasVoted();
-            meeting.RpcClearVoteDelay(actor.GetClientId());
+            meeting.RpcClearVoteDelay(actor.GetClientId(), onlyIfUncast: true);
         }
     }
 

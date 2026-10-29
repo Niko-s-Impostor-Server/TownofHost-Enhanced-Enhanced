@@ -340,7 +340,7 @@ static class ExtendedPlayerControl
         // The game directs a client's own vote to the host and handles host votes locally.
         MeetingHud.Instance.CmdCastVote(playerId, suspectIdx);
     }
-    public static void RpcClearVoteDelay(this MeetingHud meeting, int clientId)
+    public static void RpcClearVoteDelay(this MeetingHud meeting, int clientId, bool onlyIfUncast = false)
     {
         if (!AmongUsClient.Instance.AmHost) return;
         var gameId = AmongUsClient.Instance.GameId;
@@ -351,11 +351,14 @@ static class ExtendedPlayerControl
                 Logger.Info($"Cannot be cleared because meetinghud is null", "RpcClearVoteDelay");
                 return;
             }
-            var voterId = AmongUsClient.Instance.ClientId == clientId
-                ? PlayerControl.LocalPlayer.PlayerId
-                : AmongUsClient.Instance.GetClient(clientId)?.Character?.PlayerId;
-            if (!voterId.HasValue || meeting.playerStates.FirstOrDefault(area => area.PlayerId.Value == voterId.Value)?.VotedForId != byte.MaxValue)
-                return;
+            if (onlyIfUncast)
+            {
+                var voterId = AmongUsClient.Instance.ClientId == clientId
+                    ? PlayerControl.LocalPlayer.PlayerId
+                    : AmongUsClient.Instance.GetClient(clientId)?.Character?.PlayerId;
+                if (!voterId.HasValue || meeting.playerStates.FirstOrDefault(area => area.PlayerId.Value == voterId.Value)?.VotedForId != byte.MaxValue)
+                    return;
+            }
             if (AmongUsClient.Instance.ClientId == clientId)
             {
                 meeting.ClearVote(PlayerControl.LocalPlayer.PlayerId, true);
