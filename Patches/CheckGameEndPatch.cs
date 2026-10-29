@@ -1,4 +1,4 @@
-using AmongUs.GameOptions;
+﻿using AmongUs.GameOptions;
 using BepInEx.Unity.IL2CPP.Utils.Collections;
 using Hazel;
 using System.Collections;
@@ -456,6 +456,7 @@ class GameEndCheckerForNormal
     }
     public static void StartEndGame(GameOverReason reason)
     {
+        AntiBlackout.Reset();
         // Sync of CustomWinnerHolder info
         var winnerWriter = CustomRpcTransport.Start(CustomRPC.EndGame, SendOption.Reliable);
         WriteTo(winnerWriter);

@@ -127,6 +127,7 @@ class ExileControllerWrapUpPatch
         Main.MeetingsPassed++;
 
         Utils.CountAlivePlayers(sendLog: true, checkGameEnd: Options.CurrentGameMode is CustomGameMode.Standard);
+        AntiBlackout.SkipTasks = false;
     }
 
     private static void WrapUpFinalizer(NetworkedPlayerInfo exiled)
@@ -135,19 +136,8 @@ class ExileControllerWrapUpPatch
         // Even if an exception occurs in WrapUpPostfix, this is the only part that will be executed reliably.
         if (AmongUsClient.Instance.AmHost)
         {
-            _ = new LateTask(() =>
+            AntiBlackout.CompleteAfterMeeting(() =>
             {
-                if (GameStates.IsEnded) return;
-
-                // Restore the recipient's ghost roles before the real death flags.
-                // A living-to-ghost transition performs the native death effects.
-                AntiBlackout.SetRealPlayerRoles(sendGameDataAfter: true);
-            }, 0.7f, "Restore IsDead Task");
-
-            _ = new LateTask(() =>
-            {
-                if (GameStates.IsEnded) return;
-
                 Main.AfterMeetingDeathPlayers.Do(x =>
                 {
                     var player = x.Key.GetPlayer();
@@ -171,14 +161,7 @@ class ExileControllerWrapUpPatch
                 Utils.SyncAllSettings();
                 Utils.CheckAndSetVentInteractions();
                 Utils.NotifyRoles(NoCache: true);
-            }, 1.2f, "AfterMeetingDeathPlayers Task");
-
-            _ = new LateTask(() =>
-            {
-                if (GameStates.IsEnded) return;
-
-                AntiBlackout.ResetAfterMeeting();
-            }, 2f, "Reset Cooldown After Meeting");
+            });
         }
 
         //This should happen shortly after the Exile Controller wrap up finished for clients

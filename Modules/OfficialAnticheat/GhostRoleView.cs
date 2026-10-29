@@ -1,4 +1,4 @@
-using AmongUs.GameOptions;
+﻿using AmongUs.GameOptions;
 using System;
 using System.Collections;
 using TOHE.Roles.Core;
@@ -54,7 +54,7 @@ internal static class GhostRoleView
         var ownerId = target.OwnerId;
         var views = Main.AllPlayerControls
             .Where(seer => seer != null && seer.Data != null && !seer.Data.Disconnected && seer.GetClientId() >= 0
-                && (!AntiBlackout.ProtectingVanilla || seer.IsModded()))
+                && !AntiBlackout.IsProtectedRecipient(seer.PlayerId))
             .Select(seer => (Seer: seer, ClientId: seer.GetClientId(), Role: ForRecipient(target, seer))).ToArray();
         var barrier = CustomRpcTransport.CaptureBarrier();
         if (barrier.IsComplete) SendViews();
@@ -63,7 +63,7 @@ internal static class GhostRoleView
         bool Current() => !barrier.IsCancelled && context.IsCurrent() && AmongUsClient.Instance.AmHost
             && target != null && target.Data != null && target.Data.IsDead
             && target.NetId == netId && target.OwnerId == ownerId && Main.AllPlayerControls.Contains(target)
-            && CustomWinnerHolder.WinnerTeam == CustomWinner.Default;
+            && !GameStates.IsEnded;
 
         void SendViews()
         {

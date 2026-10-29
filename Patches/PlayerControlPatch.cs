@@ -85,6 +85,7 @@ class CheckMurderPatch
         if (GameStates.IsHideNSeek) return true;
 
         var killer = __instance;
+        if (AntiBlackout.IsBuffered(killer.PlayerId)) return false;
 
         Logger.Info($"{killer.GetNameWithRole().RemoveHtmlTags()} => {target.GetNameWithRole().RemoveHtmlTags()}", "CheckMurder");
 
@@ -170,7 +171,7 @@ class CheckMurderPatch
             return false;
         }
         // AntiBlackOut protect is active
-        if (AntiBlackout.SkipTasks)
+        if (AntiBlackout.SkipTasks && !GameStates.IsInTask)
         {
             Logger.Info("Checking while AntiBlackOut protect, the kill was canceled", "CheckMurder");
             return false;
@@ -1881,7 +1882,7 @@ class PlayerControlSetRolePatch
             {
                 // The vanilla exile controller still needs the temporary living
                 // roster when it performs its end-of-game check.
-                foreach (var (seer, ghostRole) in GhostRoles.Where(entry => entry.Key.IsModded()))
+                foreach (var (seer, ghostRole) in GhostRoles.Where(entry => !AntiBlackout.IsProtectedRecipient(entry.Key.PlayerId)))
                     target.RpcSetRoleDesync(ghostRole, seer.GetClientId());
                 if (target.HasGhostRole()) GhostRoleAssign.CreateGAMessage(__instance);
                 return false;

@@ -1,4 +1,4 @@
-using AmongUs.GameOptions;
+﻿using AmongUs.GameOptions;
 using AmongUs.HTTP;
 using BepInEx.Unity.IL2CPP.Utils.Collections;
 using Hazel;
@@ -12,6 +12,7 @@ internal static class OfficialAnticheatLifecyclePatch
 {
     internal static void ResetOperations(bool preserveCapabilities = false)
     {
+        AntiBlackout.Reset();
         RoleDistribution.Reset();
         RpcSetRoleReplacer.RoleMap.Clear();
         RpcSetRoleReplacer.StoragedData.Clear();
