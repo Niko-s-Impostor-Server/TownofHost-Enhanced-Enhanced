@@ -722,7 +722,7 @@ class ShapeshiftPatch
 class ReportDeadBodyPatch
 {
     public static Dictionary<byte, bool> CanReport = [];
-    public static Dictionary<byte, List<NetworkedPlayerInfo>> WaitReport = [];
+    public static Dictionary<byte, List<(NetworkedPlayerInfo Target, PlayerControl EmergencyOrigin)>> WaitReport = [];
     private static PlayerControl redirectedEmergencyOrigin;
     private static PlayerControl pendingEmergencyReporter;
     private static PlayerControl pendingEmergencyOrigin;
@@ -797,7 +797,7 @@ class ReportDeadBodyPatch
 
         if (!CanReport[__instance.PlayerId])
         {
-            WaitReport[__instance.PlayerId].Add(target);
+            WaitReport[__instance.PlayerId].Add((target, target == null ? redirectedEmergencyOrigin ?? __instance : null));
             Logger.Warn($"{__instance.GetNameWithRole().RemoveHtmlTags()} : Reporting is prohibited and will wait until it becomes possible", "ReportDeadBody");
             return false;
         }
@@ -1052,10 +1052,17 @@ class FixedUpdateInNormalGamePatch
             }
             else
             {
-                var info = ReportDeadBodyPatch.WaitReport[id][0];
+                var report = ReportDeadBodyPatch.WaitReport[id][0];
                 ReportDeadBodyPatch.WaitReport[id].Clear();
                 Logger.Info($"{__instance.GetNameWithRole().RemoveHtmlTags()}: The report will be processed now that it is available for reporting", "ReportDeadbody");
-                __instance.ReportDeadBody(info);
+                if (report.Target != null)
+                    __instance.ReportDeadBody(report.Target);
+                else
+                {
+                    var origin = report.EmergencyOrigin;
+                    if (origin && origin.Data != null && !origin.Data.IsDead && !origin.Data.Disconnected && origin.IsAlive())
+                        ReportDeadBodyPatch.RedirectEmergency(origin, __instance);
+                }
             }
         }
 
