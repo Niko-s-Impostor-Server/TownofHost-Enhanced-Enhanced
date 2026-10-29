@@ -40,7 +40,7 @@ public static class NameNotifyManager
     {
         if (AntiBlackout.IsBuffered(player.PlayerId))
         {
-            name = "<size=1.9>AntiBlackOutWokring</size>";
+            name = $"<size=1.9>{Translator.GetString("AntiBlackoutBufferNotice")}</size>";
             return true;
         }
 

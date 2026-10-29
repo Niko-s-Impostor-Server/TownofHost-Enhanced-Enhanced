@@ -1,6 +1,7 @@
 {
   "AllSettingsPage": "全部设置第 {0}/{1} 页。下一页：/n all {2}",
   "AntiBlackoutUnavailable": "警告：本次会议 AntiBlackOut 无法生效。\n原版客户端将会黑屏。",
+  "AntiBlackoutBufferNotice": "正在恢复会后状态，请稍候…",
   "AntiBlackoutBufferMode": "防黑屏缓冲范围",
   "AntiBlackoutBufferMode.AllPlayers": "所有玩家",
   "AntiBlackoutBufferMode.VanillaPlayers": "所有原版玩家",

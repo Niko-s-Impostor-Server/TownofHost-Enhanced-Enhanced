@@ -24,6 +24,7 @@ public static class AntiBlackout
     private static readonly HashSet<byte> protectedRecipients = [];
     private static readonly HashSet<byte> bufferedPlayers = [];
     private static readonly HashSet<byte> hiddenRecipients = [];
+    private static readonly Dictionary<(byte seer, byte target), RoleTypes> sentMask = [];
     private static readonly Dictionary<(byte seer, byte target), RoleTypes> deferredRoles = [];
     private static OfficialSessionContext meetingContext;
     private static uint meetingGeneration;
@@ -138,7 +139,13 @@ public static class AntiBlackout
             {
                 foreach (var seer in players.Where(player => IsProtectedRecipient(player.PlayerId)))
                     foreach (var target in players)
-                        target.RpcSetRoleDesync(target == dummyImp ? RoleTypes.Impostor : RoleTypes.Crewmate, seer.GetClientId());
+                    {
+                        var role = target == dummyImp ? RoleTypes.Impostor : RoleTypes.Crewmate;
+                        var key = (seer.PlayerId, target.PlayerId);
+                        if (sentMask.TryGetValue(key, out var previous) && previous == role) continue;
+                        target.RpcSetRoleDesync(role, seer.GetClientId());
+                        sentMask[key] = role;
+                    }
             }
             finally { publishing = false; }
         }
@@ -326,6 +333,7 @@ public static class AntiBlackout
             SetRealPlayerRoles();
             ResetAllCooldown();
             protectedRecipients.Clear();
+            sentMask.Clear();
             ProtectingVanilla = false;
             SendGameData();
             bufferedPlayers.Clear();
@@ -436,6 +444,7 @@ public static class AntiBlackout
         bufferedPlayers.Clear();
         hiddenRecipients.Clear();
         deferredRoles.Clear();
+        sentMask.Clear();
         settling = publishing = serializing = false;
         IsCached = false;
         ShowExiledInfo = false;

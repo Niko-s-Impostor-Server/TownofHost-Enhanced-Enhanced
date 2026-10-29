@@ -1,6 +1,7 @@
 {
   "AllSettingsPage": "Settings page {0}/{1}. Next: /n all {2}",
   "AntiBlackoutUnavailable": "Warning: AntiBlackOut is unavailable.\nVanilla clients will see a black screen.",
+  "AntiBlackoutBufferNotice": "Restoring post-meeting state, please wait…",
   "AntiBlackoutBufferMode": "Anti-Blackout Buffer Scope",
   "AntiBlackoutBufferMode.AllPlayers": "All Players",
   "AntiBlackoutBufferMode.VanillaPlayers": "All Vanilla Players",
