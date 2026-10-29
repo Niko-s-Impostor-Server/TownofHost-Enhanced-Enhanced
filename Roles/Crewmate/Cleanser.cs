@@ -16,11 +16,13 @@ internal class Cleanser : RoleBase, IMeetingTargetAbility
 
     private static OptionItem CleanserUsesOpt;
     private static OptionItem CleansedCanGetAddon;
+    private static OptionItem VanillaMeetingAbilityTriggerOpt;
     //private static OptionItem AbilityUseGainWithEachTaskCompleted;
 
     private readonly HashSet<byte> CleansedPlayers = [];
     private readonly Dictionary<byte, byte> CleanserTarget = [];
     private bool DidVote;
+    public MeetingAbilityTrigger Trigger => (MeetingAbilityTrigger)VanillaMeetingAbilityTriggerOpt.GetValue();
 
     public override void SetupCustomOption()
     {
@@ -28,6 +30,7 @@ internal class Cleanser : RoleBase, IMeetingTargetAbility
         CleanserUsesOpt = IntegerOptionItem.Create(Id + 10, "MaxCleanserUses", new(1, 14, 1), 3, TabGroup.CrewmateRoles, false).SetParent(CustomRoleSpawnChances[CustomRoles.Cleanser])
             .SetValueFormat(OptionFormat.Times);
         CleansedCanGetAddon = BooleanOptionItem.Create(Id + 11, "CleansedCanGetAddon", false, TabGroup.CrewmateRoles, false).SetParent(CustomRoleSpawnChances[CustomRoles.Cleanser]);
+        VanillaMeetingAbilityTriggerOpt = MeetingAbilities.CreateTriggerOption(Id + 12, CustomRoles.Cleanser, TabGroup.CrewmateRoles);
 
     }
     public override void Add(byte playerId)
@@ -52,35 +55,19 @@ internal class Cleanser : RoleBase, IMeetingTargetAbility
     public bool CanTargetMeetingAbility(PlayerControl actor, PlayerControl target) => actor && target &&
         actor != target && target.IsAlive() && !target.Is(CustomRoles.Stubborn);
 
-    public bool UseMeetingAbility(PlayerControl actor, PlayerControl target) =>
-        CanUseMeetingAbility(actor) && CanTargetMeetingAbility(actor, target) && !CheckVote(actor, target);
-
-    public override bool CheckVote(PlayerControl voter, PlayerControl target)
+    public bool UseMeetingAbility(PlayerControl actor, PlayerControl target)
     {
-        if (!voter.Is(CustomRoles.Cleanser)) return true;
-        if (DidVote) return true;
         DidVote = true;
-        if (AbilityLimit < 1) return true;
-        if (target.PlayerId == voter.PlayerId)
-        {
-            Utils.SendMessage(GetString("CleanserRemoveSelf"), voter.PlayerId, Utils.ColorString(Utils.GetRoleColor(CustomRoles.Cleanser), GetString("CleanserTitle")));
-            return true;
-        }
-        if (target.Is(CustomRoles.Stubborn))
-        {
-            Utils.SendMessage(GetString("CleanserCantRemove"), voter.PlayerId, Utils.ColorString(Utils.GetRoleColor(CustomRoles.Cleanser), GetString("CleanserTitle")));
-            return true;
-        }
-        if (CleanserTarget[voter.PlayerId] != byte.MaxValue) return true;
-
         AbilityLimit--;
-        CleanserTarget[voter.PlayerId] = target.PlayerId;
-        Logger.Info($"{voter.GetNameWithRole()} cleansed {target.GetNameWithRole()}", "Cleansed");
+        CleanserTarget[actor.PlayerId] = target.PlayerId;
+        Logger.Info($"{actor.GetNameWithRole()} cleansed {target.GetNameWithRole()}", "Cleansed");
         CleansedPlayers.Add(target.PlayerId);
-        Utils.SendMessage(string.Format(GetString("CleanserRemovedRole"), target.GetRealName()), voter.PlayerId, title: Utils.ColorString(Utils.GetRoleColor(CustomRoles.Cleanser), GetString("CleanserTitle")));
+        Utils.SendMessage(string.Format(GetString("CleanserRemovedRole"), target.GetRealName()), actor.PlayerId, title: Utils.ColorString(Utils.GetRoleColor(CustomRoles.Cleanser), GetString("CleanserTitle")));
         SendSkillRPC();
-        return false;
+        return true;
     }
+
+    public override bool CheckVote(PlayerControl voter, PlayerControl target) => !MeetingAbilities.TryUse(voter, target);
     public override void OnReportDeadBody(PlayerControl baba, NetworkedPlayerInfo lilelam)
     {
         DidVote = false;

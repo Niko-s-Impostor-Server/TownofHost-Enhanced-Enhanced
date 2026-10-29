@@ -20,16 +20,19 @@ internal class Keeper : RoleBase, IMeetingTargetAbility
     //==================================================================\\
 
     private static OptionItem KeeperUsesOpt;
+    private static OptionItem VanillaMeetingAbilityTriggerOpt;
 
     private static readonly HashSet<byte> keeperTarget = [];
     private static readonly Dictionary<byte, int> keeperUses = [];
     private static readonly Dictionary<byte, bool> DidVote = [];
+    public MeetingAbilityTrigger Trigger => (MeetingAbilityTrigger)VanillaMeetingAbilityTriggerOpt.GetValue();
 
     public override void SetupCustomOption()
     {
         SetupRoleOptions(Id, TabGroup.CrewmateRoles, CustomRoles.Keeper);
         KeeperUsesOpt = IntegerOptionItem.Create(Id + 10, "MaxProtections", new(1, 14, 1), 3, TabGroup.CrewmateRoles, false).SetParent(Options.CustomRoleSpawnChances[CustomRoles.Keeper])
             .SetValueFormat(OptionFormat.Times);
+        VanillaMeetingAbilityTriggerOpt = MeetingAbilities.CreateTriggerOption(Id + 11, CustomRoles.Keeper, TabGroup.CrewmateRoles);
 
     }
     public override void Init()
@@ -114,33 +117,25 @@ internal class Keeper : RoleBase, IMeetingTargetAbility
     }
 
 
-    public bool CanUseMeetingAbility(PlayerControl actor) => actor && actor.Is(CustomRoles.Keeper) &&
+    public bool CanUseMeetingAbility(PlayerControl actor) => CustomRoles.Keeper.HasEnabled() && actor && actor.Is(CustomRoles.Keeper) &&
         DidVote.TryGetValue(actor.PlayerId, out bool used) && !used &&
         keeperUses.TryGetValue(actor.PlayerId, out int uses) && uses < KeeperUsesOpt.GetInt();
 
     public bool CanTargetMeetingAbility(PlayerControl actor, PlayerControl target) => actor && target &&
-        actor != target && target.IsAlive() && !keeperTarget.Contains(target.PlayerId);
+        target.IsAlive() && !keeperTarget.Contains(target.PlayerId);
 
-    public bool UseMeetingAbility(PlayerControl actor, PlayerControl target) =>
-        CanUseMeetingAbility(actor) && CanTargetMeetingAbility(actor, target) && !CheckVote(actor, target);
-
-    public override bool CheckVote(PlayerControl voter, PlayerControl target)
+    public bool UseMeetingAbility(PlayerControl voter, PlayerControl target)
     {
-        if (!CustomRoles.Keeper.HasEnabled()) return true;
-        if (voter == null || target == null) return true;
-        if (!voter.Is(CustomRoles.Keeper)) return true;
-        if (DidVote[voter.PlayerId]) return true;
         DidVote[voter.PlayerId] = true;
-        if (keeperTarget.Contains(target.PlayerId)) return true;
-        if (keeperUses[voter.PlayerId] >= KeeperUsesOpt.GetInt()) return true;
-
         keeperUses[voter.PlayerId]++;
         keeperTarget.Add(target.PlayerId);
         Logger.Info($"{voter.GetNameWithRole()} chosen as keeper target by {target.GetNameWithRole()}", "Keeper");
         SendRPC(type: 0, keeperId: voter.PlayerId, targetId: target.PlayerId); // add keeperUses, KeeperTarget and DidVote
         Utils.SendMessage(string.Format(GetString("KeeperProtect"), target.GetRealName()), voter.PlayerId, title: Utils.ColorString(Utils.GetRoleColor(CustomRoles.Keeper), GetString("KeeperTitle")));
-        return false;
+        return true;
     }
+
+    public override bool CheckVote(PlayerControl voter, PlayerControl target) => !MeetingAbilities.TryUse(voter, target);
 
     public override void AfterMeetingTasks()
     {

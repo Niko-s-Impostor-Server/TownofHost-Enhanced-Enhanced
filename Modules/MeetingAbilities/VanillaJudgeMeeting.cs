@@ -9,6 +9,7 @@ internal static class VanillaJudgeMeeting
 {
     internal static void Queue(MeetingHud meeting, PlayerId judgeId, PlayerId targetId, ushort nonce)
     {
+        if (MeetingAbilities.HandleNativeJudge(meeting, judgeId, targetId, nonce)) return;
         if (!CanQueue(meeting, judgeId, targetId, nonce)) return;
         meeting.AddOrUpdateJudgeOverrule(judgeId, targetId, nonce);
         meeting.playerStates.First(area => area.PlayerId.Value == judgeId.Value).SetHasVoted();

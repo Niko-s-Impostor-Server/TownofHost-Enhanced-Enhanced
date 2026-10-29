@@ -856,6 +856,8 @@ public static class RpcSetRoleReplacer
             if (role.GetStaticRoleClass().UsesPhantomAbility && RpcCompatibility.IsCurrentClient(player))
                 roleType = RoleTypes.Phantom;
 
+            roleType = MeetingAbilities.GetNativeRole(role, player, roleType);
+
             StoragedData.Add(playerId, roleType);
 
             foreach (var target in PlayerControl.AllPlayerControls.GetFastEnumerator())

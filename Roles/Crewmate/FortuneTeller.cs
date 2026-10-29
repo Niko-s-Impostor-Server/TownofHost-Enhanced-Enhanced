@@ -24,11 +24,13 @@ internal class FortuneTeller : RoleBase, IMeetingTargetAbility
     private static OptionItem ShowSpecificRole;
     private static OptionItem AbilityUseGainWithEachTaskCompleted;
     private static OptionItem RandomActiveRoles;
+    private static OptionItem VanillaMeetingAbilityTriggerOpt;
 
 
     private readonly HashSet<byte> didVote = [];
     private float TempCheckLimit;
     private readonly HashSet<byte> targetList = [];
+    public MeetingAbilityTrigger Trigger => (MeetingAbilityTrigger)VanillaMeetingAbilityTriggerOpt.GetValue();
 
 
     public override void SetupCustomOption()
@@ -39,6 +41,7 @@ internal class FortuneTeller : RoleBase, IMeetingTargetAbility
         RandomActiveRoles = BooleanOptionItem.Create(Id + 11, "RandomActiveRoles", false, TabGroup.CrewmateRoles, false).SetParent(CustomRoleSpawnChances[CustomRoles.FortuneTeller]);
         AccurateCheckMode = BooleanOptionItem.Create(Id + 12, "AccurateCheckMode", false, TabGroup.CrewmateRoles, false).SetParent(CustomRoleSpawnChances[CustomRoles.FortuneTeller]);
         ShowSpecificRole = BooleanOptionItem.Create(Id + 13, "ShowSpecificRole", false, TabGroup.CrewmateRoles, false).SetParent(CustomRoleSpawnChances[CustomRoles.FortuneTeller]);
+        VanillaMeetingAbilityTriggerOpt = MeetingAbilities.CreateTriggerOption(Id + 14, CustomRoles.FortuneTeller, TabGroup.CrewmateRoles);
         AbilityUseGainWithEachTaskCompleted = FloatOptionItem.Create(Id + 15, "AbilityUseGainWithEachTaskCompleted", new(0f, 5f, 0.1f), 1f, TabGroup.CrewmateRoles, false).SetParent(CustomRoleSpawnChances[CustomRoles.FortuneTeller])
             .SetValueFormat(OptionFormat.Times);
         OverrideTasksData.Create(Id + 20, TabGroup.CrewmateRoles, CustomRoles.FortuneTeller);
@@ -104,38 +107,11 @@ internal class FortuneTeller : RoleBase, IMeetingTargetAbility
     public bool CanTargetMeetingAbility(PlayerControl actor, PlayerControl target) => actor && target &&
         actor != target && target.IsAlive() && (!RandomActiveRoles.GetBool() || !targetList.Contains(target.PlayerId));
 
-    public bool UseMeetingAbility(PlayerControl actor, PlayerControl target) =>
-        CanUseMeetingAbility(actor) && CanTargetMeetingAbility(actor, target) && !CheckVote(actor, target);
-
-    public override bool CheckVote(PlayerControl player, PlayerControl target)
+    public bool UseMeetingAbility(PlayerControl player, PlayerControl target)
     {
-        if (player == null || target == null) return true;
-        if (didVote.Contains(player.PlayerId)) return true;
         didVote.Add(player.PlayerId);
-
-        if (AbilityLimit < 1)
-        {
-            SendMessage(GetString("FortuneTellerCheckReachLimit"), player.PlayerId, ColorString(GetRoleColor(CustomRoles.FortuneTeller), GetString("FortuneTellerCheckMsgTitle")));
-            return true;
-        }
-
-        if (RandomActiveRoles.GetBool())
-        {
-            if (targetList.Contains(target.PlayerId))
-            {
-                SendMessage(GetString("FortuneTellerAlreadyCheckedMsg") + "\n\n" + string.Format(GetString("FortuneTellerCheckLimit"), AbilityLimit), player.PlayerId, ColorString(GetRoleColor(CustomRoles.FortuneTeller), GetString("FortuneTellerCheckMsgTitle")));
-                return true;
-            }
-        }
-
         AbilityLimit -= 1;
         SendRPC(player.PlayerId, voted: true);
-
-        if (player.PlayerId == target.PlayerId)
-        {
-            SendMessage(GetString("FortuneTellerCheckSelfMsg") + "\n\n" + string.Format(GetString("FortuneTellerCheckLimit"), AbilityLimit), player.PlayerId, ColorString(GetRoleColor(CustomRoles.FortuneTeller), GetString("FortuneTellerCheckMsgTitle")));
-            return true;
-        }
 
         string msg;
 
@@ -185,10 +161,11 @@ internal class FortuneTeller : RoleBase, IMeetingTargetAbility
         }
 
         SendMessage(GetString("FortuneTellerCheck") + "\n" + msg + "\n\n" + string.Format(GetString("FortuneTellerCheckLimit"), AbilityLimit), player.PlayerId, ColorString(GetRoleColor(CustomRoles.FortuneTeller), GetString("FortuneTellerCheckMsgTitle")));
-        if (!MeetingAbilities.UsesJudgeButton(player))
+        if (!MeetingAbilities.UsesSeparateAbility(player))
             SendMessage(GetString("VoteHasReturned"), player.PlayerId, title: ColorString(GetRoleColor(CustomRoles.FortuneTeller), string.Format(GetString("VoteAbilityUsed"), GetString("FortuneTeller"))));
-        return false;
+        return true;
     }
+    public override bool CheckVote(PlayerControl voter, PlayerControl target) => !MeetingAbilities.TryUse(voter, target);
     public override string GetProgressText(byte playerId, bool comms)
     {
         var ProgressText = new StringBuilder();

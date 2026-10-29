@@ -17,17 +17,20 @@ internal class Eraser : RoleBase, IMeetingTargetAbility
     //==================================================================\\
 
     private static OptionItem EraseLimitOpt;
+    private static OptionItem VanillaMeetingAbilityTriggerOpt;
 
     private static readonly HashSet<byte> didVote = [];
     private static readonly HashSet<byte> PlayerToErase = [];
     private static int TempEraseLimit;
     public static readonly Dictionary<byte, CustomRoles> ErasedRoleStorage = [];
+    public MeetingAbilityTrigger Trigger => (MeetingAbilityTrigger)VanillaMeetingAbilityTriggerOpt.GetValue();
 
     public override void SetupCustomOption()
     {
         Options.SetupRoleOptions(Id, TabGroup.ImpostorRoles, CustomRoles.Eraser);
         EraseLimitOpt = IntegerOptionItem.Create(Id + 10, "EraseLimit", new(1, 15, 1), 2, TabGroup.ImpostorRoles, false).SetParent(Options.CustomRoleSpawnChances[CustomRoles.Eraser])
             .SetValueFormat(OptionFormat.Times);
+        VanillaMeetingAbilityTriggerOpt = MeetingAbilities.CreateTriggerOption(Id + 11, CustomRoles.Eraser, TabGroup.ImpostorRoles);
     }
     public override void Init()
     {
@@ -42,7 +45,7 @@ internal class Eraser : RoleBase, IMeetingTargetAbility
     public override string GetProgressText(byte playerId, bool comms)
         => Utils.ColorString(AbilityLimit >= 1 ? Utils.GetRoleColor(CustomRoles.Eraser) : Color.gray, $"({AbilityLimit})");
 
-    public bool CanUseMeetingAbility(PlayerControl actor) => actor && actor.Is(CustomRoles.Eraser) &&
+    public bool CanUseMeetingAbility(PlayerControl actor) => HasEnabled && actor && actor.Is(CustomRoles.Eraser) &&
         AbilityLimit >= 1 && !didVote.Contains(actor.PlayerId);
 
     public bool CanTargetMeetingAbility(PlayerControl actor, PlayerControl target) => actor && target &&
@@ -51,35 +54,11 @@ internal class Eraser : RoleBase, IMeetingTargetAbility
         !Main.TasklessCrewmate.Contains(target.PlayerId) && !CopyCat.playerIdList.Contains(target.PlayerId) &&
         !target.Is(CustomRoles.Stubborn);
 
-    public bool UseMeetingAbility(PlayerControl actor, PlayerControl target) =>
-        CanUseMeetingAbility(actor) && CanTargetMeetingAbility(actor, target) && !CheckVote(actor, target);
-
-    public override bool CheckVote(PlayerControl player, PlayerControl target)
+    public bool UseMeetingAbility(PlayerControl player, PlayerControl target)
     {
-        if (!HasEnabled) return true;
-        if (player == null || target == null) return true;
-        if (target.Is(CustomRoles.Eraser)) return true;
-        if (AbilityLimit < 1) return true;
-
-        if (didVote.Contains(player.PlayerId)) return true;
         didVote.Add(player.PlayerId);
 
         Logger.Info($"{player.GetCustomRole()} votes for {target.GetCustomRole()}", "Vote Eraser");
-
-        if (target.PlayerId == player.PlayerId)
-        {
-            Utils.SendMessage(GetString("EraserEraseSelf"), player.PlayerId, Utils.ColorString(Utils.GetRoleColor(CustomRoles.Eraser), GetString("EraserEraseMsgTitle")));
-            return true;
-        }
-
-        var targetRole = target.GetCustomRole();
-        if (targetRole.IsTasklessCrewmate() || targetRole.IsNeutral() || Main.TasklessCrewmate.Contains(target.PlayerId) || CopyCat.playerIdList.Contains(target.PlayerId) || target.Is(CustomRoles.Stubborn))
-        {
-            Logger.Info($"Cannot erase role because is Impostor Based or Neutral or ect", "Eraser");
-            Utils.SendMessage(string.Format(GetString("EraserEraseBaseImpostorOrNeutralRoleNotice"), target.GetRealName()), player.PlayerId, Utils.ColorString(Utils.GetRoleColor(CustomRoles.Eraser), GetString("EraserEraseMsgTitle")));
-            return true;
-        }
-
         AbilityLimit--;
         SendSkillRPC();
 
@@ -89,8 +68,9 @@ internal class Eraser : RoleBase, IMeetingTargetAbility
         Utils.SendMessage(string.Format(GetString("EraserEraseNotice"), target.GetRealName()), player.PlayerId, Utils.ColorString(Utils.GetRoleColor(CustomRoles.Eraser), GetString("EraserEraseMsgTitle")));
 
         Utils.NotifyRoles(SpecifySeer: player);
-        return false;
+        return true;
     }
+    public override bool CheckVote(PlayerControl voter, PlayerControl target) => !MeetingAbilities.TryUse(voter, target);
     public override string GetGuessRoleError(PlayerControl guesser, PlayerControl target, CustomRoles role)
     {
         if (PlayerToErase.Contains(target.PlayerId) && !role.IsAdditionRole())

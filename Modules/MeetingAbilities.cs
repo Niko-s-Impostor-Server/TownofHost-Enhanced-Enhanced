@@ -3,14 +3,18 @@ using Hazel;
 using InnerNet;
 using TOHE.Roles.Core;
 using UnityEngine;
+using static TOHE.Translator;
 
 namespace TOHE;
 
-// A role implements its existing skill rules here; voting remains a separate action.
+internal enum MeetingAbilityTrigger { Vote, JudgeButton }
+
 internal interface IMeetingTargetAbility
 {
+    MeetingAbilityTrigger Trigger { get; }
     bool CanUseMeetingAbility(PlayerControl actor);
     bool CanTargetMeetingAbility(PlayerControl actor, PlayerControl target);
+    // The shared dispatcher has already checked the actor, target and availability.
     bool UseMeetingAbility(PlayerControl actor, PlayerControl target);
 }
 
@@ -26,7 +30,6 @@ internal static class MeetingAbilities
     private static readonly Dictionary<byte, HostSlot> hostSlots = [];
     private static readonly MeetingAbilityReplayWindow replay = new();
     private static LocalSlot local;
-    private static bool changingBase;
 
     private sealed class HostSlot(PlayerControl actor, IMeetingTargetAbility ability)
     {
@@ -41,10 +44,8 @@ internal static class MeetingAbilities
         internal readonly PlayerControl Actor = actor;
         internal readonly int Owner = actor.OwnerId;
         internal readonly RoleBase Ability = actor.GetRoleClass();
-        internal readonly RoleTypes OriginalBase = actor.Data.Role.Role;
-        internal readonly RoleTypes OriginalRoleType = actor.Data.RoleType;
-        internal readonly Il2CppSystem.Nullable<RoleTypes> OriginalRoleWhenAlive = actor.Data.RoleWhenAlive;
-        internal bool Ready, Available, Ending, Presented;
+        internal readonly List<GameObject> Buttons = [];
+        internal bool Ready, Available;
         internal uint NextNonce, PendingNonce;
         internal byte PendingTarget;
         internal float PendingSince;
@@ -52,21 +53,50 @@ internal static class MeetingAbilities
         internal float LastReady = Time.realtimeSinceStartup;
     }
 
-    internal static bool UsesJudgeButton(PlayerControl actor)
+    internal static OptionItem CreateTriggerOption(int id, CustomRoles role, TabGroup tab) =>
+        StringOptionItem.Create(id, "VanillaMeetingAbilityTrigger", ["MeetingAbilityVote", "MeetingAbilityJudgeButton"], 0, tab, false)
+            .SetParent(Options.CustomRoleSpawnChances[role]);
+
+    // Resolve this per player, before initial role publication. Mod clients keep their own UI.
+    internal static RoleTypes GetNativeRole(CustomRoles role, PlayerControl actor, RoleTypes original) =>
+        !actor.IsModded() && original == RoleTypes.Crewmate && role.GetStaticRoleClass() is IMeetingTargetAbility { Trigger: MeetingAbilityTrigger.JudgeButton }
+            ? RoleTypes.Judge : original;
+
+    private static bool NativeButtonConfigured(PlayerControl actor) => actor && !actor.IsModded() &&
+        actor.GetRoleClass() is IMeetingTargetAbility { Trigger: MeetingAbilityTrigger.JudgeButton } &&
+        actor.GetCustomRole().GetRoleTypes() == RoleTypes.Crewmate;
+
+    internal static bool UsesSeparateAbility(PlayerControl actor) => actor && actor.GetRoleClass() is IMeetingTargetAbility &&
+        (actor.IsModded() || NativeButtonConfigured(actor) && !Utils.IsActive(SystemTypes.Comms));
+
+    internal static void ApplyGameOptions(PlayerControl actor, IGameOptions options)
     {
-        if (!AmongUsClient.Instance || !actor || !meeting || MeetingHud.Instance != meeting || AmongUsClient.Instance.GameId != gameId) return false;
-        if (actor.AmOwner) return LocalBound() && local.Ready && !local.Ending;
-        return AmongUsClient.Instance.AmHost && hostSlots.TryGetValue(actor.PlayerId, out var slot) && Bound(slot, actor);
+        if (NativeButtonConfigured(actor)) options.SetFloat(FloatOptionNames.JudgeTaskRequirementPercentage, 0);
+    }
+
+    internal static bool TryUse(PlayerControl actor, PlayerControl target) =>
+        AmongUsClient.Instance.AmHost && GameStates.IsVoting && Alive(actor) && Alive(target) &&
+        actor.GetRoleClass() is IMeetingTargetAbility ability && ability.CanUseMeetingAbility(actor) &&
+        ability.CanTargetMeetingAbility(actor, target) && ability.UseMeetingAbility(actor, target);
+
+    internal static bool HandleNativeJudge(MeetingHud instance, PlayerId actorId, PlayerId targetId, ushort nonce)
+    {
+        var actor = Utils.GetPlayerById(actorId.Value);
+        if (!NativeButtonConfigured(actor)) return false;
+        var vote = instance.playerStates.FirstOrDefault(area => area.PlayerId.Value == actorId.Value);
+        bool used = instance == meeting && Context() && UsesSeparateAbility(actor) && nonce != 0 && vote && !vote.DidVote &&
+            TryUse(actor, Utils.GetPlayerById(targetId.Value));
+        if (!used && Alive(actor)) Utils.SendMessage(GetString("MeetingAbilityRejected"), actor.PlayerId);
+        // TryOverrule has already locked the vanilla UI. ClearVote also calls
+        // ClearOverrule, so both a cancellation and a successful skill return the real vote.
+        // Its nonce is deliberately reusable: vanilla retries keep the same nonce.
+        if (Alive(actor) && VotingPhase()) instance.RpcClearVoteDelay(actor.GetClientId());
+        return true;
     }
 
     private static bool LocalBound() => local != null && AmongUsClient.Instance && local.Actor && local.Actor.AmOwner &&
         local.Actor == PlayerControl.LocalPlayer && local.Actor.OwnerId == local.Owner &&
         ReferenceEquals(local.Actor.GetRoleClass(), local.Ability) && CanonicalOwner(local.Actor);
-
-    // This remains true while the presentation is owned, including pending/invalidated
-    // state, so a native path cannot turn a failed skill into a real Judge overrule.
-    internal static bool OwnsJudgePresentation(PlayerControl actor) => local != null && local.Presented &&
-        AmongUsClient.Instance && actor && actor == local.Actor && actor.AmOwner;
 
     private static bool Bound(HostSlot slot, PlayerControl actor) => actor && actor == slot.Actor &&
         actor.OwnerId == slot.Owner && ReferenceEquals(actor.GetRoleClass(), slot.Ability) && CanonicalOwner(actor);
@@ -78,8 +108,7 @@ internal static class MeetingAbilities
         return client != null && client.Character && client.Character.Pointer == actor.Pointer;
     }
 
-    private static bool CompatiblePeer(PlayerControl actor) =>
-        CanonicalOwner(actor) && RpcCompatibility.IsCurrentClient(actor);
+    private static bool CompatiblePeer(PlayerControl actor) => CanonicalOwner(actor) && RpcCompatibility.IsCurrentClient(actor);
 
     private static bool CompatibleHost()
     {
@@ -94,8 +123,7 @@ internal static class MeetingAbilities
         AmongUsClient.Instance.GameState == InnerNetClient.GameStates.Started && GameStates.IsNormalGame &&
         GameStates.IsModHost && meeting && MeetingHud.Instance == meeting && AmongUsClient.Instance.GameId == gameId;
 
-    private static bool VotingPhase() => Context() && meeting.CurrentState is
-        MeetingHud.MeetingStates.NotVoted or MeetingHud.MeetingStates.Voted;
+    private static bool VotingPhase() => Context() && meeting.CurrentState is MeetingHud.MeetingStates.NotVoted or MeetingHud.MeetingStates.Voted;
 
     private static bool Alive(PlayerControl actor) => actor && actor.Data != null &&
         !actor.Data.IsDead && !actor.Data.Disconnected && actor.IsAlive();
@@ -107,17 +135,17 @@ internal static class MeetingAbilities
         meeting = instance;
         gameId = AmongUsClient.Instance.GameId;
         replay.Begin(gameId, instance.NetId);
-        hostSlots.Clear();
         var actor = PlayerControl.LocalPlayer;
-        local = actor && actor.Data != null && actor.Data.Role && Alive(actor) &&
-            actor.GetRoleClass() is IMeetingTargetAbility ? new LocalSlot(actor) : null;
+        local = Alive(actor) && actor.GetRoleClass() is IMeetingTargetAbility ? new LocalSlot(actor) : null;
         if (AmongUsClient.Instance.AmHost)
         {
-            // Enroll before the handshake: an early ordinary vote from a compatible
-            // client must never invoke its legacy CheckVote skill while Ready is in flight.
             foreach (var player in Main.AllAlivePlayerControls)
-                if (Alive(player) && CompatiblePeer(player) && player.GetRoleClass() is IMeetingTargetAbility ability)
+            {
+                if (CompatiblePeer(player) && player.GetRoleClass() is IMeetingTargetAbility ability)
                     hostSlots[player.PlayerId] = new HostSlot(player, ability);
+                else if (NativeButtonConfigured(player))
+                    Utils.SendMessage(GetString(Utils.IsActive(SystemTypes.Comms) ? "MeetingAbilityCommsFallback" : "MeetingAbilityNativeHelp"), player.PlayerId);
+            }
         }
         if (local == null) return;
         if (AmongUsClient.Instance.AmHost) Register(actor);
@@ -126,15 +154,12 @@ internal static class MeetingAbilities
 
     private static void Register(PlayerControl actor)
     {
-        if (!Context() || !AmongUsClient.Instance.AmHost || !CompatiblePeer(actor) || !Alive(actor) ||
-            actor.GetRoleClass() is not IMeetingTargetAbility) return;
+        if (!Context() || !AmongUsClient.Instance.AmHost || !CompatiblePeer(actor) || !Alive(actor)) return;
         if (!hostSlots.TryGetValue(actor.PlayerId, out var slot) || !Bound(slot, actor)) return;
         slot.Ready = true;
         Reply(actor, 255, 0, Result.Ready, slot.Ability.CanUseMeetingAbility(actor));
     }
 
-    // Called by the central RPC dispatcher with its canonical PlayerControl sender.
-    // The payload never declares an actor; transport/net-object ownership is a separate boundary.
     internal static void ReceiveRequest(PlayerControl sender, MessageReader reader)
     {
         if (!Context() || !sender || !CanonicalOwner(sender) || reader.BytesRemaining != PacketLength) return;
@@ -148,53 +173,57 @@ internal static class MeetingAbilities
         if (protocol != Protocol || requestGame != gameId || requestMeeting != meeting.NetId) return;
         if (kind == Kind.Result)
         {
-            // Trusted RPC classification never substitutes for this host identity check.
             if (sender.OwnerId != AmongUsClient.Instance.HostId || !sender.IsHost() || !CompatiblePeer(sender)) return;
             ReceiveResult(target, nonce, result);
-            return;
         }
-        if (!AmongUsClient.Instance.AmHost || !CompatiblePeer(sender) || result != 0) return;
-        if (kind == Kind.Ready && target == 255 && nonce == 0) Register(sender);
-        else if (kind == Kind.Use && nonce != 0 && target < 252) Execute(sender, target, nonce);
+        else if (AmongUsClient.Instance.AmHost && CompatiblePeer(sender) && result == 0)
+        {
+            if (kind == Kind.Ready && target == 255 && nonce == 0) Register(sender);
+            else if (kind == Kind.Use && nonce != 0 && target < 252) Execute(sender, target, nonce);
+        }
     }
 
-    internal static void ClickJudge(PlayerVoteArea area)
+    private static void CreateButtons()
     {
-        var actor = PlayerControl.LocalPlayer;
-        if (!area || !UsesJudgeButton(actor) || !VotingPhase() || local == null || !local.Available ||
-            local.PendingNonce != 0 || meeting.CurrentState != MeetingHud.MeetingStates.NotVoted ||
-            area.Parent != meeting || !Alive(actor) || !area.gameObject.activeInHierarchy ||
-            !meeting.playerStates.Any(current => current && current.Pointer == area.Pointer)) return;
-        var target = Utils.GetPlayerById(area.PlayerId.Value);
-        if (!Alive(target) || target == actor) return;
+        foreach (var area in meeting.playerStates)
+        {
+            byte targetId = area.PlayerId.Value;
+            if (targetId == local.Actor.PlayerId &&
+                !((IMeetingTargetAbility)local.Ability).CanTargetMeetingAbility(local.Actor, local.Actor)) continue;
+            var buttonObject = Object.Instantiate(area.Buttons.transform.Find("CancelButton").gameObject, area.transform);
+            buttonObject.name = "MeetingSkillButton";
+            buttonObject.transform.localPosition = new Vector3(-0.35f, 0.03f, -1.31f);
+            buttonObject.GetComponent<SpriteRenderer>().sprite = CustomButton.Get("JudgeIcon");
+            var button = buttonObject.GetComponent<PassiveButton>();
+            button.OnClick.RemoveAllListeners();
+            button.OnClick.AddListener((UnityEngine.Events.UnityAction)(() => Click(targetId)));
+            local.Buttons.Add(buttonObject);
+        }
+    }
+
+    private static void Click(byte targetId)
+    {
+        if (!LocalBound() || !local.Ready || !local.Available || local.PendingNonce != 0 || !VotingPhase() || !Alive(local.Actor)) return;
         uint nonce = ++local.NextNonce;
         if (nonce == 0) return;
         local.PendingNonce = nonce;
-        local.PendingTarget = target.PlayerId;
+        local.PendingTarget = targetId;
         local.PendingSince = Time.realtimeSinceStartup;
-        ControllerManager.Instance.CloseOverlayMenu(area.name);
-        area.ClearButtons(); // Close only the selection UI; leave real vote state untouched.
-        if (AmongUsClient.Instance.AmHost) Execute(actor, target.PlayerId, nonce);
-        else Send(Kind.Use, target.PlayerId, nonce, 0, AmongUsClient.Instance.HostId);
+        if (AmongUsClient.Instance.AmHost) Execute(local.Actor, targetId, nonce);
+        else Send(Kind.Use, targetId, nonce, 0, AmongUsClient.Instance.HostId);
     }
 
     private static void Execute(PlayerControl actor, byte targetId, uint nonce)
     {
         if (!hostSlots.TryGetValue(actor.PlayerId, out var slot) || !Bound(slot, actor)) return;
-        var target = Utils.GetPlayerById(targetId);
-        var voteArea = meeting.playerStates.FirstOrDefault(area => area.PlayerId.Value == actor.PlayerId);
-        bool valid = slot.Ready && VotingPhase() && Alive(actor) && Alive(target) && target != actor &&
-            voteArea && !voteArea.DidVote &&
-            slot.Ability.CanUseMeetingAbility(actor) &&
-            slot.Ability.CanTargetMeetingAbility(actor, target);
+        bool valid = slot.Ready && VotingPhase() && Alive(actor);
         if (!replay.Accept(gameId, meeting.NetId, actor.OwnerId, nonce, valid))
         {
             Reply(actor, targetId, nonce, Result.Rejected, slot.Ability.CanUseMeetingAbility(actor));
             return;
         }
-        bool used = slot.Ability.UseMeetingAbility(actor, target);
-        bool remaining = Alive(actor) && slot.Ability.CanUseMeetingAbility(actor);
-        Reply(actor, targetId, nonce, used ? Result.Accepted : Result.Rejected, remaining);
+        bool used = TryUse(actor, Utils.GetPlayerById(targetId));
+        Reply(actor, targetId, nonce, used ? Result.Accepted : Result.Rejected, Alive(actor) && slot.Ability.CanUseMeetingAbility(actor));
     }
 
     private static void Reply(PlayerControl actor, byte target, uint nonce, Result result, bool available)
@@ -206,109 +235,54 @@ internal static class MeetingAbilities
 
     private static void ReceiveResult(byte target, uint nonce, byte flags)
     {
-        if (!LocalBound() || local.Ending || !Context() || !Alive(local.Actor)) return;
+        if (!LocalBound() || !Context() || !Alive(local.Actor)) return;
         var result = (Result)(flags & ~AvailableFlag);
         if (result == Result.Ready)
         {
             if (target != 255 || nonce != 0 || local.Ready) return;
             local.Ready = true;
+            CreateButtons();
         }
         else if (result is Result.Accepted or Result.Rejected)
         {
             if (nonce == 0 || nonce != local.PendingNonce || target != local.PendingTarget) return;
             local.PendingNonce = 0;
+            if (result == Result.Rejected) local.Actor.ShowInfoMessage(true, GetString("MeetingAbilityRejected"));
         }
         else return;
         local.Available = (flags & AvailableFlag) != 0;
-        if (local.Available && (!local.Presented || result == Result.Accepted))
-        {
-            local.Presented = true;
-            SetOwnerBase(RoleTypes.Judge);
-        }
-        meeting.UpdateJudgeAbilityIndicator(local.Available, 0);
-        // Do not call ClearVote, SetVoteComplete, CmdCastVote or the native Judge queue.
-        foreach (var area in meeting.playerStates) area.ClearButtons();
     }
 
-    private static void Send(Kind kind, byte target, uint nonce, byte result, int receiver)
-    {
+    private static void Send(Kind kind, byte target, uint nonce, byte result, int receiver) =>
         CustomRpcTransport.Send(CustomRPC.MeetingAbilityRequest, writer =>
         {
             writer.Write(Protocol); writer.Write((byte)kind); writer.Write(gameId); writer.Write(meeting.NetId);
             writer.Write(target); writer.Write(nonce); writer.Write(result);
         }, receiver);
-    }
-
-    private static void SetOwnerBase(RoleTypes role)
-    {
-        var actor = local.Actor;
-        int emergencies = actor.RemainingEmergencies;
-        float killTimer = actor.killTimer;
-        var tasks = actor.myTasks.ToArray();
-        var team = actor.Data.Role.TeamType;
-        var ghost = actor.Data.Role.DefaultGhostRole;
-        changingBase = true;
-        try
-        {
-            // Presentation is owner-local. CoSetRole rejects assigned living roles even
-            // with canOverride, and resets emergency/stat state. No SetRole packet is sent.
-            DestroyableSingleton<RoleManager>.Instance.SetRole(actor, role);
-            if (role == RoleTypes.Judge)
-            {
-                // Judge is a GUI presentation, not a team conversion. Native death
-                // assignment reads these fields rather than RoleType metadata.
-                actor.Data.Role.TeamType = team;
-                actor.Data.Role.DefaultGhostRole = ghost;
-            }
-        }
-        finally
-        {
-            actor.RemainingEmergencies = emergencies;
-            actor.killTimer = killTimer;
-            actor.Data.RoleType = local.OriginalRoleType;
-            actor.Data.RoleWhenAlive = local.OriginalRoleWhenAlive;
-            actor.myTasks.Clear();
-            foreach (var task in tasks) if (task) actor.myTasks.Add(task);
-            changingBase = false;
-            if (meeting && MeetingHud.Instance == meeting && DestroyableSingleton<HudManager>.InstanceExists)
-                HudManager.Instance.SetHudActive(false);
-        }
-    }
-
-    internal static bool PreservingTasks(PlayerControl actor) => local != null && changingBase &&
-        AmongUsClient.Instance && actor && local.Actor == actor && actor.AmOwner;
-
-    internal static bool NativeJudgeBlocked(PlayerControl actor) => !UsesJudgeButton(actor) || !VotingPhase() ||
-        !Alive(actor) || !local.Available || local.PendingNonce != 0 ||
-        meeting.CurrentState != MeetingHud.MeetingStates.NotVoted;
 
     internal static void Tick()
     {
-        if (meeting && (!Context() || !CompatibleHost()))
+        if (meeting && (!Context() || !CompatibleHost())) { EndMeeting(meeting); return; }
+        if (local == null) return;
+        bool alive = LocalBound() && Alive(local.Actor);
+        foreach (var button in local.Buttons)
         {
-            EndMeeting(meeting);
-            return;
+            if (!button) continue;
+            var area = button.transform.parent.GetComponent<PlayerVoteArea>();
+            button.SetActive(alive && local.Ready && local.Available && local.PendingNonce == 0 && VotingPhase() &&
+                area && !area.AmDead);
         }
-        if (local != null)
+        if (!alive) { local.Available = false; local.PendingNonce = 0; return; }
+        if (!local.Ready && !AmongUsClient.Instance.AmHost && Context() &&
+            Time.realtimeSinceStartup - local.ReadySince < 8 && Time.realtimeSinceStartup - local.LastReady >= 1)
         {
-            if (!LocalBound() || !Alive(local.Actor))
-            {
-                local.Available = false;
-                local.PendingNonce = 0;
-                return;
-            }
-            if (!local.Ready && !AmongUsClient.Instance.AmHost && Context() &&
-                Time.realtimeSinceStartup - local.ReadySince < 8 &&
-                Time.realtimeSinceStartup - local.LastReady >= 1)
-            {
-                local.LastReady = Time.realtimeSinceStartup;
-                Send(Kind.Ready, 255, 0, 0, AmongUsClient.Instance.HostId);
-            }
-            if (local.PendingNonce != 0 && Time.realtimeSinceStartup - local.PendingSince >= 8)
-            {
-                local.PendingNonce = 0;
-                local.Available = false; // Stop; no request retry after an unobserved result.
-            }
+            local.LastReady = Time.realtimeSinceStartup;
+            Send(Kind.Ready, 255, 0, 0, AmongUsClient.Instance.HostId);
+        }
+        if (local.PendingNonce != 0 && Time.realtimeSinceStartup - local.PendingSince >= 8)
+        {
+            local.PendingNonce = 0;
+            local.Available = false;
         }
     }
 
@@ -316,15 +290,7 @@ internal static class MeetingAbilities
     {
         if (instance == null || meeting == null || instance.Pointer != meeting.Pointer) return;
         if (local != null)
-        {
-            local.Ending = true;
-            local.Available = false;
-            local.PendingNonce = 0;
-            if (AmongUsClient.Instance && AmongUsClient.Instance.GameId == gameId &&
-                LocalBound() && local.Presented && Alive(local.Actor) &&
-                local.Actor.Data.Role && local.Actor.Data.Role.Role == RoleTypes.Judge)
-                SetOwnerBase(local.OriginalBase);
-        }
+            foreach (var button in local.Buttons) if (button) Object.Destroy(button);
         local = null;
         hostSlots.Clear();
         replay.Clear();

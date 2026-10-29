@@ -1572,6 +1572,12 @@
   "TrackerBase_TrackingDelay": "Tracking Delay",
   "DetectiveSuspectLimit": "Suspect Limit",
   "JudgeTaskRequirement": "Task Requirement Percentage",
+  "VanillaMeetingAbilityTrigger": "Vanilla Client Meeting Ability Trigger",
+  "MeetingAbilityVote": "Vote",
+  "MeetingAbilityJudgeButton": "Judge Button",
+  "MeetingAbilityRejected": "That ability cannot be used on this target now. No use was consumed.",
+  "MeetingAbilityNativeHelp": "Use the Judge button to activate your role ability. A normal vote only casts your vote.",
+  "MeetingAbilityCommsFallback": "Communications disable the Judge button. Use your vote to activate your role ability this meeting.",
   "ViperDissolveTime": "Body Dissolve Time",
 
   "KamikazeControversialSymbol": "Use controversial symbol",

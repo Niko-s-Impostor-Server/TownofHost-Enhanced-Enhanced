@@ -641,7 +641,7 @@ class CastVotePatch
         } //Vote a disconnect player
 
         // Return vote to player if uses checkvote and wants to vote normal without using his abilities.
-        if (!MeetingAbilities.UsesJudgeButton(voter) && suspectPlayerId.Value == 253 && voter.GetRoleClass()?.IsMethodOverridden("CheckVote") == true)
+        if (!MeetingAbilities.UsesSeparateAbility(voter) && suspectPlayerId.Value == 253 && voter.GetRoleClass()?.IsMethodOverridden("CheckVote") == true)
         {
             if (!voter.GetRoleClass().HasVoted)
             {
@@ -663,7 +663,7 @@ class CastVotePatch
             }
 
 
-            if (!MeetingAbilities.UsesJudgeButton(voter) && !voter.GetRoleClass().HasVoted && voter.GetRoleClass().CheckVote(voter, target) == false)
+            if (!MeetingAbilities.UsesSeparateAbility(voter) && !voter.GetRoleClass().HasVoted && voter.GetRoleClass().CheckVote(voter, target) == false)
             {
                 Logger.Info($"Canceling {voter.GetRealName()}'s vote because of {voter.GetCustomRole()}", "CastVotePatch.RoleBase.CheckVote");
                 voter.GetRoleClass().HasVoted = true;

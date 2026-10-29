@@ -23,9 +23,11 @@ internal class Oracle : RoleBase, IMeetingTargetAbility
     private static OptionItem FailChance;
     private static OptionItem OracleAbilityUseGainWithEachTaskCompleted;
     private static OptionItem ChangeRecruitTeam;
+    private static OptionItem VanillaMeetingAbilityTriggerOpt;
 
     private readonly HashSet<byte> DidVote = [];
     private static readonly Dictionary<byte, float> TempCheckLimit = [];
+    public MeetingAbilityTrigger Trigger => (MeetingAbilityTrigger)VanillaMeetingAbilityTriggerOpt.GetValue();
 
     public override void SetupCustomOption()
     {
@@ -33,6 +35,7 @@ internal class Oracle : RoleBase, IMeetingTargetAbility
         CheckLimitOpt = IntegerOptionItem.Create(Id + 10, "OracleSkillLimit", new(0, 10, 1), 1, TabGroup.CrewmateRoles, false)
             .SetParent(CustomRoleSpawnChances[CustomRoles.Oracle])
             .SetValueFormat(OptionFormat.Times);
+        VanillaMeetingAbilityTriggerOpt = MeetingAbilities.CreateTriggerOption(Id + 11, CustomRoles.Oracle, TabGroup.CrewmateRoles);
         FailChance = IntegerOptionItem.Create(Id + 13, "FailChance", new(0, 100, 5), 0, TabGroup.CrewmateRoles, false)
             .SetParent(CustomRoleSpawnChances[CustomRoles.Oracle])
             .SetValueFormat(OptionFormat.Percent);
@@ -82,29 +85,11 @@ internal class Oracle : RoleBase, IMeetingTargetAbility
     public bool CanTargetMeetingAbility(PlayerControl actor, PlayerControl target) => actor && target &&
         actor != target && target.IsAlive();
 
-    public bool UseMeetingAbility(PlayerControl actor, PlayerControl target) =>
-        CanUseMeetingAbility(actor) && CanTargetMeetingAbility(actor, target) && !CheckVote(actor, target);
-
-    public override bool CheckVote(PlayerControl player, PlayerControl target)
+    public bool UseMeetingAbility(PlayerControl player, PlayerControl target)
     {
-        if (player == null || target == null) return true;
-        if (DidVote.Contains(player.PlayerId)) return true;
         DidVote.Add(player.PlayerId);
-
-        if (AbilityLimit < 1)
-        {
-            SendMessage(GetString("OracleCheckReachLimit"), player.PlayerId, ColorString(GetRoleColor(CustomRoles.Oracle), GetString("OracleCheckMsgTitle")));
-            return true;
-        }
-
         AbilityLimit -= 1;
         SendRPC(player.PlayerId);
-
-        if (player.PlayerId == target.PlayerId)
-        {
-            SendMessage(GetString("OracleCheckSelfMsg") + "\n\n" + string.Format(GetString("OracleCheckLimit"), AbilityLimit), player.PlayerId, ColorString(GetRoleColor(CustomRoles.Oracle), GetString("OracleCheckMsgTitle")));
-            return true;
-        }
 
         {
             string msg;
@@ -153,11 +138,12 @@ internal class Oracle : RoleBase, IMeetingTargetAbility
             }
 
             SendMessage(GetString("OracleCheck") + "\n" + msg + "\n\n" + string.Format(GetString("OracleCheckLimit"), AbilityLimit), player.PlayerId, ColorString(GetRoleColor(CustomRoles.Oracle), GetString("OracleCheckMsgTitle")));
-            if (!MeetingAbilities.UsesJudgeButton(player))
+            if (!MeetingAbilities.UsesSeparateAbility(player))
                 SendMessage(GetString("VoteHasReturned"), player.PlayerId, title: ColorString(GetRoleColor(CustomRoles.Oracle), string.Format(GetString("VoteAbilityUsed"), GetString("Oracle"))));
-            return false;
         }
+        return true;
     }
+    public override bool CheckVote(PlayerControl voter, PlayerControl target) => !MeetingAbilities.TryUse(voter, target);
     public override bool OnTaskComplete(PlayerControl player, int completedTaskCount, int totalTaskCount)
     {
         if (player.IsAlive())
