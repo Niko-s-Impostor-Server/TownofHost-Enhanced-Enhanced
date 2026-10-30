@@ -364,23 +364,17 @@ public static class AntiBlackout
             bool restoreSelf = IsProtectedRecipient(seer.PlayerId) || deferredRoles.ContainsKey((seer.PlayerId, seer.PlayerId));
             if (!restoreSelf && !releasedPlayers.Contains(seer.PlayerId)) continue;
             RoleTypes selfRole = default;
-            float? cooldown = null;
             if (restoreSelf)
             {
                 if (RpcSetRoleReplacer.RoleMap.TryGetValue((seer.PlayerId, seer.PlayerId), out var selfView))
                 {
                     selfRole = seer.Data.IsDead ? GhostRoleView.ForRecipient(seer, seer)
                         : deferredRoles.GetValueOrDefault((seer.PlayerId, seer.PlayerId), selfView.Item1);
-                    if (!seer.Data.IsDead && DestroyableSingleton<RoleManager>.Instance.GetRole(selfRole).CanUseKillButton)
-                    {
-                        seer.ResetKillCooldown();
-                        cooldown = Main.AllPlayerKillCooldown.GetValueOrDefault(seer.PlayerId, Options.DefaultKillCooldown);
-                    }
                 }
                 else restoreSelf = false;
             }
             if (restoreSelf || releasedPlayers.Contains(seer.PlayerId))
-                restorations[seer.PlayerId] = (selfRole, restoreSelf, cooldown);
+                restorations[seer.PlayerId] = (selfRole, restoreSelf, null);
         }
 
         ResetAllCooldown(releasedPlayers, restorations);
@@ -468,20 +462,25 @@ public static class AntiBlackout
             if (seer.IsAlive())
             {
                 seer.ResetKillCooldown();
+                // Reuse this reset for recovery; role resets can also change speed.
+                float kcd = Main.AllPlayerKillCooldown[seer.PlayerId];
+                bool batch = restorations.TryGetValue(seer.PlayerId, out var restoration);
+                if (batch && restoration.RestoreSelf
+                    && DestroyableSingleton<RoleManager>.Instance.GetRole(restoration.SelfRole).CanUseKillButton)
+                    restoration.Cooldown = kcd;
 
-                if (Main.AllPlayerKillCooldown.TryGetValue(seer.PlayerId, out var kcd) && kcd >= 2f)
+                if (kcd >= 2f)
                 {
                     float cooldown = releasedPlayers.Contains(seer.PlayerId) ? kcd : UnityEngine.Mathf.Max(0.01f, kcd - 2f);
-                    bool batch = restorations.TryGetValue(seer.PlayerId, out var restoration);
                     if (batch && seer.GetRoleClass() is not Glitch
                         && seer.HasImpKillButton(considerVanillaShift: true)
                         && (!seer.HasImpKillButton(false) || seer.CanUseKillButton()))
                     {
                         restoration.Cooldown = cooldown;
-                        restorations[seer.PlayerId] = restoration;
                     }
                     seer.SetKillCooldown(cooldown, synchronize: !batch);
                 }
+                if (batch) restorations[seer.PlayerId] = restoration;
             }
         }
     }
