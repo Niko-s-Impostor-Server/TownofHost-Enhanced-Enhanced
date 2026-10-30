@@ -498,7 +498,7 @@ static class ExtendedPlayerControl
 
         if (!fromSetKCD) killer.SetKillTimer(half: true);
     }
-    public static void SetKillCooldown(this PlayerControl player, float time = -1f, PlayerControl target = null, bool forceAnime = false)
+    public static void SetKillCooldown(this PlayerControl player, float time = -1f, PlayerControl target = null, bool forceAnime = false, bool synchronize = true)
     {
         if (player == null) return;
 
@@ -523,18 +523,28 @@ static class ExtendedPlayerControl
         }
         else if (forceAnime || !player.IsModded() || !Options.DisableShieldAnimations.GetBool())
         {
-            player.SyncSettings();
-            player.RpcGuardAndKill(target, fromSetKCD: true);
+            if (synchronize)
+            {
+                player.SyncSettings();
+                player.RpcGuardAndKill(target, fromSetKCD: true);
+            }
+            else if (Observer.HasEnabled && !MeetingStates.FirstMeeting)
+            {
+                Observer.ActivateGuardAnimation(player.PlayerId, target);
+            }
         }
         else
         {
             time = Main.AllPlayerKillCooldown[player.PlayerId] / 2;
-            if (player.IsHost()) PlayerControl.LocalPlayer.SetKillTimer(time);
-            else
+            if (synchronize)
             {
-                MessageWriter writer = CustomRpcTransport.Start(CustomRPC.SetKillTimer, SendOption.Reliable, player.GetClientId());
-                writer.Write(time);
-                CustomRpcTransport.Finish(writer);
+                if (player.IsHost()) PlayerControl.LocalPlayer.SetKillTimer(time);
+                else
+                {
+                    MessageWriter writer = CustomRpcTransport.Start(CustomRPC.SetKillTimer, SendOption.Reliable, player.GetClientId());
+                    writer.Write(time);
+                    CustomRpcTransport.Finish(writer);
+                }
             }
             // Check Observer
             if (Observer.HasEnabled)

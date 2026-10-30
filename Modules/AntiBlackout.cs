@@ -5,6 +5,7 @@ using System;
 using System.Runtime.CompilerServices;
 using TOHE.Modules;
 using TOHE.Roles.Core;
+using TOHE.Roles.Neutral;
 
 namespace TOHE;
 
@@ -333,10 +334,11 @@ public static class AntiBlackout
                 yield return null;
             }
             if (!Current()) yield break;
-            var initializedCooldowns = SetRealPlayerRoles();
             var releasedPlayers = bufferedPlayers.ToHashSet();
             bufferedPlayers.Clear();
-            ResetAllCooldown(releasedPlayers, initializedCooldowns);
+            SetRealPlayerRoles(releasedPlayers);
+            foreach (var seer in Main.AllPlayerControls)
+                if (seer.IsAlive() || seer.HasGhostRole()) seer.RpcResetAbilityCooldown();
             protectedRecipients.Clear();
             sentMask.Clear();
             ProtectingVanilla = false;
@@ -351,14 +353,41 @@ public static class AntiBlackout
             && AmongUsClient.Instance.AmHost && !GameStates.IsEnded && votingResultPending;
     }
 
-    public static HashSet<byte> SetRealPlayerRoles(bool sendGameDataAfter = false)
+    public static void SetRealPlayerRoles(HashSet<byte> releasedPlayers, bool sendGameDataAfter = false)
     {
-        HashSet<byte> initializedCooldowns = [];
-        if (GameStates.IsEnded) return initializedCooldowns;
+        if (GameStates.IsEnded) return;
+        var vanillaPlayers = Main.AllPlayerControls.Where(player => !player.IsModded() && player.Data != null && !player.Data.Disconnected).ToArray();
+        Dictionary<byte, (RoleTypes SelfRole, bool RestoreSelf, float? Cooldown)> restorations = [];
+
+        foreach (var seer in vanillaPlayers)
+        {
+            bool restoreSelf = IsProtectedRecipient(seer.PlayerId) || deferredRoles.ContainsKey((seer.PlayerId, seer.PlayerId));
+            if (!restoreSelf && !releasedPlayers.Contains(seer.PlayerId)) continue;
+            RoleTypes selfRole = default;
+            float? cooldown = null;
+            if (restoreSelf)
+            {
+                if (RpcSetRoleReplacer.RoleMap.TryGetValue((seer.PlayerId, seer.PlayerId), out var selfView))
+                {
+                    selfRole = seer.Data.IsDead ? GhostRoleView.ForRecipient(seer, seer)
+                        : deferredRoles.GetValueOrDefault((seer.PlayerId, seer.PlayerId), selfView.Item1);
+                    if (!seer.Data.IsDead && DestroyableSingleton<RoleManager>.Instance.GetRole(selfRole).CanUseKillButton)
+                    {
+                        seer.ResetKillCooldown();
+                        cooldown = Main.AllPlayerKillCooldown.GetValueOrDefault(seer.PlayerId, Options.DefaultKillCooldown);
+                    }
+                }
+                else restoreSelf = false;
+            }
+            if (restoreSelf || releasedPlayers.Contains(seer.PlayerId))
+                restorations[seer.PlayerId] = (selfRole, restoreSelf, cooldown);
+        }
+
+        ResetAllCooldown(releasedPlayers, restorations);
         publishing = true;
         try
         {
-            foreach (var seer in Main.AllPlayerControls.Where(player => !player.IsModded() && player.Data != null && !player.Data.Disconnected))
+            foreach (var seer in vanillaPlayers)
             {
                 bool masked = IsProtectedRecipient(seer.PlayerId);
                 foreach (var target in Main.AllPlayerControls.Where(player => player.Data != null && !player.Data.Disconnected && player != seer))
@@ -369,20 +398,8 @@ public static class AntiBlackout
                         : deferredRoles.GetValueOrDefault((seer.PlayerId, target.PlayerId), view.Item1);
                     target.RpcSetRoleDesync(role, seer.GetClientId());
                 }
-                bool restoreSelf = masked || deferredRoles.ContainsKey((seer.PlayerId, seer.PlayerId));
-                if (!restoreSelf && !IsBuffered(seer.PlayerId)) continue;
-                if (!RpcSetRoleReplacer.RoleMap.TryGetValue((seer.PlayerId, seer.PlayerId), out var selfView)) continue;
-                var selfRole = seer.Data.IsDead ? GhostRoleView.ForRecipient(seer, seer)
-                    : deferredRoles.GetValueOrDefault((seer.PlayerId, seer.PlayerId), selfView.Item1);
-                bool nativeKillButton = !seer.Data.IsDead && DestroyableSingleton<RoleManager>.Instance.GetRole(selfRole).CanUseKillButton;
-                if (nativeKillButton) seer.ResetKillCooldown();
-                float cooldown = Main.AllPlayerKillCooldown.GetValueOrDefault(seer.PlayerId, Options.DefaultKillCooldown);
-                bool canResetCooldown = seer.HasImpKillButton(considerVanillaShift: true)
-                    && (!seer.HasImpKillButton(false) || seer.CanUseKillButton());
-                bool resetCooldown = canResetCooldown && cooldown >= 2f;
-                bool killButton = nativeKillButton && (restoreSelf || resetCooldown);
-                if (resetCooldown && !IsBuffered(seer.PlayerId)) cooldown = Math.Max(0.01f, cooldown - 2f);
-                var options = new PlayerGameOptionsSender(seer, applyAntiBlackoutBuffer: false).BuildGameOptions();
+                if (!restorations.TryGetValue(seer.PlayerId, out var restoration)) continue;
+                var options = new PlayerGameOptionsSender(seer).BuildGameOptions();
                 var factory = GameOptionsManager.Instance.gameOptionsFactory;
                 var normalOptions = factory.ToBytes(options, AprilFoolsMode.IsAprilFoolsModeToggledOn);
                 // Reliable datagrams can arrive out of order. Keep the temporary
@@ -393,21 +410,21 @@ public static class AntiBlackout
                 writer.StartMessage(6);
                 writer.Write(AmongUsClient.Instance.GameId);
                 writer.WritePacked(seer.GetClientId());
-                if (killButton)
+                if (restoration.Cooldown is float cooldown)
                 {
                     options.SetFloat(FloatOptionNames.KillCooldown, cooldown * 2f);
                     WriteOptions(factory.ToBytes(options, AprilFoolsMode.IsAprilFoolsModeToggledOn));
                 }
-                if (restoreSelf)
+                if (restoration.RestoreSelf)
                 {
                     writer.StartMessage(2);
                     writer.WritePacked(seer.NetId);
                     writer.Write((byte)RpcCalls.SetRole);
-                    writer.Write((ushort)selfRole);
+                    writer.Write((ushort)restoration.SelfRole);
                     writer.Write(true);
                     writer.EndMessage();
                 }
-                if (killButton)
+                if (restoration.Cooldown.HasValue)
                 {
                     writer.StartMessage(2);
                     writer.WritePacked(seer.NetId);
@@ -419,7 +436,6 @@ public static class AntiBlackout
                 WriteOptions(normalOptions);
                 writer.EndMessage();
                 OfficialNetworkSend.Send(AmongUsClient.Instance, writer);
-                if (killButton) initializedCooldowns.Add(seer.PlayerId);
 
                 void WriteOptions(Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppStructArray<byte> bytes)
                 {
@@ -443,31 +459,29 @@ public static class AntiBlackout
         finally { publishing = false; }
         deferredRoles.Clear();
         if (sendGameDataAfter) SendGameData();
-        return initializedCooldowns;
     }
-    private static void ResetAllCooldown(HashSet<byte> releasedPlayers, HashSet<byte> initializedCooldowns)
+    private static void ResetAllCooldown(HashSet<byte> releasedPlayers,
+        Dictionary<byte, (RoleTypes SelfRole, bool RestoreSelf, float? Cooldown)> restorations)
     {
         foreach (var seer in Main.AllPlayerControls)
         {
             if (seer.IsAlive())
             {
-                seer.RpcResetAbilityCooldown();
                 seer.ResetKillCooldown();
 
                 if (Main.AllPlayerKillCooldown.TryGetValue(seer.PlayerId, out var kcd) && kcd >= 2f)
                 {
                     float cooldown = releasedPlayers.Contains(seer.PlayerId) ? kcd : UnityEngine.Mathf.Max(0.01f, kcd - 2f);
-                    if (initializedCooldowns.Contains(seer.PlayerId))
+                    bool batch = restorations.TryGetValue(seer.PlayerId, out var restoration);
+                    if (batch && seer.GetRoleClass() is not Glitch
+                        && seer.HasImpKillButton(considerVanillaShift: true)
+                        && (!seer.HasImpKillButton(false) || seer.CanUseKillButton()))
                     {
-                        if (seer.HasImpKillButton(considerVanillaShift: true)
-                            && (!seer.HasImpKillButton(false) || seer.CanUseKillButton())) seer.SetKillTimer(CD: cooldown);
+                        restoration.Cooldown = cooldown;
+                        restorations[seer.PlayerId] = restoration;
                     }
-                    else seer.SetKillCooldown(cooldown);
+                    seer.SetKillCooldown(cooldown, synchronize: !batch);
                 }
-            }
-            else if (seer.HasGhostRole())
-            {
-                seer.RpcResetAbilityCooldown();
             }
         }
     }

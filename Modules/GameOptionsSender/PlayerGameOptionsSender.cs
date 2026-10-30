@@ -8,7 +8,7 @@ using Mathf = UnityEngine.Mathf;
 
 namespace TOHE.Modules;
 
-public class PlayerGameOptionsSender(PlayerControl player, bool applyAntiBlackoutBuffer = true) : GameOptionsSender
+public class PlayerGameOptionsSender(PlayerControl player) : GameOptionsSender
 {
     public static void SetDirty(PlayerControl player) => SetDirty(player.PlayerId);
     public static void SetDirty(byte playerId)
@@ -168,7 +168,7 @@ public class PlayerGameOptionsSender(PlayerControl player, bool applyAntiBlackou
         AURoleOptions.ProtectionDurationSeconds = 0f;
         AURoleOptions.ImpostorsCanSeeProtect = false;
 
-        if (applyAntiBlackoutBuffer && AntiBlackout.IsBuffered(player.PlayerId))
+        if (AntiBlackout.IsBuffered(player.PlayerId))
         {
             opt.SetFloat(FloatOptionNames.PlayerSpeedMod, Main.MinSpeed);
             opt.SetInt(Int32OptionNames.KillDistance, 0);
