@@ -25,6 +25,7 @@ class HudManagerPatch
     {
         CustomSoundMenu.Update();
         FeatureChatCommands.UpdateSession();
+        FeatureChatCommands.CheckTagChanges();
         BlackScreenFix.Tick();
         AfkMonitor.Tick();
         if (!GameStates.IsModHost || __instance == null) return;

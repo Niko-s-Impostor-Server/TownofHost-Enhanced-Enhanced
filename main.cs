@@ -89,6 +89,7 @@ public class Main : BasePlugin
     public static ConfigEntry<bool> ShowFPS { get; private set; }
     public static ConfigEntry<bool> EnableGM { get; private set; }
     public static ConfigEntry<bool> AutoStart { get; private set; }
+    public static ConfigEntry<bool> AutoReloadTags { get; private set; }
     public static ConfigEntry<bool> DarkTheme { get; private set; }
     public static ConfigEntry<bool> DisableLobbyMusic { get; private set; }
     public static ConfigEntry<bool> ShowTextOverlay { get; private set; }
@@ -507,6 +508,7 @@ public class Main : BasePlugin
         ShowFPS = Config.Bind("Client Options", "ShowFPS", false);
         EnableGM = Config.Bind("Client Options", "EnableGM", false);
         AutoStart = Config.Bind("Client Options", "AutoStart", false);
+        AutoReloadTags = Config.Bind("Client Options", "AutoReloadTags", false);
         DarkTheme = Config.Bind("Client Options", "DarkTheme", false);
         DisableLobbyMusic = Config.Bind("Client Options", "DisableLobbyMusic", false);
         ShowTextOverlay = Config.Bind("Client Options", "ShowTextOverlay", false);

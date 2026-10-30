@@ -1182,6 +1182,7 @@
   "DarkTheme": "啟用深色主題",
   "DisableLobbyMusic": "禁用大廳音樂",
   "AutoStart": "自動開始",
+  "AutoReloadTags": "自動重載標籤",
   "EnableCustomButton": "使用模組按鈕樣式",
   "EnableCustomSoundEffect": "開啟模組技能音效",
   "EnableCustomDecorations": "啟用自訂地圖裝飾",

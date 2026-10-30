@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace TOHE.Modules;
@@ -64,6 +65,23 @@ internal static class PlayerTagFiles
             Logger.Warn("Local player tag files could not be loaded", "PlayerTagFiles");
             return false;
         }
+    }
+
+    internal static string GetSnapshot()
+    {
+        var snapshot = new StringBuilder();
+        var root = new DirectoryInfo(TagsDirectory);
+        if (!root.Exists) return string.Empty;
+
+        foreach (var directory in root.GetDirectories().OrderBy(dir => dir.FullName, StringComparer.OrdinalIgnoreCase)
+            .Append(root))
+        {
+            snapshot.Append(directory.FullName).Append('\n');
+            foreach (var file in directory.GetFiles("*.txt").OrderBy(file => file.FullName, StringComparer.OrdinalIgnoreCase))
+                snapshot.Append(file.FullName).Append(':').Append(file.Length).Append(':')
+                    .Append(file.LastWriteTimeUtc.Ticks).Append('\n');
+        }
+        return snapshot.ToString();
     }
 
     private static void ReadDirectory(string directory, Dictionary<string, Entry> loaded)

@@ -90,7 +90,7 @@ public class ClientOptionItem
             ToggleButton.transform.localPosition = new Vector3(
                 // 現在のオプション数を基に位置を計算
                 numOptions % 2 == 0 ? -1.3f : 1.3f,
-                2.2f - (0.5f * (numOptions / 2)),
+                2.2f - (0.45f * (numOptions / 2)),
                 -6f);
             ToggleButton.name = name;
             ToggleButton.Text.text = Translator.GetString(name);

@@ -1234,6 +1234,7 @@
   "DarkTheme": "Enable Dark Theme",
   "DisableLobbyMusic": "Disable Lobby Music",
   "AutoStart": "Auto start",
+  "AutoReloadTags": "Auto Reload Tags",
   "EnableCustomButton": "Enable Custom Button Images",
   "EnableCustomSoundEffect": "Enable Custom Sound Effects",
   "CustomSoundsManage": "Custom Sound Settings...",

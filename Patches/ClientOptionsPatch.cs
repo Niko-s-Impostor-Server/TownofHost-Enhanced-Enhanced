@@ -25,6 +25,7 @@ public static class OptionsMenuBehaviourStartPatch
     private static ClientOptionItem ShowFPS;
     private static ClientOptionItem EnableGM;
     private static ClientOptionItem AutoStart;
+    private static ClientOptionItem AutoReloadTags;
     private static ClientOptionItem DarkTheme;
     private static ClientOptionItem DisableLobbyMusic;
     private static ClientOptionItem ShowTextOverlay;
@@ -94,6 +95,10 @@ public static class OptionsMenuBehaviourStartPatch
                     Logger.SendInGame(Translator.GetString("CancelStartCountDown"));
                 }
             }
+        }
+        if (AutoReloadTags == null || AutoReloadTags.ToggleButton == null)
+        {
+            AutoReloadTags = ClientOptionItem.Create("AutoReloadTags", Main.AutoReloadTags, __instance);
         }
         if (DarkTheme == null || DarkTheme.ToggleButton == null)
         {

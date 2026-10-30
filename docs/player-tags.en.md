@@ -67,7 +67,7 @@ For example, create `TOHE-DATA/Tags/SPONSOR_TAGS/<DevUser friend code>.txt` cont
 
 This raw-color file must contain only a six-digit RGB hexadecimal color without `#`; it does not support gradients, is not interpreted as a structured player configuration, and does not make an ordinary player a sponsor. To configure a player's tag or permissions, use a structured file with fields such as `TagName:`, `TagColor:`, or `PermissionLevel:`; those fields determine its effect even when the file is in `SPONSOR_TAGS`.
 
-After editing a `SPONSOR_TAGS` color file, run `/tags reload` in the lobby to refresh names, or host a room again. Built-in developer tags, including DevUser, continue to display according to the mod's built-in behavior.
+After editing a `SPONSOR_TAGS` color file, run `/tags reload` in the lobby to refresh names, enable the automatic reload option described below, or host a room again. Built-in developer tags, including DevUser, continue to display according to the mod's built-in behavior.
 
 ## Add or remove tags in-game
 
@@ -92,6 +92,8 @@ otheruser#5678=<color=#FF00AAFF>Event host </color>
 ```
 
 Only the first `=` after the friend code acts as the separator, so `=` characters in color markup and tag text are read correctly. After manual edits, the host can enter `/tags reload` to reload the file; when run in the lobby, it also refreshes the display immediately. The file is reloaded when hosting a room again as well. Deleting a line from the file and reloading removes that player's fallback tag; a tag in a per-player TXT file is unaffected. If the file does not exist, no one receives a fallback tag automatically.
+
+Hosts can also enable **Auto Reload Tags** in Client Options. Every 5 seconds, it checks `.txt` files in the `TOHE-DATA/Tags` root and its immediate subdirectories, plus the fallback `TOHE-DATA/tags.txt`. When a file is added, removed, renamed, or changes size or modification time, it reloads the tags and refreshes player names in the lobby. `/tags reload` remains available for manual reloads. The option is off by default.
 
 `LocalPlayerTags.json` is no longer used, and its data is not migrated. Old Moderator/VIP lists and color directories are not migrated automatically, and existing files are not deleted automatically. Permissions and GM status from local files come only from per-player TXT files; `tags.txt` remains a cosmetic fallback and does not grant permissions.
 

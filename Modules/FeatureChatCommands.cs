@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using TOHE.Modules;
 using TOHE.Roles.Core.AssignManager;
 using static TOHE.Translator;
@@ -10,12 +11,16 @@ internal static class FeatureChatCommands
 {
     private static int loadedHost = -1;
     private static uint loadedGeneration;
+    private static float nextTagCheck;
+    private static (string Files, string Fallback)? tagSnapshot;
 
     internal static void UpdateSession()
     {
         var client = AmongUsClient.Instance;
         if (!client || !client.AmConnected || !client.AmHost)
         {
+            nextTagCheck = 0f;
+            tagSnapshot = null;
             if (loadedHost != -1)
             {
                 PrivateTagManager.Reset();
@@ -26,6 +31,8 @@ internal static class FeatureChatCommands
         }
         if (loadedHost != client.HostId || loadedGeneration != OnGameJoinedPatch.Generation)
         {
+            nextTagCheck = 0f;
+            tagSnapshot = null;
             PrivateTagManager.Reset();
             PlayerTagFiles.Reset();
             loadedHost = -1;
@@ -33,8 +40,56 @@ internal static class FeatureChatCommands
         if (!Options.IsLoaded || (loadedHost == client.HostId && loadedGeneration == OnGameJoinedPatch.Generation)) return;
         loadedHost = client.HostId;
         loadedGeneration = OnGameJoinedPatch.Generation;
-        if (!PrivateTagManager.Reload(out _)) Logger.Warn("Private tags could not be loaded", "PrivateTagManager");
-        PlayerTagFiles.Reload();
+        bool tagsLoaded = PrivateTagManager.Reload(out _);
+        if (!tagsLoaded) Logger.Warn("Private tags could not be loaded", "PrivateTagManager");
+        tagsLoaded &= PlayerTagFiles.Reload();
+        if (tagsLoaded && Main.AutoReloadTags.Value)
+        {
+            try { tagSnapshot = (PlayerTagFiles.GetSnapshot(), PrivateTagManager.GetSnapshot()); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                Logger.Warn($"Local tag files could not be checked: {ex.Message}", "FeatureChatCommands");
+            }
+        }
+    }
+
+    internal static void CheckTagChanges()
+    {
+        if (loadedHost == -1 || !Main.AutoReloadTags.Value)
+        {
+            nextTagCheck = 0f;
+            tagSnapshot = null;
+            return;
+        }
+
+        float now = UnityEngine.Time.realtimeSinceStartup;
+        if (nextTagCheck == 0f)
+        {
+            nextTagCheck = now + 5f;
+            return;
+        }
+        if (now < nextTagCheck) return;
+        nextTagCheck = now + 5f;
+
+        try
+        {
+            var current = (PlayerTagFiles.GetSnapshot(), PrivateTagManager.GetSnapshot());
+            if (tagSnapshot == current) return;
+            if (ReloadTags()) tagSnapshot = current;
+            else Logger.Warn("Automatic local tag reload failed", "FeatureChatCommands");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Logger.Warn($"Local tag files could not be checked: {ex.Message}", "FeatureChatCommands");
+        }
+    }
+
+    private static bool ReloadTags()
+    {
+        bool loaded = PlayerTagFiles.Reload();
+        loaded &= PrivateTagManager.Reload(out _);
+        if (GameStates.IsLobby) foreach (var player in Main.AllPlayerControls) Utils.ApplySuffix(player);
+        return loaded;
     }
 
     internal static bool TryHandle(PlayerControl sender, string text)
@@ -87,9 +142,7 @@ internal static class FeatureChatCommands
             case "/tags":
                 if (!host || !sender.AmOwner) { Denied(); return true; }
                 if (args.Length != 2 || args[1] != "reload") { Reply(GetString("LocalTagsUsage")); return true; }
-                bool loaded = PlayerTagFiles.Reload();
-                loaded &= PrivateTagManager.Reload(out _);
-                if (GameStates.IsLobby) foreach (var player in Main.AllPlayerControls) Utils.ApplySuffix(player);
+                bool loaded = ReloadTags();
                 Reply(GetString(loaded ? "LocalTagsReloaded" : "LocalTagsFailed"));
                 return true;
             case "/addtag":

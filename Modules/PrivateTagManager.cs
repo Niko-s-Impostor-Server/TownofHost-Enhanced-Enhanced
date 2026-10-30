@@ -16,6 +16,12 @@ internal static class PrivateTagManager
 
     internal static void Reset() => tags = new(StringComparer.Ordinal);
 
+    internal static string GetSnapshot()
+    {
+        var file = new FileInfo(TagFile);
+        return file.Exists ? $"{file.Length}:{file.LastWriteTimeUtc.Ticks}" : string.Empty;
+    }
+
     internal static bool Reload(out string error)
     {
         error = string.Empty;

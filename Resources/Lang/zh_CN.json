@@ -1218,6 +1218,7 @@
   "DarkTheme": "启用深色主题",
   "DisableLobbyMusic": "禁用大厅音乐",
   "AutoStart": "自动开始",
+  "AutoReloadTags": "自动重载标签",
   "EnableCustomButton": "使用模组按钮样式",
   "EnableCustomSoundEffect": "开启模组技能音效",
   "CustomSoundsManage": "自定义音效设置…",
