@@ -333,13 +333,14 @@ public static class AntiBlackout
                 yield return null;
             }
             if (!Current()) yield break;
-            SetRealPlayerRoles();
-            ResetAllCooldown();
+            var initializedCooldowns = SetRealPlayerRoles();
+            var releasedPlayers = bufferedPlayers.ToHashSet();
+            bufferedPlayers.Clear();
+            ResetAllCooldown(releasedPlayers, initializedCooldowns);
             protectedRecipients.Clear();
             sentMask.Clear();
             ProtectingVanilla = false;
             SendGameData();
-            bufferedPlayers.Clear();
             SyncBuffer();
             ResetAfterMeeting();
             Utils.SyncAllSettings();
@@ -350,9 +351,10 @@ public static class AntiBlackout
             && AmongUsClient.Instance.AmHost && !GameStates.IsEnded && votingResultPending;
     }
 
-    public static void SetRealPlayerRoles(bool sendGameDataAfter = false)
+    public static HashSet<byte> SetRealPlayerRoles(bool sendGameDataAfter = false)
     {
-        if (GameStates.IsEnded) return;
+        HashSet<byte> initializedCooldowns = [];
+        if (GameStates.IsEnded) return initializedCooldowns;
         publishing = true;
         try
         {
@@ -367,35 +369,44 @@ public static class AntiBlackout
                         : deferredRoles.GetValueOrDefault((seer.PlayerId, target.PlayerId), view.Item1);
                     target.RpcSetRoleDesync(role, seer.GetClientId());
                 }
-                if (!masked && !deferredRoles.ContainsKey((seer.PlayerId, seer.PlayerId))) continue;
+                bool restoreSelf = masked || deferredRoles.ContainsKey((seer.PlayerId, seer.PlayerId));
+                if (!restoreSelf && !IsBuffered(seer.PlayerId)) continue;
                 if (!RpcSetRoleReplacer.RoleMap.TryGetValue((seer.PlayerId, seer.PlayerId), out var selfView)) continue;
                 var selfRole = seer.Data.IsDead ? GhostRoleView.ForRecipient(seer, seer)
                     : deferredRoles.GetValueOrDefault((seer.PlayerId, seer.PlayerId), selfView.Item1);
-                bool killButton = !seer.Data.IsDead && DestroyableSingleton<RoleManager>.Instance.GetRole(selfRole).CanUseKillButton;
-                if (killButton)
-                {
-                    seer.ResetKillCooldown();
-                    float cooldown = Main.AllPlayerKillCooldown.GetValueOrDefault(seer.PlayerId, Options.DefaultKillCooldown);
-                    // FailedProtected sets half the configured cooldown. Publish
-                    // doubled options while the mask/action restriction still holds.
-                    Main.AllPlayerKillCooldown[seer.PlayerId] = cooldown * 2f;
-                    seer.SyncSettings();
-                    Main.AllPlayerKillCooldown[seer.PlayerId] = cooldown;
-                }
-                // These two tiny RPCs occupy one reliable packet. Native CoSetRole
-                // installs the living role on its first advance in a loaded round;
-                // the subsequent RPC initializes its timer before another frame.
+                bool nativeKillButton = !seer.Data.IsDead && DestroyableSingleton<RoleManager>.Instance.GetRole(selfRole).CanUseKillButton;
+                if (nativeKillButton) seer.ResetKillCooldown();
+                float cooldown = Main.AllPlayerKillCooldown.GetValueOrDefault(seer.PlayerId, Options.DefaultKillCooldown);
+                bool canResetCooldown = seer.HasImpKillButton(considerVanillaShift: true)
+                    && (!seer.HasImpKillButton(false) || seer.CanUseKillButton());
+                bool resetCooldown = canResetCooldown && cooldown >= 2f;
+                bool killButton = nativeKillButton && (restoreSelf || resetCooldown);
+                if (resetCooldown && !IsBuffered(seer.PlayerId)) cooldown = Math.Max(0.01f, cooldown - 2f);
+                var options = new PlayerGameOptionsSender(seer, applyAntiBlackoutBuffer: false).BuildGameOptions();
+                var factory = GameOptionsManager.Instance.gameOptionsFactory;
+                var normalOptions = factory.ToBytes(options, AprilFoolsMode.IsAprilFoolsModeToggledOn);
+                // Reliable datagrams can arrive out of order. Keep the temporary
+                // cooldown, role, timer and normal settings in one recipient packet;
+                // a late release-time settings packet must not reapply the slow view.
                 using var owner = new OfficialPacketBuilder.BoundedWriter(SendOption.Reliable);
                 var writer = owner.Writer;
                 writer.StartMessage(6);
                 writer.Write(AmongUsClient.Instance.GameId);
                 writer.WritePacked(seer.GetClientId());
-                writer.StartMessage(2);
-                writer.WritePacked(seer.NetId);
-                writer.Write((byte)RpcCalls.SetRole);
-                writer.Write((ushort)selfRole);
-                writer.Write(true);
-                writer.EndMessage();
+                if (killButton)
+                {
+                    options.SetFloat(FloatOptionNames.KillCooldown, cooldown * 2f);
+                    WriteOptions(factory.ToBytes(options, AprilFoolsMode.IsAprilFoolsModeToggledOn));
+                }
+                if (restoreSelf)
+                {
+                    writer.StartMessage(2);
+                    writer.WritePacked(seer.NetId);
+                    writer.Write((byte)RpcCalls.SetRole);
+                    writer.Write((ushort)selfRole);
+                    writer.Write(true);
+                    writer.EndMessage();
+                }
                 if (killButton)
                 {
                     writer.StartMessage(2);
@@ -405,15 +416,36 @@ public static class AntiBlackout
                     writer.Write((int)MurderResultFlags.FailedProtected);
                     writer.EndMessage();
                 }
+                WriteOptions(normalOptions);
                 writer.EndMessage();
                 OfficialNetworkSend.Send(AmongUsClient.Instance, writer);
+                if (killButton) initializedCooldowns.Add(seer.PlayerId);
+
+                void WriteOptions(Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppStructArray<byte> bytes)
+                {
+                    byte index = 0;
+                    foreach (var component in GameManager.Instance.LogicComponents)
+                    {
+                        if (component.TryCast<LogicOptions>() != null)
+                        {
+                            writer.StartMessage(1);
+                            writer.WritePacked(GameManager.Instance.NetId);
+                            writer.StartMessage(index);
+                            writer.WriteBytesAndSize(bytes);
+                            writer.EndMessage();
+                            writer.EndMessage();
+                        }
+                        index++;
+                    }
+                }
             }
         }
         finally { publishing = false; }
         deferredRoles.Clear();
         if (sendGameDataAfter) SendGameData();
+        return initializedCooldowns;
     }
-    private static void ResetAllCooldown()
+    private static void ResetAllCooldown(HashSet<byte> releasedPlayers, HashSet<byte> initializedCooldowns)
     {
         foreach (var seer in Main.AllPlayerControls)
         {
@@ -423,7 +455,15 @@ public static class AntiBlackout
                 seer.ResetKillCooldown();
 
                 if (Main.AllPlayerKillCooldown.TryGetValue(seer.PlayerId, out var kcd) && kcd >= 2f)
-                    seer.SetKillCooldown(IsBuffered(seer.PlayerId) ? kcd : UnityEngine.Mathf.Max(0.01f, kcd - 2f));
+                {
+                    float cooldown = releasedPlayers.Contains(seer.PlayerId) ? kcd : UnityEngine.Mathf.Max(0.01f, kcd - 2f);
+                    if (initializedCooldowns.Contains(seer.PlayerId))
+                    {
+                        if (seer.HasImpKillButton(considerVanillaShift: true)
+                            && (!seer.HasImpKillButton(false) || seer.CanUseKillButton())) seer.SetKillTimer(CD: cooldown);
+                    }
+                    else seer.SetKillCooldown(cooldown);
+                }
             }
             else if (seer.HasGhostRole())
             {
