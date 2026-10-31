@@ -394,6 +394,7 @@ class CheckForEndVotingPatch
         }
         catch (Exception ex)
         {
+            Logger.Exception(ex, "CheckForEndVotingPatch.Prefix");
             Logger.SendInGame(string.Format(GetString("Error.MeetingException"), ex.Message));
             throw;
         }
@@ -434,7 +435,11 @@ class CheckForEndVotingPatch
         {
             Main.BardCreations++;
             try { name = ModUpdater.Get("https://v1.hitokoto.cn/?encode=text"); }
-            catch { name = GetString("ByBardGetFailed"); }
+            catch (Exception error)
+            {
+                Logger.Exception(error, "CheckForEndVotingPatch.ConfirmEjections.BardQuote");
+                name = GetString("ByBardGetFailed");
+            }
             name += "\n\t\t——" + GetString("ByBard");
             goto EndOfSession;
         }

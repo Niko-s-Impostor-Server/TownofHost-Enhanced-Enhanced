@@ -55,11 +55,7 @@ class CoShowIntroPatch
             AmongUsClient.Instance.StartCoroutine(RoleDistribution.AfterRestore(() =>
             {
                 if (!IsCurrentIntro() || ShipStatus.Instance == null) return;
-                ShipStatus.Instance.Begin();
-                GameOptionsSender.AllSenders.Clear();
-                foreach (var pc in Main.AllPlayerControls)
-                    GameOptionsSender.AllSenders.Add(new PlayerGameOptionsSender(pc));
-                Utils.SyncAllSettings();
+                BeginTasksAndSyncSettings();
             }, tasks: true).WrapToIl2Cpp());
             return;
         }
@@ -80,26 +76,30 @@ class CoShowIntroPatch
 
         _ = new LateTask(() =>
         {
-            try
-            {
-                if (!IsCurrentIntro() || ShipStatus.Instance == null) return;
-
-                // Assign tasks after assign all roles, as it should be
-                ShipStatus.Instance.Begin();
-
-                GameOptionsSender.AllSenders.Clear();
-                foreach (var pc in PlayerControl.AllPlayerControls.GetFastEnumerator())
-                {
-                    GameOptionsSender.AllSenders.Add(new PlayerGameOptionsSender(pc));
-                }
-
-                Utils.SyncAllSettings();
-            }
-            catch
-            {
-                Logger.Warn($"Game ended? {GameStates.IsEnded}", "ShipStatus.Begin");
-            }
+            if (!IsCurrentIntro() || ShipStatus.Instance == null) return;
+            BeginTasksAndSyncSettings();
         }, 4f, "Assing Task For All");
+    }
+
+    private static void BeginTasksAndSyncSettings()
+    {
+        try
+        {
+            // Assign tasks after all roles. Native Begin also updates local
+            // cosmetics after sending tasks, so an exception can occur late.
+            ShipStatus.Instance.Begin();
+        }
+        catch (Exception error)
+        {
+            Logger.Error(error.ToString(), "ShipStatus.Begin");
+        }
+
+        // Always replace the temporary zero-cooldown startup options, even if
+        // task initialization failed. Cooldown repair uses these senders too.
+        GameOptionsSender.AllSenders.Clear();
+        foreach (var pc in Main.AllPlayerControls)
+            GameOptionsSender.AllSenders.Add(new PlayerGameOptionsSender(pc));
+        Utils.SyncAllSettings();
     }
 }
 [HarmonyPatch(typeof(IntroCutscene), nameof(IntroCutscene.CoBegin))]
@@ -277,7 +277,7 @@ class SetUpRoleTextPatch
             }
             catch (Exception ex)
             {
-                Logger.Error($"Encryption error: {ex.Message}", "Intro.Roles");
+                Logger.Error($"Encryption error: {ex}", "SetUpRoleTextPatch.CoLoggerGameInfo");
             }
         }
         //https://www.toolhelper.cn/SymmetricEncryption/DES

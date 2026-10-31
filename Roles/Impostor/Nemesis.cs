@@ -111,8 +111,9 @@ internal class Nemesis : RoleBase
             targetId = int.Parse(msg.Replace("/rv", string.Empty));
             target = Utils.GetPlayerById(targetId);
         }
-        catch
+        catch (System.Exception targetParseError)
         {
+            Logger.Exception(targetParseError, "Nemesis.NemesisMsgCheck");
             pc.ShowInfoMessage(isUI, GetString("NemesisKillDead"));
             return true;
         }

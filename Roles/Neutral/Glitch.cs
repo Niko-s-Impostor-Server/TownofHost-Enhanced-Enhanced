@@ -172,7 +172,11 @@ internal class Glitch : RoleBase
         if (MimicDurTimer > 0)
         {
             try { MimicDurTimer = (int)(MimicDuration.GetInt() - (nowTime - LastMimic)); }
-            catch { MimicDurTimer = 0; }
+            catch (System.Exception mimicDurationError)
+            {
+                Logger.Exception(mimicDurationError, "Glitch.OnFixedUpdate.MimicDuration");
+                MimicDurTimer = 0;
+            }
             if (MimicDurTimer > 180) MimicDurTimer = 0;
         }
         if ((MimicDurTimer <= 0 || !GameStates.IsInTask) && IsShifted)
@@ -195,15 +199,27 @@ internal class Glitch : RoleBase
         if (HackCDTimer <= 0 && KCDTimer <= 0 && MimicCDTimer <= 0 && MimicDurTimer <= 0) return;
 
         try { HackCDTimer = (int)(HackCooldown.GetInt() - (nowTime - LastHack)); }
-        catch { HackCDTimer = 0; }
+        catch (System.Exception hackCooldownError)
+        {
+            Logger.Exception(hackCooldownError, "Glitch.OnFixedUpdate.HackCooldown");
+            HackCDTimer = 0;
+        }
         if (HackCDTimer > 180 || HackCDTimer < 0) HackCDTimer = 0;
 
         try { KCDTimer = (int)(KillCooldown.GetInt() - (nowTime - LastKill)); }
-        catch { KCDTimer = 0; }
+        catch (System.Exception killCooldownError)
+        {
+            Logger.Exception(killCooldownError, "Glitch.OnFixedUpdate.KillCooldown");
+            KCDTimer = 0;
+        }
         if (KCDTimer > 180 || KCDTimer < 0) KCDTimer = 0;
 
         try { MimicCDTimer = (int)(MimicCooldown.GetInt() - (nowTime - LastMimic)); }
-        catch { MimicCDTimer = 0; }
+        catch (System.Exception mimicCooldownError)
+        {
+            Logger.Exception(mimicCooldownError, "Glitch.OnFixedUpdate.MimicCooldown");
+            MimicCDTimer = 0;
+        }
         if (MimicCDTimer > 180 || MimicCDTimer < 0) MimicCDTimer = 0;
 
         if (!player.IsModded())

@@ -276,9 +276,10 @@ public class Main : BasePlugin
                             else TOHE.Logger.Error($"Invalid Hexcolor #{color}", "LoadCustomRoleColor");
                         }
                     }
-                    catch (KeyNotFoundException)
+                    catch (KeyNotFoundException keyNotFoundException)
                     {
                         TOHE.Logger.Warn($"Invalid Key：{tmp[0]}", "LoadCustomTranslation");
+                        TOHE.Logger.Exception(keyNotFoundException, "LoadCustomTranslation");
                     }
                 }
             }
@@ -467,6 +468,7 @@ public class Main : BasePlugin
             catch (Exception e)
             {
                 TOHE.Logger.Error("An error occurred: " + e.Message, "UpdateRoleColors");
+                TOHE.Logger.Exception(e, "UpdateRoleColors");
             }
         }
     }

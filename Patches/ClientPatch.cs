@@ -149,8 +149,10 @@ internal class InnerNetObjectSerializePatch
             if (AmongUsClient.Instance.AmHost)
                 GameOptionsSender.SendAllGameOptions();
         }
-        catch
-        { }
+        catch (System.Exception error)
+        {
+            Logger.Exception(error, "InnerNetObjectSerializePatch.Prefix");
+        }
     }
 }
 

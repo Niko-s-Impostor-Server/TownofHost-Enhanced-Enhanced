@@ -166,8 +166,9 @@ internal static class FFAManager
             rank += KBScore.Where(x => x.Value == ms).ToList().IndexOf(new(playerId, ms));
             return rank;
         }
-        catch
+        catch (System.Exception rankCalculationError)
         {
+            Logger.Exception(rankCalculationError, "FFAManager.GetRankOfScore");
             return Main.AllPlayerControls.Length;
         }
     }

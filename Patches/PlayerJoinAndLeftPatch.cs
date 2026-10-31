@@ -161,9 +161,10 @@ class OnGameJoinedPatch
                 Logger.Info($"{client.PlayerName.RemoveHtmlTags()}(ClientID:{client.Id}/FriendCode:{client.FriendCode}/HashPuid:{client.GetHashedPuid()}/Platform:{client.PlatformData.Platform}) finished join room", "Session: OnGameJoined");
                 Logger.Info($"{host.PlayerName.RemoveHtmlTags()}(ClientID:{host.Id}/FriendCode:{host.FriendCode}/HashPuid:{host.GetHashedPuid()}/Platform:{host.PlatformData.Platform}) is the host", "Session: OnGameJoined");
             }
-            catch
+            catch (Exception error)
             {
                 Logger.Error("Error while trying to log local client data.", "OnGameJoinedPatch");
+                Logger.Exception(error, "OnGameJoinedPatch");
                 _ = new LateTask(() =>
                 {
                     if (!IsCurrentSession(generation)) return;
@@ -175,7 +176,10 @@ class OnGameJoinedPatch
                         Logger.Info($"{client.PlayerName.RemoveHtmlTags()}(ClientID:{client.Id}/FriendCode:{client.FriendCode}/HashPuid:{client.GetHashedPuid()}/Platform:{client.PlatformData.Platform}) finished join room", "Session: OnGameJoined Retry");
                         Logger.Info($"{host.PlayerName.RemoveHtmlTags()}(ClientID:{host.Id}/FriendCode:{host.FriendCode}/HashPuid:{host.GetHashedPuid()}/Platform:{host.PlatformData.Platform}) is the host", "Session: OnGameJoined Retry");
                     }
-                    catch { }
+                    catch (Exception retryError)
+                    {
+                        Logger.Exception(retryError, "OnGameJoinedPatch.RetryLogLocalClient");
+                    }
                     ;
                 }, 1.5f, "Retry Log Local Client");
             }
@@ -269,7 +273,10 @@ public static class OnPlayerJoinedPatch
                     CustomRpcTransport.Finish(retry);
                 }
             }
-            catch { }
+            catch (Exception error)
+            {
+                Logger.Exception(error, "OnPlayerJoinedPatch.GreenBeanKickLateTask");
+            }
         }, 4.5f, "green bean kick late task", false);
 
 
@@ -434,8 +441,10 @@ class OnPlayerLeftPatch
                     {
                         data.Character.RpcSetName(state.NormalOutfit.PlayerName);
                     }
-                    catch
-                    { }
+                    catch (Exception error)
+                    {
+                        Logger.Exception(error, "OnPlayerLeftPatch.Postfix.RpcSetName");
+                    }
                 }
 
                 AntiBlackout.OnDisconnect(data.Character.Data);

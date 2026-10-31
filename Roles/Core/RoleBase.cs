@@ -39,7 +39,10 @@ public abstract class RoleBase
             CustomRoleManager.RoleClass.FirstOrDefault(r => r.Key == _state.MainRole).Value.IsEnable = true;
             this.IsEnable = true; // Not supposed to be used, but some methods may have still implemented that check.
         }
-        catch { } // temporary try catch
+        catch (System.Exception roleEnableError)
+        {
+            Logger.Exception(roleEnableError, "RoleBase.OnAdd");
+        } // temporary try catch
 
 
         Add(playerid);

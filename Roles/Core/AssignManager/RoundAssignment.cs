@@ -71,6 +71,7 @@ public static class RoundAssignment
         catch (Exception error)
         {
             Logger.Warn($"Could not save assignment replay: {error.GetType().Name}", "RoundAssignment");
+            Logger.Exception(error, "RoundAssignment.SaveResult");
         }
     }
 }

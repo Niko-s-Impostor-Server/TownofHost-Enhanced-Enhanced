@@ -103,7 +103,7 @@ public class ModNews
         catch (Exception ex)
         {
             AllModNews.Clear();
-            Logger.Warn($"Could not load embedded announcements: {ex.GetType().Name}", "ModNews");
+            Logger.Warn($"Could not load embedded announcements: {ex}", "ModNews.LoadLocalNews");
         }
     }
 
