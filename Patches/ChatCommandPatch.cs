@@ -588,7 +588,7 @@ internal class ChatCommands
                             Utils.ShowChildrenSettings(Options.CustomRoleSpawnChances[role], ref Conf);
                         var cleared = Conf.ToString();
                         var Setting = $"<color={rlHex}>{GetString(role.ToString())} {GetString("Settings:")}</color>\n";
-                        Conf.Clear().Append($"<color=#ffffff>" + $"<size={Csize}>" + Setting + cleared + "</size>" + "</color>");
+                        Conf.Clear().Append($"<size={Csize}>{Setting}{cleared}</size>");
 
 
                         foreach (var subRole in Main.PlayerStates[lp.PlayerId].SubRoles.ToArray())
@@ -1715,7 +1715,8 @@ internal class ChatCommands
                 Utils.ShowChildrenSettings(Options.CustomRoleSpawnChances[rl], ref Conf);
                 var cleared = Conf.ToString();
                 var Setting = $"<color={rlHex}>{GetString(rl.ToString())} {GetString("Settings:")}</color>\n";
-                Conf.Clear().Append($"<color=#ffffff>" + $"<size={Csize}>" + Setting + cleared + "</size>" + "</color>");
+                // Long settings titles move into the body; inherit its theme color and masked material.
+                Conf.Clear().Append($"<size={Csize}>{Setting}{cleared}</size>");
 
             }
             // Show role info
@@ -1821,7 +1822,7 @@ internal class ChatCommands
                         Utils.ShowChildrenSettings(opt, ref Conf);
                     var cleared = Conf.ToString();
                     var Setting = $"<color={rlHex}>{GetString(role.ToString())} {GetString("Settings:")}</color>\n";
-                    Conf.Clear().Append($"<color=#ffffff>" + $"<size={Csize}>" + Setting + cleared + "</size>" + "</color>");
+                    Conf.Clear().Append($"<size={Csize}>{Setting}{cleared}</size>");
 
                     foreach (var subRole in Main.PlayerStates[player.PlayerId].SubRoles.ToArray())
                     {
