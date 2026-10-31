@@ -1,15 +1,15 @@
-# TOHEE v2.1.1-20261030.1
+# TOHEE v2.1.1-20261031
 
-- Client Options 新增自动重载标签：房主每 5 秒检查本地标签文件变化，大厅中自动刷新名字；`/tags reload` 仍可手动使用。
-- 修复混合客户端会议和流放后的 AntiBlackout 接收者保护、延迟死亡及幽灵状态同步。
-- 修复会议结束后原生职业、冷却时间和个人选项的恢复。
+- 恢复导入旧版 TOHE 用户资料中的标签，并更新贡献者与赞助者名单。
+- 修复开局重复显示角色介绍及启动异常日志丢失，并改善长角色标题的显示。
+- 修正角色设置信息在原生聊天颜色和遮罩效果下的显示。
 
-本版仍为实验性版本。上述游戏流程尚未经过正式服务器验证。
+本版仍为实验性版本。
 
 ---
 
-- Added Auto Reload Tags to Client Options. Hosts check local tag files every 5 seconds and refresh lobby names when they change; `/tags reload` remains available.
-- Improved recipient protection, delayed deaths, and ghost state synchronization around mixed-client meetings and exile.
-- Fixed restoration of vanilla roles, cooldowns, and per-player options after meetings.
+- Restored tag entries imported from legacy TOHE user information and updated contributor and sponsor data.
+- Fixed duplicate role intros and missing startup exception details; improved long role title layout.
+- Fixed role settings text under native chat colors and masked materials.
 
-This is an experimental release. These gameplay flows have not been validated on official servers.
+This is an experimental release.
