@@ -578,11 +578,11 @@ internal class ChatCommands
                     {
                         var lp = PlayerControl.LocalPlayer;
                         var Des = lp.GetRoleInfo(true);
-                        var title = $"<color=#ffffff>" + role.GetRoleTitle() + "</color>\n";
+                        var title = $"<color=#ffffff>" + role.GetRoleTitle() + "</color>";
                         var Conf = new StringBuilder();
                         var Sub = new StringBuilder();
                         var rlHex = Utils.GetRoleColorCode(role);
-                        var SubTitle = $"<color={rlHex}>" + GetString("YourAddon") + "</color>\n";
+                        var SubTitle = $"<color={rlHex}>" + GetString("YourAddon") + "</color>";
 
                         if (Options.CustomRoleSpawnChances.TryGetValue(role, out var opt))
                             Utils.ShowChildrenSettings(Options.CustomRoleSpawnChances[role], ref Conf);
@@ -1706,7 +1706,8 @@ internal class ChatCommands
                 if (isUp) return;
             }
             var Des = rl.GetInfoLong();
-            var title = devMark + $"<color=#ffffff>" + rl.GetRoleTitle() + "</color>\n";
+            // A trailing title newline adds body padding that TMP's rendered height omits.
+            var title = devMark + $"<color=#ffffff>" + rl.GetRoleTitle() + "</color>";
             var Conf = new StringBuilder();
             string rlHex = Utils.GetRoleColorCode(rl);
             if (Options.CustomRoleSpawnChances.ContainsKey(rl))
@@ -1810,11 +1811,11 @@ internal class ChatCommands
                 if (GameStates.IsInGame)
                 {
                     var Des = player.GetRoleInfo(true);
-                    var title = $"<color=#ffffff>" + role.GetRoleTitle() + "</color>\n";
+                    var title = $"<color=#ffffff>" + role.GetRoleTitle() + "</color>";
                     var Conf = new StringBuilder();
                     var Sub = new StringBuilder();
                     var rlHex = Utils.GetRoleColorCode(role);
-                    var SubTitle = $"<color={rlHex}>" + GetString("YourAddon") + "</color>\n";
+                    var SubTitle = $"<color={rlHex}>" + GetString("YourAddon") + "</color>";
 
                     if (Options.CustomRoleSpawnChances.TryGetValue(role, out var opt))
                         Utils.ShowChildrenSettings(opt, ref Conf);

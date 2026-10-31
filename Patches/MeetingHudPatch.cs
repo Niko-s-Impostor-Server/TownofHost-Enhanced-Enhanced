@@ -800,11 +800,11 @@ class MeetingHudStartPatch
             {
                 var role = pc.GetCustomRole();
                 var Des = pc.GetRoleInfo(true);
-                var title = $"<color=#ffffff>" + role.GetRoleTitle() + "</color>\n";
+                var title = $"<color=#ffffff>" + role.GetRoleTitle() + "</color>";
                 var Conf = new StringBuilder();
                 var Sub = new StringBuilder();
                 var rlHex = GetRoleColorCode(role);
-                var SubTitle = $"<color={rlHex}>" + GetString("YourAddon") + "</color>\n";
+                var SubTitle = $"<color={rlHex}>" + GetString("YourAddon") + "</color>";
                 if (Options.CustomRoleSpawnChances.TryGetValue(role, out var opt))
                     ShowChildrenSettings(Options.CustomRoleSpawnChances[role], ref Conf);
                 var cleared = Conf.ToString();

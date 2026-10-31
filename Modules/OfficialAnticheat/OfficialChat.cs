@@ -14,6 +14,8 @@ internal static class OfficialChat
     private static readonly object TransactionLock = new();
     private const int SoftPacketBytes = 1000;
     private const int HardPacketBytes = 1200;
+    // A transparent glyph contributes to TMP's rendered bounds; a bare trailing newline does not.
+    private const string PageFooter = "\n<color=#00000000>.</color>";
     internal readonly record struct SentPage(byte SpeakerId, PlayerControl Recipient, string Heading, string Text);
     internal static PlayerControl DisplayActor { get; private set; }
     internal static string DisplayTitle { get; private set; }
@@ -97,7 +99,7 @@ internal static class OfficialChat
                     // An empty-body transaction measures the actual reliable header, target,
                     // name changes, QuickChat payload, and both name restorations.
                     int available;
-                    using (var baseline = BuildTransaction(actor, carrier, target, heading, padding, actorRestore, carrierRestore))
+                    using (var baseline = BuildTransaction(actor, carrier, target, heading, padding + PageFooter, actorRestore, carrierRestore))
                         available = HardPacketBytes - baseline.Writer.Length;
                     if (available <= 0) throw new InvalidOperationException("The name restoration leaves no message budget.");
 
@@ -107,11 +109,11 @@ internal static class OfficialChat
                     try
                     {
                         int start = probe.Length;
-                        probe.Write(padding);
+                        probe.Write(padding + PageFooter);
                         int paddedStringLength = probe.Length - start;
                         probe.Clear(SendOption.Reliable);
                         start = probe.Length;
-                        probe.Write(padding + new string('A', available));
+                        probe.Write(padding + new string('A', available) + PageFooter);
                         int prefixGrowth = (probe.Length - start) - paddedStringLength - available;
                         available -= prefixGrowth;
                     }
@@ -130,11 +132,11 @@ internal static class OfficialChat
                     foreach (string page in pages)
                     {
                         if (!Current()) return sentPages.ToArray();
-                        using var packet = BuildTransaction(actor, carrier, target, heading, padding + page, actorRestore, carrierRestore);
+                        using var packet = BuildTransaction(actor, carrier, target, heading, padding + page + PageFooter, actorRestore, carrierRestore);
                         if (packet.Writer.Length > HardPacketBytes)
                             throw new InvalidOperationException("The complete chat transaction exceeds 1200 bytes.");
                         Logger.Test($"recipient={seer.PlayerId}, page={++pageIndex}/{pages.Length}, " +
-                            $"setCarrierNameUtf8Bytes={Encoding.UTF8.GetByteCount(padding + page)}, " +
+                            $"setCarrierNameUtf8Bytes={Encoding.UTF8.GetByteCount(padding + page + PageFooter)}, " +
                             $"packetBytes={packet.Writer.Length}", "OfficialChat.Pagination");
                         if (send == null) OfficialNetworkSend.Send(client, packet.Writer);
                         else send(packet.Writer);
@@ -176,7 +178,7 @@ internal static class OfficialChat
             DisplayTitle = heading;
             if (showDeadSpeaker) actor.Data.IsDead = false;
             foreach (string page in pages)
-                DestroyableSingleton<HudManager>.Instance.Chat.AddChat(actor, padding + page, censor);
+                DestroyableSingleton<HudManager>.Instance.Chat.AddChat(actor, padding + page + PageFooter, censor);
         }
         finally
         {
@@ -195,7 +197,7 @@ internal static class OfficialChat
             title = "TOHE";
         }
         string padding = includeTitlePadding ? TitlePadding(title) : string.Empty;
-        var pages = Paginate(text, SoftPacketBytes - Encoding.UTF8.GetByteCount(padding)).ToArray();
+        var pages = Paginate(text, SoftPacketBytes - Encoding.UTF8.GetByteCount(padding + PageFooter)).ToArray();
         return (title, pages);
     }
 
