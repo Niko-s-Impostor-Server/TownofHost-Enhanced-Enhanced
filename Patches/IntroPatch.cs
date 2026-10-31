@@ -277,7 +277,7 @@ class SetUpRoleTextPatch
             }
             catch (Exception ex)
             {
-                Logger.Error($"Encryption error: {ex.Message}", "Intro.Roles");
+                Logger.Error($"Encryption error: {ex}", "SetUpRoleTextPatch.CoLoggerGameInfo");
             }
         }
         //https://www.toolhelper.cn/SymmetricEncryption/DES

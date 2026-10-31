@@ -120,7 +120,9 @@ public static class HostInfoPanelUpdatePatch
                 HostText.text = $"<color=#{htmlStringRgb}>{hostName}</color>  <size=90%><b><font=\"Barlow-BoldItalic SDF\" material=\"Barlow-BoldItalic SDF Outline\">({youLabel})";
             }
         }
-        catch
-        { }
+        catch (System.Exception error)
+        {
+            Logger.Exception(error, "HostInfoPanelUpdatePatch.Postfix");
+        }
     }
 }

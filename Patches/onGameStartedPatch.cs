@@ -531,7 +531,10 @@ internal class StartGameHostPatch
                 if (!AmongUsClient.Instance.IsGameOver)
                     DestroyableSingleton<HudManager>.Instance.SetHudActive(true);
             }
-            catch { }
+            catch (Exception error)
+            {
+                Logger.Exception(error, "StartGameHostPatch.AssignRoles.SetHudActive");
+            }
 
             foreach (var pc in PlayerControl.AllPlayerControls.GetFastEnumerator())
                 pc.ResetKillCooldown();
@@ -648,8 +651,10 @@ internal class StartGameHostPatch
                         var sender = senders[seer.PlayerId];
                         sender.RpcSetRole(seer, roleType, targetClientId);
                     }
-                    catch
-                    { }
+                    catch (Exception error)
+                    {
+                        Logger.Exception(error, "StartGameHostPatch.MakeDesyncSender");
+                    }
                 }
             }
         }
@@ -662,7 +667,10 @@ internal class StartGameHostPatch
             {
                 SetRoleSelf(pc);
             }
-            catch { }
+            catch (Exception error)
+            {
+                Logger.Exception(error, "StartGameHostPatch.SetRoleSelf");
+            }
         }
     }
     private static void SetRoleSelf(PlayerControl target)
@@ -893,8 +901,10 @@ public static class RpcSetRoleReplacer
                         .Write(true) // canOverride
                         .EndRpc();
                 }
-                catch
-                { }
+                catch (Exception error)
+                {
+                    Logger.Exception(error, "RpcSetRoleReplacer.SendRpcForNormal");
+                }
             }
             sender.EndMessage();
         }

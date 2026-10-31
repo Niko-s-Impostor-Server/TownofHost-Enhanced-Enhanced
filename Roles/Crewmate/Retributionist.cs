@@ -121,8 +121,9 @@ internal class Retributionist : RoleBase
             targetId = int.Parse(msg.Replace("/ret", string.Empty));
             target = GetPlayerById(targetId);
         }
-        catch
+        catch (System.Exception targetParseError)
         {
+            Logger.Exception(targetParseError, "Retributionist.RetributionistMsgCheck");
             pc.ShowInfoMessage(isUI, GetString("RetributionistKillDead"));
             return true;
         }

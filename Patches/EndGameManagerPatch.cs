@@ -35,7 +35,10 @@ public class EndGameManagerPatch
                     CountdownTextText.text = string.Format(GetString("CancelStartCountDown"), seconds);
                 }
             }
-            catch { }
+            catch (System.Exception error)
+            {
+                Logger.Exception(error, "EndGameManagerPatch.BeginAutoPlayAgainCountdown");
+            }
             return;
         }
         if (endGameManager == null) return;

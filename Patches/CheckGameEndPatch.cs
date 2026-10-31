@@ -676,8 +676,9 @@ class GameEndCheckerForNormal
                             ResetAndSetWinner(winnerRole.GetNeutralCustomWinnerFromRole());
                             WinnerRoles.Add(winnerRole);
                         }
-                        catch
+                        catch (System.Exception error)
                         {
+                            Logger.Exception(error, "GameEndCheckerForNormal.NormalGameEndPredicate.CheckGameEndByLivingPlayers");
                             return false;
                         }
                     }

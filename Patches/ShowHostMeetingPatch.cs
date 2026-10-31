@@ -25,7 +25,10 @@ public class ShowHostMeetingPatch
                 HostColor = Main.PlayerStates[AmongUsClient.Instance.GetHost().Character.Data.PlayerId].NormalOutfit.ColorId;
             }
         }
-        catch { }
+        catch (System.Exception error)
+        {
+            Logger.Exception(error, "ShowHostMeetingPatch.OnDestroy_Postfix");
+        }
     }
 
     [HarmonyPatch(typeof(IntroCutscene), nameof(IntroCutscene.ShowRole))]

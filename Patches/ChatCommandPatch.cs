@@ -136,7 +136,7 @@ internal class ChatCommands
                 }
                 catch (Exception e)
                 {
-                    Logger.Error(e.Message, "/version");
+                    Logger.Exception(e, "ChatCommandPatch.Version");
                     version_text = "Error while getting version : " + e.Message;
                     if (version_text != "")
                     {

@@ -111,8 +111,9 @@ class PingTrackerUpdatePatch
 
             return false;
         }
-        catch
+        catch (System.Exception error)
         {
+            Logger.Exception(error, "PingTrackerUpdatePatch.Prefix");
             nextStatusUpdate = 0f;
             fpsSampleTime = 0f;
             fpsSampleFrames = 0;
