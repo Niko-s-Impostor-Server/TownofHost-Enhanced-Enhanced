@@ -20,7 +20,7 @@ namespace TOHE;
 [HarmonyPatch(typeof(ChatController), nameof(ChatController.SendChat))]
 internal class ChatCommands
 {
-    private static readonly string sponsorTagsFiles = @"./TOHE-DATA/Tags/SPONSOR_TAGS";
+    private static readonly string sponsorTagsFiles = @"./TOHEE-DATA/Tags/SPONSOR_TAGS";
 
     private static readonly Dictionary<char, int> Pollvotes = [];
     private static readonly Dictionary<char, string> PollQuestions = [];
@@ -1760,10 +1760,10 @@ internal class ChatCommands
         if (!AmongUsClient.Instance || !AmongUsClient.Instance.AmConnected || !AmongUsClient.Instance.AmHost ||
             !player || player.Data == null || player.Data.Disconnected) return;
         AfkMonitor.RecordActivity(player);
+        text = text.TrimStart('\n');
         if (FeatureChatCommands.TryHandle(player, text)) { canceled = true; return; }
         if (!Blackmailer.CheckBlackmaile(player)) ChatManager.SendMessage(player, text);
 
-        if (text.StartsWith("\n")) text = text[1..];
         //if (!text.StartsWith("/")) return;
         string[] args = text.Split(' ');
         string subArgs = "";
@@ -2605,7 +2605,7 @@ internal class UpdateCharCountPatch
 [HarmonyPatch(typeof(PlayerControl), nameof(PlayerControl.RpcSendChat))]
 class RpcSendChatPatch
 {
-    public static bool Prefix(PlayerControl __instance, string chatText, ref bool __result)
+    public static bool Prefix(PlayerControl __instance, [HarmonyArgument(0)] ref string chatText, ref bool __result)
     {
         if (string.IsNullOrWhiteSpace(chatText))
         {
@@ -2639,16 +2639,22 @@ class RpcSendChatPatch
             __result = true;
             return false;
         }
-        if (OfficialAnticheatPolicy.Enabled)
+        if (OfficialAnticheatPolicy.Enabled && AmongUsClient.Instance.AmHost)
         {
-            // Ordinary remote free chat stays on the game's owned-object native path.
-            if (!AmongUsClient.Instance.AmHost) return true;
+            // This path already adds padding for each recipient's displayed title.
             ChatManager.SendPlayerText(__instance, chatText);
             __result = true;
             return false;
         }
-        int return_count = PlayerControl.LocalPlayer.name.Count(x => x == '\n');
-        chatText = new StringBuilder(chatText).Insert(0, "\n", return_count).ToString();
+
+        // The native chat bubble uses the synchronized player name, not the Unity object name.
+        int nameLines = Regex.Matches(__instance.Data.PlayerName, @"\n|<br\s*/?>", RegexOptions.IgnoreCase).Count;
+        int existingPadding = Regex.Matches(chatText, @"\G\r*\n").Count;
+        if (nameLines > existingPadding)
+            chatText = new string('\n', nameLines - existingPadding) + chatText;
+
+        // Remote free chat on official servers stays on the native owned-object path.
+        if (OfficialAnticheatPolicy.Enabled) return true;
         if (AmongUsClient.Instance.AmClient && DestroyableSingleton<HudManager>.Instance)
             DestroyableSingleton<HudManager>.Instance.Chat.AddChat(__instance, chatText);
         if (chatText.Contains("who", StringComparison.OrdinalIgnoreCase))
