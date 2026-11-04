@@ -253,5 +253,7 @@
   "DetectiveVanilla": "#8cffff",
   "DetectiveTOHE": "#8cffff",
   "Viper": "#ff1919",
-  "ViperTOHE": "#ff1919"
+  "ViperTOHE": "#ff1919",
+  "Cop": "#007BFF",
+  "Robber": "#FF8C00"
 }

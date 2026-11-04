@@ -415,6 +415,9 @@ class OnPlayerLeftPatch
             if (GameStates.IsNormalGame && GameStates.IsInGame && data.Character != null
                 && Main.PlayerStates.TryGetValue(data.Character.PlayerId, out var state))
             {
+                if (AmongUsClient.Instance.AmHost && Options.CurrentGameMode == CustomGameMode.CandR)
+                    CopsAndRobbersManager.OnPlayerDisconnect(data.Character.PlayerId);
+
                 if (data.Character.Is(CustomRoles.Lovers) && !data.Character.Data.IsDead)
                 {
                     foreach (var lovers in Main.LoversPlayers.ToArray())

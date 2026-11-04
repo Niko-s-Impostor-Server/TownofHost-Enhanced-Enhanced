@@ -13,8 +13,9 @@ public enum CustomGameMode
 {
     Standard = 0x01,
     FFA = 0x02,
+    CandR = 0x04,
 
-    HidenSeekTOHE = 0x08, // HidenSeekTOHE must be after other game modes
+    HidenSeekTOHE = 0x08, // Selector order is defined separately by gameModes.
     All = int.MaxValue
 }
 
@@ -49,7 +50,8 @@ public static class Options
         => GameMode.GetInt() switch
         {
             1 => CustomGameMode.FFA,
-            2 => CustomGameMode.HidenSeekTOHE, // HidenSeekTOHE must be after other game modes
+            2 => CustomGameMode.HidenSeekTOHE, // Preserve the existing H&S preset index.
+            3 => CustomGameMode.CandR,
             _ => CustomGameMode.Standard
         };
 
@@ -59,7 +61,8 @@ public static class Options
         "FFA",
 
 
-        "Hide&SeekTOHE", // HidenSeekTOHE must be after other game modes
+        "Hide&SeekTOHE", // Keep the existing H&S preset index at 2.
+        "C&R",
     ];
 
 
@@ -1170,6 +1173,9 @@ public static class Options
         #region Game Settings
         //FFA
         FFAManager.SetupCustomOption();
+
+        // C&R
+        CopsAndRobbersManager.SetupCustomOption();
 
         // Hide & Seek
         TextOptionItem.Create(10000055, "MenuTitle.Hide&Seek", TabGroup.ModSettings)

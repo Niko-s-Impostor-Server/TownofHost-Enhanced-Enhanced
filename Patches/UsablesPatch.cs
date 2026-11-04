@@ -18,7 +18,7 @@ class EmergencyMinigamePatch
 {
     public static void Postfix(EmergencyMinigame __instance)
     {
-        if (Options.DisableMeeting.GetBool() || Options.CurrentGameMode == CustomGameMode.FFA)
+        if (Options.DisableMeeting.GetBool() || Options.CurrentGameMode is CustomGameMode.FFA or CustomGameMode.CandR)
             __instance.Close();
         return;
     }
@@ -40,6 +40,8 @@ class CanUseVentPatch
         // Determine if vent is available based on custom role
         // always true for engineer-based roles
         couldUse = playerControl.CanUseImpostorVentButton() || (pc.Role.Role == RoleTypes.Engineer && pc.Role.CanUse(__instance.Cast<IUsable>()));
+        if (Options.CurrentGameMode == CustomGameMode.CandR)
+            couldUse &= playerControl.CanUseVents();
 
         canUse = couldUse;
         // Not available if custom roles are not available

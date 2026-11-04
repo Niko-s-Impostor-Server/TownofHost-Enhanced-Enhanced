@@ -113,6 +113,23 @@ class CoBeginPatch
 
         FFAManager.SetData();
     }
+
+    public static void Postfix(ref Il2CppSystem.Collections.IEnumerator __result)
+    {
+        if (Options.CurrentGameMode == CustomGameMode.CandR && __result != null)
+            __result = StartCopsAndRobbers(__result, OfficialSessionContext.Capture()).WrapToIl2Cpp();
+    }
+
+    private static System.Collections.IEnumerator StartCopsAndRobbers(Il2CppSystem.Collections.IEnumerator original, OfficialSessionContext context)
+    {
+        try
+        {
+            if (!context.IsCurrent()) yield break;
+            CopsAndRobbersManager.SetData();
+            while (context.IsCurrent() && original.MoveNext()) yield return original.Current;
+        }
+        finally { original.TryCast<Il2CppSystem.IDisposable>()?.Dispose(); }
+    }
 }
 [HarmonyPatch(typeof(IntroCutscene), nameof(IntroCutscene.ShowRole))]
 class SetUpRoleTextPatch
@@ -528,6 +545,17 @@ class BeginCrewmatePatch
             __instance.ImpostorText.gameObject.SetActive(true);
             __instance.ImpostorText.text = "KILL EVERYONE TO WIN";
         }
+        else if (Options.CurrentGameMode == CustomGameMode.CandR)
+        {
+            __instance.TeamTitle.text = $"<size=75%>{GetString("C&R")}</size>";
+            __instance.TeamTitle.color = __instance.BackgroundBar.material.color = Color.blue;
+            __instance.ImpostorText.gameObject.SetActive(true);
+            __instance.ImpostorText.text = GetString("C&RShortInfo");
+            PlayerControl.LocalPlayer.Data.Role.IntroSound = role == CustomRoles.Cop
+                ? ShipStatus.Instance.SabotageSound
+                : DestroyableSingleton<HudManager>.Instance.TaskCompleteSound;
+            StartFadeIntro(__instance, Color.blue, Color.red);
+        }
 
         // I hope no one notices this in code
         if (Input.GetKey(KeyCode.RightShift))
@@ -683,7 +711,10 @@ class IntroCutsceneDestroyPatch
                         if (firstPlayer == null) continue;
                         PC.RpcShapeshift(firstPlayer, false);
                         PC.RpcRejectShapeshift();
-                        PC.ResetPlayerOutfit(force: true);
+                        if (Options.CurrentGameMode == CustomGameMode.CandR && PC.Is(CustomRoles.Cop))
+                            CopsAndRobbersManager.SetCostume(CopsAndRobbersManager.RoleType.Cop, PC.PlayerId);
+                        else
+                            PC.ResetPlayerOutfit(force: true);
                         Main.CheckShapeshift[id] = false;
                     }
                     Main.GameIsLoaded = true;
@@ -731,7 +762,7 @@ class IntroCutsceneDestroyPatch
                 {
                     pc.RpcResetAbilityCooldown();
 
-                    if (Options.FixFirstKillCooldown.GetBool() && Options.CurrentGameMode != CustomGameMode.FFA)
+                    if (Options.FixFirstKillCooldown.GetBool() && Options.CurrentGameMode is not (CustomGameMode.FFA or CustomGameMode.CandR))
                     {
                         _ = new LateTask(() =>
                         {
@@ -787,6 +818,7 @@ class IntroCutsceneDestroyPatch
             bool chatVisible = Options.CurrentGameMode switch
             {
                 CustomGameMode.FFA => true,
+                CustomGameMode.CandR => CopsAndRobbersManager.CandR_ShowChatInGame.GetBool(),
                 _ => false
             };
             try

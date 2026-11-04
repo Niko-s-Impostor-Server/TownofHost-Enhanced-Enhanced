@@ -905,6 +905,8 @@ public enum CustomRoles
     ViperTOHE = 483,
     SpiritGuide = 484,
     SpiritGuideTOHE = 485,
+    Cop = 486,
+    Robber = 487,
 
     // Sub-role after 500
     NotAssigned = 500,
@@ -997,6 +999,8 @@ public enum CustomWinner
     None = -3,
     Error = -4,
     Neutrals = -5,
+    Cops = CustomRoles.Cop,
+    Robbers = CustomRoles.Robber,
     Impostor = CustomRoles.Impostor,
     Crewmate = CustomRoles.Crewmate,
     Jester = CustomRoles.Jester,

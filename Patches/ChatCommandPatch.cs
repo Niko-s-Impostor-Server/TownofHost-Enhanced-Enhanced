@@ -180,6 +180,11 @@ internal class ChatCommands
                     Quizmaster.ShowQuestion(PlayerControl.LocalPlayer);
                     break;
 
+                case "/ability":
+                    subArgs = args.Length < 2 ? "" : args[1];
+                    CopsAndRobbersManager.AbilityDescription(subArgs);
+                    break;
+
                 case "/win":
                 case "/winner":
                 case "/vencedor":
@@ -1623,6 +1628,38 @@ internal class ChatCommands
             Utils.SendMessage(GetString("ModeDescribe.FFA"), playerId);
             return;
         }
+        if (Options.CurrentGameMode == CustomGameMode.CandR)
+        {
+            var requestedRole = role.Trim().ToLower().TrimStart('*').Replace(" ", string.Empty);
+            var copName = GetString(CustomRoles.Cop.ToString()).ToLower().Trim().TrimStart('*').Replace(" ", string.Empty);
+            var robberName = GetString(CustomRoles.Robber.ToString()).ToLower().Trim().TrimStart('*').Replace(" ", string.Empty);
+
+            CustomRoles modeRole;
+            if (requestedRole == copName || requestedRole == "cop") modeRole = CustomRoles.Cop;
+            else if (requestedRole == robberName || requestedRole == "robber") modeRole = CustomRoles.Robber;
+            else
+            {
+                Utils.SendMessage(GetString("ModeDescribe.C&R"), playerId, Utils.ColorString(Utils.GetRoleColor(CustomRoles.Cop), GetString("ModeC&R")));
+                return;
+            }
+
+            var description = modeRole.GetInfoLong();
+            var title = Utils.ColorString(Utils.GetRoleColor(modeRole), GetString(modeRole.ToString()));
+            var roleColor = Utils.GetRoleColorCode(modeRole);
+            StringBuilder settings = new($"<size={Csize}><color={roleColor}>{GetString(modeRole.ToString())} {GetString("Settings:")}</color>\n");
+
+            foreach (var option in CopsAndRobbersManager.roleSettings[modeRole])
+            {
+                settings.Append($"{option.GetName(true)}: {option.GetString()}\n");
+                var depth = option.Children.Any() ? 1 : 0;
+                Utils.ShowChildrenSettings(option, ref settings, deep: depth);
+            }
+            settings.Append("</size>");
+
+            Utils.SendMessage(description, playerId, title, noReplay: true);
+            Utils.SendMessage(string.Empty, playerId, settings.ToString(), noReplay: true);
+            return;
+        }
         role = role.Trim();
 
         if (role == "" || role == string.Empty)
@@ -1839,6 +1876,11 @@ internal class ChatCommands
             case "/qmquiz":
             case "/提问":
                 Quizmaster.ShowQuestion(player);
+                break;
+
+            case "/ability":
+                subArgs = args.Length < 2 ? "" : args[1];
+                CopsAndRobbersManager.AbilityDescription(subArgs, player.PlayerId);
                 break;
 
             case "/l":

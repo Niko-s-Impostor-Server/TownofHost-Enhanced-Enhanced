@@ -53,8 +53,7 @@ class GameEndCheckerForNormal
         var reason = GameOverReason.ImpostorsByKill;
         predicate.CheckForEndGame(out reason);
 
-        // FFA
-        if (Options.CurrentGameMode == CustomGameMode.FFA)
+        if (Options.CurrentGameMode is CustomGameMode.FFA or CustomGameMode.CandR)
         {
             if (WinnerIds.Count > 0 || WinnerTeam != CustomWinner.Default)
             {
@@ -574,6 +573,7 @@ class GameEndCheckerForNormal
 
     public static void SetPredicateToNormal() => predicate = new NormalGameEndPredicate();
     public static void SetPredicateToFFA() => predicate = new FFAGameEndPredicate();
+    public static void SetPredicateToCandR() => predicate = new CandRGameEndPredicate();
 
 
     // ===== Check Game End =====
@@ -690,6 +690,61 @@ class GameEndCheckerForNormal
                 }
             }
         }
+    }
+}
+
+class CandRGameEndPredicate : GameEndPredicate
+{
+    public override bool CheckForEndGame(out GameOverReason reason)
+    {
+        reason = GameOverReason.ImpostorsByKill;
+        if (WinnerTeam != CustomWinner.Default) return false;
+
+        if (CopsAndRobbersManager.RoundTime <= 0)
+        {
+            ResetAndSetWinner(CustomWinner.Cops);
+            WinnerIds = [.. CopsAndRobbersManager.cops];
+            Logger.Info("Game ended because the round time finished", "C&R");
+            return true;
+        }
+
+        var alive = Main.AllAlivePlayerControls;
+        if (!alive.Any())
+        {
+            ResetAndSetWinner(CustomWinner.None);
+            Logger.Info("Game ended because no players remain", "C&R");
+            return true;
+        }
+        if (!alive.Any(pc => pc.Is(CustomRoles.Cop)))
+        {
+            reason = GameOverReason.CrewmatesByVote;
+            ResetAndSetWinner(CustomWinner.Robbers);
+            WinnerIds = [.. CopsAndRobbersManager.robbers];
+            Logger.Info("Game ended because no cops remain", "C&R");
+            return true;
+        }
+        if (!alive.Any(pc => pc.Is(CustomRoles.Robber) && !CopsAndRobbersManager.captured.ContainsKey(pc.PlayerId)))
+        {
+            ResetAndSetWinner(CustomWinner.Cops);
+            WinnerIds = [.. CopsAndRobbersManager.cops];
+            Logger.Info("Game ended because all robbers were captured", "C&R");
+            return true;
+        }
+        return CheckGameEndByTask(out reason);
+    }
+
+    public override bool CheckGameEndByTask(out GameOverReason reason)
+    {
+        reason = GameOverReason.ImpostorsByKill;
+        if (Options.DisableTaskWin.GetBool() || TaskState.InitialTotalTasks <= 0 || GameData.Instance.TotalTasks <= 0
+            || GameData.Instance.CompletedTasks < GameData.Instance.TotalTasks)
+            return false;
+
+        reason = GameOverReason.CrewmatesByTask;
+        ResetAndSetWinner(CustomWinner.Robbers);
+        WinnerIds = [.. CopsAndRobbersManager.robbers];
+        Logger.Info("Game ended because the robbers completed all tasks", "C&R");
+        return true;
     }
 }
 

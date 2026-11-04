@@ -57,7 +57,7 @@ class HudManagerPatch
 
         if (SetHudActivePatch.IsActive)
         {
-            if (Options.CurrentGameMode == CustomGameMode.FFA)
+            if (Options.CurrentGameMode == CustomGameMode.FFA || Options.CurrentGameMode == CustomGameMode.CandR)
             {
                 if (LowerInfoText == null)
                 {
@@ -76,7 +76,9 @@ class HudManagerPatch
                     LowerInfoText.outlineWidth = 20000000f;
                     LowerInfoText.fontSize = 2f;
                 }
-                LowerInfoText.text = FFAManager.GetHudText();
+                LowerInfoText.text = Options.CurrentGameMode == CustomGameMode.FFA
+                    ? FFAManager.GetHudText()
+                    : CopsAndRobbersManager.GetHudText();
             }
             if (player.IsAlive())
             {
@@ -86,6 +88,8 @@ class HudManagerPatch
                 __instance.SabotageButton?.OverrideText(GetString("SabotageButtonText"));
 
                 player.GetRoleClass()?.SetAbilityButtonText(__instance, player.PlayerId);
+                if (Options.CurrentGameMode == CustomGameMode.CandR)
+                    CopsAndRobbersManager.SetAbilityButtonText(__instance, player.PlayerId);
 
                 // Set lower info text for modded players
                 if (LowerInfoText == null)
@@ -371,6 +375,24 @@ class TaskPanelBehaviourPatch
 
                     AllText = $"<size=70%>{AllText}</size>";
 
+                    break;
+                case CustomGameMode.CandR:
+                    var copRobberTaskLines = taskText.Split("\r\n</color>\n")[0].Split("\r\n\n")[0].Split("\r\n");
+                    StringBuilder copRobberTasks = new();
+                    foreach (var eachLine in copRobberTaskLines)
+                    {
+                        var line = eachLine.Trim();
+                        if ((line.StartsWith("<color=#FF1919FF>") || line.StartsWith("<color=#FF0000FF>")) && copRobberTasks.Length < 1 && !line.Contains('(')) continue;
+                        copRobberTasks.Append(line + "\r\n");
+                    }
+
+                    if (copRobberTasks.Length > 1)
+                    {
+                        var text = copRobberTasks.ToString().TrimEnd('\n').TrimEnd('\r');
+                        if (!Utils.HasTasks(player.Data, false) && copRobberTasks.ToString().Count(s => s == '\n') >= 2)
+                            text = $"{Utils.ColorString(Utils.GetRoleColor(player.GetCustomRole()).ShadeColor(0.2f), GetString("FakeTask"))}\r\n{text}";
+                        AllText += $"\r\n\r\n<size=85%>{text}</size>";
+                    }
                     break;
             }
 

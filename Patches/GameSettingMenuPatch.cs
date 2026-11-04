@@ -31,6 +31,7 @@ public class GameSettingMenuPatch
         TabGroup[] ExludeList = Options.CurrentGameMode switch
         {
             CustomGameMode.HidenSeekTOHE => Enum.GetValues<TabGroup>().Skip(3).ToArray(),
+            CustomGameMode.CandR => Enum.GetValues<TabGroup>().Skip(3).ToArray(),
             CustomGameMode.FFA => Enum.GetValues<TabGroup>().Skip(2).ToArray(),
             _ => []
         };

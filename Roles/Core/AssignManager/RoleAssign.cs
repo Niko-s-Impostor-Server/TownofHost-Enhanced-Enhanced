@@ -14,6 +14,8 @@ public static class RoleAssign
         int seed = RoundAssignment.Begin(players.Select(pc => pc.PlayerId));
         if (Options.CurrentGameMode == CustomGameMode.FFA)
             RoleResult = players.ToDictionary(pc => pc.PlayerId, _ => CustomRoles.Killer);
+        else if (Options.CurrentGameMode == CustomGameMode.CandR)
+            RoleResult = CopsAndRobbersManager.SetRoles();
         else
         {
             RoundAssignment.RoleInput = RoleAssignmentCatalog.Capture(seed, players);

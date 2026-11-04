@@ -131,6 +131,7 @@ enum CustomRPC : uint
     AntiBlackoutBuffer,
     SyncWorkhorseTasks,
     RequestOptionChunks,
+    SyncCandRData = 202,
 }
 public enum Sounds
 {
@@ -703,6 +704,9 @@ internal class RPCHandlerPatch
                 break;
             case CustomRPC.SyncFFAPlayer:
                 FFAManager.ReceiveRPCSyncFFAPlayer(reader);
+                break;
+            case CustomRPC.SyncCandRData:
+                CopsAndRobbersManager.ReceiveCandRData(reader);
                 break;
             case CustomRPC.SyncAllPlayerNames:
                 Main.AllPlayerNames.Clear();

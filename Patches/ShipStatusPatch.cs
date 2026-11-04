@@ -113,7 +113,7 @@ class UpdateSystemPatch
         if (!AmongUsClient.Instance.AmHost) return true;
 
         // ###### Can Be Sabotage Started? ######
-        if ((Options.CurrentGameMode == CustomGameMode.FFA) && systemType == SystemTypes.Sabotage) return false;
+        if ((Options.CurrentGameMode is CustomGameMode.FFA or CustomGameMode.CandR) && systemType == SystemTypes.Sabotage) return false;
 
         if (Options.DisableSabotage.GetBool() && systemType == SystemTypes.Sabotage) return false;
 
@@ -188,7 +188,7 @@ class ShipStatusCloseDoorsPatch
         Logger.Info($"Trying to close the door in the room: {room}", "CloseDoorsOfType");
 
         bool allow;
-        if (Options.CurrentGameMode == CustomGameMode.FFA || Options.DisableCloseDoor.GetBool()) allow = false;
+        if ((Options.CurrentGameMode is CustomGameMode.FFA or CustomGameMode.CandR) || Options.DisableCloseDoor.GetBool()) allow = false;
         else allow = true;
 
         if (allow)

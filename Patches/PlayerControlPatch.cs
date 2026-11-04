@@ -1,4 +1,5 @@
 ﻿using AmongUs.GameOptions;
+using BepInEx.Unity.IL2CPP.Utils.Collections;
 using Hazel;
 using InnerNet;
 using System;
@@ -189,6 +190,11 @@ class CheckMurderPatch
         if (Options.CurrentGameMode == CustomGameMode.FFA)
         {
             FFAManager.OnPlayerAttack(killer, target);
+            return false;
+        }
+        if (Options.CurrentGameMode == CustomGameMode.CandR)
+        {
+            CopsAndRobbersManager.OnCopAttack(killer, target);
             return false;
         }
 
@@ -630,7 +636,7 @@ public static class CheckShapeshiftPatch
             Logger.Info("Checking while AntiBlackOut protect, shapeshift was canceled", "CheckShapeshift");
             return false;
         }
-        if (!(instance.Is(CustomRoles.ShapeshifterTOHE) || instance.Is(CustomRoles.Shapeshifter)) && target.IsShieldedFromFirstDeath())
+        if (Options.CurrentGameMode != CustomGameMode.CandR && !(instance.Is(CustomRoles.ShapeshifterTOHE) || instance.Is(CustomRoles.Shapeshifter)) && target.IsShieldedFromFirstDeath())
         {
             instance.RpcGuardAndKill(instance);
             instance.Notify(Utils.ColorString(Utils.GetRoleColor(instance.GetCustomRole()), GetString("PlayerIsShieldedByGame")));
@@ -727,7 +733,7 @@ class ReportDeadBodyPatch
             return false;
         }
         if (Options.DisableMeeting.GetBool()) return false;
-        if (Options.CurrentGameMode == CustomGameMode.FFA) return false;
+        if (Options.CurrentGameMode is CustomGameMode.FFA or CustomGameMode.CandR) return false;
 
         if (!CanReport[__instance.PlayerId])
         {
@@ -1176,7 +1182,10 @@ class FixedUpdateInNormalGamePatch
                                 if (randomPlayer == null) continue;
                                 UnShapeshifter.RpcShapeshift(randomPlayer, false);
                                 UnShapeshifter.RpcRejectShapeshift();
-                                UnShapeshifter.ResetPlayerOutfit(setNamePlate: true);
+                                if (Options.CurrentGameMode == CustomGameMode.CandR && UnShapeshifter.Is(CustomRoles.Cop))
+                                    CopsAndRobbersManager.SetCostume(CopsAndRobbersManager.RoleType.Cop, UnShapeshifter.PlayerId);
+                                else
+                                    UnShapeshifter.ResetPlayerOutfit(setNamePlate: true);
                                 Utils.NotifyRoles(SpecifyTarget: UnShapeshifter);
                                 Logger.Info($"Revert to shapeshifting state for: {player.GetRealName()}", "UnShapeShifer_FixedUpdate");
                             }
@@ -1348,6 +1357,8 @@ class FixedUpdateInNormalGamePatch
 
                 if (Options.CurrentGameMode == CustomGameMode.FFA)
                     Suffix.Append(FFAManager.GetPlayerArrow(seer, target));
+                else if (Options.CurrentGameMode == CustomGameMode.CandR)
+                    Suffix.Append(CopsAndRobbersManager.GetClosestArrow(seer, target));
 
                 /*if(main.AmDebugger.Value && main.BlockKilling.TryGetValue(target.PlayerId, out var isBlocked)) {
                     Mark = isBlocked ? "(true)" : "(false)";}*/
@@ -1555,7 +1566,7 @@ class EnterVentPatch
 [HarmonyPatch(typeof(PlayerPhysics), nameof(PlayerPhysics.CoExitVent))]
 class CoExitVentPatch
 {
-    public static void Postfix(PlayerPhysics __instance, [HarmonyArgument(0)] int id)
+    public static void Postfix(PlayerPhysics __instance, [HarmonyArgument(0)] int id, ref Il2CppSystem.Collections.IEnumerator __result)
     {
         if (GameStates.IsHideNSeek) return;
         Logger.Info($" {__instance.myPlayer.GetNameWithRole().RemoveHtmlTags()}, Vent ID: {id}", "CoExitVent");
@@ -1568,9 +1579,23 @@ class CoExitVentPatch
 
         if (!AmongUsClient.Instance.AmHost) return;
 
+        if (Options.CurrentGameMode == CustomGameMode.CandR && __result != null)
+            __result = AfterExitVent(__result, player, OfficialSessionContext.Capture()).WrapToIl2Cpp();
+
         player.GetRoleClass()?.OnExitVent(player, id);
 
         _ = new LateTask(() => { player?.RpcSetVentInteraction(); }, 0.8f, $"Set vent interaction after exit vent {player?.PlayerId}", shoudLog: false);
+    }
+
+    private static System.Collections.IEnumerator AfterExitVent(Il2CppSystem.Collections.IEnumerator original, PlayerControl player, OfficialSessionContext context)
+    {
+        try
+        {
+            while (context.IsCurrent() && original.MoveNext()) yield return original.Current;
+            if (context.IsCurrent() && AmongUsClient.Instance.AmHost && GameStates.IsInTask && Options.CurrentGameMode == CustomGameMode.CandR)
+                CopsAndRobbersManager.OnRobberExitVent(player);
+        }
+        finally { original.TryCast<Il2CppSystem.IDisposable>()?.Dispose(); }
     }
 }
 [HarmonyPatch(typeof(PlayerControl), nameof(PlayerControl.CompleteTask))]

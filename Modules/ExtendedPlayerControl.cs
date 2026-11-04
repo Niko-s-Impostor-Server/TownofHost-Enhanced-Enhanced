@@ -1103,6 +1103,7 @@ static class ExtendedPlayerControl
     {
         if (GameStates.IsLobby) return false;
         if (!pc.IsAlive() || Pelican.IsEaten(pc.PlayerId) || DollMaster.IsDoll(pc.PlayerId)) return false;
+        if (Options.CurrentGameMode == CustomGameMode.CandR && pc.Is(CustomRoles.Cop)) return true;
         if (pc.IsShieldedFromFirstDeath() && !Options.ShieldedCanUseKillButton.GetBool()) return false;
         if (pc.Is(CustomRoles.Killer) || Mastermind.PlayerIsManipulated(pc)) return true;
 
@@ -1130,13 +1131,20 @@ static class ExtendedPlayerControl
             _ => false
         };
     }
-    public static bool CanUseVents(this PlayerControl player) => player != null && (player.CanUseImpostorVentButton() || player.GetCustomRole().GetVNRole() == CustomRoles.Engineer);
+    public static bool CanUseVents(this PlayerControl player)
+    {
+        if (player == null) return false;
+        if (Options.CurrentGameMode == CustomGameMode.CandR)
+            return player.Is(CustomRoles.Robber) && !CopsAndRobbersManager.captured.ContainsKey(player.PlayerId);
+        return player.CanUseImpostorVentButton() || player.GetCustomRole().GetVNRole() == CustomRoles.Engineer;
+    }
     public static bool CantUseVent(this PlayerControl player, int ventId) => player == null || !player.CanUseVents() || (CustomRoleManager.BlockedVentsList.TryGetValue(player.PlayerId, out var blockedVents) && blockedVents.Contains(ventId));
     public static bool HasAnyBlockedVent(this PlayerControl player) => player != null && CustomRoleManager.BlockedVentsList.TryGetValue(player.PlayerId, out var blockedVents) && blockedVents.Any();
     public static bool NotUnlockVent(this PlayerControl player, int ventId) => player != null && CustomRoleManager.DoNotUnlockVentsList.TryGetValue(player.PlayerId, out var blockedVents) && blockedVents.Contains(ventId);
 
     public static bool CanUseImpostorVentButton(this PlayerControl pc)
     {
+        if (Options.CurrentGameMode == CustomGameMode.CandR) return false;
         if (!pc.IsAlive()) return false;
         if (GameStates.IsHideNSeek) return true;
         if (pc.Is(CustomRoles.Killer) || pc.Is(CustomRoles.Nimble)) return true;
@@ -1151,6 +1159,7 @@ static class ExtendedPlayerControl
     }
     public static bool CanUseSabotage(this PlayerControl pc)
     {
+        if (Options.CurrentGameMode == CustomGameMode.CandR) return false;
         if (pc.Is(Custom_Team.Impostor) && !pc.IsAlive() && Options.DeadImpCantSabotage.GetBool()) return false;
 
         var playerRoleClass = pc.GetRoleClass();
