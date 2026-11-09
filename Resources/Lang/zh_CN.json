@@ -2198,7 +2198,7 @@
   "FeatureCommandNoAccess": "你没有使用此命令的权限。",
   "FeatureInvalidTarget": "目标无效或受到保护。",
   "FeatureCommandCompleted": "命令已完成。",
-  "LocalTagsUsage": "编辑 TOHEE-DATA/Tags/<好友码>.txt 或 TOHEE-DATA/tags.txt 后使用 /tags reload。",
+  "LocalTagsUsage": "编辑 TOHEE-DATA/Tags/<好友码>.txt 或 TOHEE-DATA/tags.txt 后使用 /tags reload 或 /tagreload。",
   "LocalTagsReloaded": "本地标签已重载。",
   "LocalTagsFailed": "部分本地标签数据未能重载。",
   "PrivateTagAddUsage": "/addtag <玩家编号> <六位十六进制颜色> <标签文字>",

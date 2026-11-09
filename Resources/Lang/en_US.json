@@ -2256,7 +2256,7 @@
   "FeatureCommandNoAccess": "You do not have permission to use this command.",
   "FeatureInvalidTarget": "Invalid or protected target.",
   "FeatureCommandCompleted": "Command completed.",
-  "LocalTagsUsage": "Edit TOHEE-DATA/Tags/<friendcode>.txt or TOHEE-DATA/tags.txt, then use /tags reload.",
+  "LocalTagsUsage": "Edit TOHEE-DATA/Tags/<friendcode>.txt or TOHEE-DATA/tags.txt, then use /tags reload or /tagreload.",
   "LocalTagsReloaded": "Local tags reloaded.",
   "LocalTagsFailed": "Some local tag data could not be reloaded.",
   "PrivateTagAddUsage": "/addtag <player id> <RRGGBB> <tag text>",

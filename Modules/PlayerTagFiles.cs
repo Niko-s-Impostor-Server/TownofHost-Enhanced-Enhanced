@@ -140,7 +140,8 @@ internal static class PlayerTagFiles
     {
         internal string Render(bool gradient)
         {
-            string name = gradient ? Name : Name.RemoveHtmlTags();
+            string name = Name.Replace("\\n", "\n");
+            if (!gradient) name = name.RemoveHtmlTags();
             if (Color.Length == 0) return name;
             if (gradient && Regex.IsMatch(Color, @"^[0-9A-Fa-f]{6}\s[0-9A-Fa-f]{6}$"))
             {
