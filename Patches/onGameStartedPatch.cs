@@ -29,6 +29,7 @@ internal class ChangeRoleSettings
         {
             // Capture lobby values before applying any round-only role settings.
             Main.RealOptionsData = new OptionBackupData(GameOptionsManager.Instance.CurrentGameOptions);
+            if (__instance.AmHost && !GameStates.IsFreePlay) RoundGameOptions.Begin();
             if (GameStates.IsNormalGame)
                 Options.DefaultKillCooldown = Main.RealOptionsData.GetFloat(FloatOptionNames.KillCooldown);
 
@@ -370,26 +371,23 @@ internal class StartGameHostPatch
 
         // SetRole initializes native ability timers from current game options.
         // Send the temporary values only after Started, on an independent clone.
-        var optionsManager = GameOptionsManager.Instance;
-        var current = optionsManager.CurrentGameOptions;
-        var opt = Main.RealOptionsData.Restore(
-            optionsManager.gameOptionsFactory.FromBytes(optionsManager.gameOptionsFactory.ToBytes(current, false)));
-        opt.SetFloat(FloatOptionNames.KillCooldown, 0f);
-        opt.SetFloat(FloatOptionNames.ShapeshifterCooldown, 0f);
-        opt.SetFloat(FloatOptionNames.GuardianAngelCooldown, 0f);
-        opt.SetBool(BoolOptionNames.ImpostorsCanSeeProtect, false);
-        opt.RoleOptions.SetRoleRate(RoleTypes.GuardianAngel, 0, 0);
-        opt.RoleOptions.SetRoleRate(RoleTypes.SpiritGuide, 0, 0);
-        if (Options.DisableVanillaRoles.GetBool())
-        {
-            foreach (var role in new[] { RoleTypes.Scientist, RoleTypes.Engineer, RoleTypes.Shapeshifter,
-                                        RoleTypes.Noisemaker, RoleTypes.Phantom, RoleTypes.Tracker })
-                opt.RoleOptions.SetRoleRate(role, 0, 0);
-        }
         var optionsBatch = new OfficialPacketBuilder.Batch();
         foreach (var pc in PlayerControl.AllPlayerControls.GetFastEnumerator())
         {
             if (pc == null || pc.Data == null || pc.Data.Disconnected) continue;
+            var opt = Main.RealOptionsData.Restore(RoundGameOptions.ForPlayer(pc.PlayerId));
+            opt.SetFloat(FloatOptionNames.KillCooldown, 0f);
+            opt.SetFloat(FloatOptionNames.ShapeshifterCooldown, 0f);
+            opt.SetFloat(FloatOptionNames.GuardianAngelCooldown, 0f);
+            opt.SetBool(BoolOptionNames.ImpostorsCanSeeProtect, false);
+            opt.RoleOptions.SetRoleRate(RoleTypes.GuardianAngel, 0, 0);
+            opt.RoleOptions.SetRoleRate(RoleTypes.SpiritGuide, 0, 0);
+            if (Options.DisableVanillaRoles.GetBool())
+            {
+                foreach (var role in new[] { RoleTypes.Scientist, RoleTypes.Engineer, RoleTypes.Shapeshifter,
+                                            RoleTypes.Noisemaker, RoleTypes.Phantom, RoleTypes.Tracker })
+                    opt.RoleOptions.SetRoleRate(role, 0, 0);
+            }
             new InitialGameOptionsSender(pc, opt).SendGameOptions(optionsBatch);
         }
         optionsBatch.Send();

@@ -412,8 +412,20 @@ internal class ChatCommands
                         Utils.SendMessage($"/setplayers {ServerLimits.MinPlayers}–{ServerLimits.MaxPlayers}");
                         break;
                     }
-                    GameOptionsManager.Instance.CurrentGameOptions.SetInt(AmongUs.GameOptions.Int32OptionNames.MaxPlayers, playerLimit);
-                    GameOptionsManager.Instance.GameHostOptions = GameOptionsManager.Instance.CurrentGameOptions;
+                    var currentOptions = GameOptionsManager.Instance.CurrentGameOptions;
+                    currentOptions.SetInt(AmongUs.GameOptions.Int32OptionNames.MaxPlayers, playerLimit);
+                    var lobbyOptions = RoundGameOptions.LobbyOptions;
+                    if (lobbyOptions != null)
+                    {
+                        lobbyOptions.SetInt(AmongUs.GameOptions.Int32OptionNames.MaxPlayers, playerLimit);
+                        RoundGameOptions.SetMaxPlayers(playerLimit);
+                        PlayerGameOptionsSender.SetDirtyToAll();
+                        GameOptionsManager.Instance.GameHostOptions = lobbyOptions;
+                    }
+                    else
+                    {
+                        GameOptionsManager.Instance.GameHostOptions = currentOptions;
+                    }
                     GameManager.Instance?.LogicOptions?.SetDirty();
                     Utils.SendMessage(GetString("Message.MaxPlayers") + playerLimit);
                     break;

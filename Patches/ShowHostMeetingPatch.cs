@@ -20,9 +20,15 @@ public class ShowHostMeetingPatch
         {
             if (GameStates.IsInGame && HostControl == null)
             {
-                HostControl = AmongUsClient.Instance.GetHost().Character;
-                HostName = Main.PlayerStates[AmongUsClient.Instance.GetHost().Character.Data.PlayerId].NormalOutfit.PlayerName;
-                HostColor = Main.PlayerStates[AmongUsClient.Instance.GetHost().Character.Data.PlayerId].NormalOutfit.ColorId;
+                var client = AmongUsClient.Instance;
+                var host = client == null ? null : client.GetHost();
+                var hostCharacter = host?.Character;
+                var hostData = hostCharacter == null ? null : hostCharacter.Data;
+                if (hostData == null || !Main.PlayerStates.TryGetValue(hostData.PlayerId, out var hostState) || hostState.NormalOutfit == null) return;
+
+                HostControl = hostCharacter;
+                HostName = hostState.NormalOutfit.PlayerName;
+                HostColor = hostState.NormalOutfit.ColorId;
             }
         }
         catch (System.Exception error)

@@ -406,8 +406,9 @@ public static class AntiBlackout
                 writer.WritePacked(seer.GetClientId());
                 if (restoration.Cooldown is float cooldown)
                 {
-                    options.SetFloat(FloatOptionNames.KillCooldown, cooldown * 2f);
-                    WriteOptions(factory.ToBytes(options, AprilFoolsMode.IsAprilFoolsModeToggledOn));
+                    var temporaryOptions = factory.FromBytes(normalOptions);
+                    temporaryOptions.SetFloat(FloatOptionNames.KillCooldown, cooldown * 2f);
+                    WriteOptions(factory.ToBytes(temporaryOptions, AprilFoolsMode.IsAprilFoolsModeToggledOn));
                 }
                 if (restoration.RestoreSelf)
                 {
