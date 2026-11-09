@@ -109,7 +109,8 @@ public static class BanManager
             {
                 var additionalInfo = "";
                 if (CheckEACList(player?.FriendCode, player?.GetHashedPuid())) additionalInfo = " //added by EAC";
-                File.AppendAllText(BanListPath, $"{player?.FriendCode},{player?.GetHashedPuid()},{player.PlayerName.RemoveHtmlTags()}{additionalInfo}\n");
+                File.AppendAllText(BanListPath, $"{player?.FriendCode},{player?.GetHashedPuid()},{player.PlayerName.RemoveHtmlTags()},{player.ProductUserId},{additionalInfo}\n");
+                Logger.Info($"Added {player.FriendCode} to {BanListPath}", "AddBanPlayer");
                 Logger.SendInGame(string.Format(GetString("Message.AddedPlayerToBanList"), player.PlayerName));
             }
             else Logger.Info($"Failed to add player {player?.PlayerName.RemoveHtmlTags()}/{player?.FriendCode}/{player?.GetHashedPuid()} to ban list!", "AddBanPlayer");
@@ -255,6 +256,21 @@ public static class BanManager
         if (!File.Exists(WhiteListListPath)) File.Create(WhiteListListPath).Close();
         var friendcodes = File.ReadAllLines(WhiteListListPath);
         return friendcodes.Any(x => x == friendcode || x.Contains(friendcode));
+    }
+}
+[HarmonyPatch(typeof(BanMenu), nameof(BanMenu.Kick))]
+class BanMenuKickPatch
+{
+    public static void Prefix(BanMenu __instance, [HarmonyArgument(0)] bool ban)
+    {
+        var client = AmongUsClient.Instance;
+        int clientId = __instance.selectedClientId;
+        if (!ban || !client.AmHost || clientId < 0 || clientId == client.ClientId) return;
+
+        var player = client.GetClient(clientId) ?? client.GetRecentClient(clientId);
+        if (player == null) return;
+        BanManager.AddSessionBan(player);
+        BanManager.AddBanPlayer(player);
     }
 }
 [HarmonyPatch(typeof(BanMenu), nameof(BanMenu.Select))]
