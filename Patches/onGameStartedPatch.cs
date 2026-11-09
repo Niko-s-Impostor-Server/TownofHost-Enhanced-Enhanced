@@ -82,7 +82,7 @@ internal class ChangeRoleSettings
             GameEndCheckerForNormal.ShouldNotCheck = false;
             GameEndCheckerForNormal.ForEndGame = false;
             GameEndCheckerForNormal.GameIsEnded = false;
-            GameStartManagerPatch.GameStartManagerUpdatePatch.AlredyBegin = false;
+            GameStartManagerPatch.GameStartManagerUpdatePatch.CancelPendingAutoStart();
             OnPlayerLeftPatch.LeftPlayerId = byte.MaxValue;
             VentSystemDeterioratePatch.LastClosestVent.Clear();
 

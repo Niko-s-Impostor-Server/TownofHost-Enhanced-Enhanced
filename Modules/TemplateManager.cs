@@ -37,7 +37,7 @@ public static class TemplateManager
         ["PlayerName"] = () => "",
         ["LobbyTimer"] = () =>
         {
-            if (GameStates.IsLobby)
+            if (GameStates.IsLobby && GameStates.IsVanillaServer)
             {
                 int timer = (int)GameStartManagerPatch.timer;
                 int minutes = timer / 60;
@@ -65,7 +65,7 @@ public static class TemplateManager
         ["PlayerName"] = () => "",
         ["LobbyTimer"] = () =>
         {
-            if (GameStates.IsLobby)
+            if (GameStates.IsLobby && GameStates.IsVanillaServer)
             {
                 int timer = (int)GameStartManagerPatch.timer;
                 int minutes = timer / 60;
