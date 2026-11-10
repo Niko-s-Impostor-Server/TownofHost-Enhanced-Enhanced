@@ -102,6 +102,8 @@ class CoShowIntroPatch
             Logger.Error(error.ToString(), "ShipStatus.Begin");
         }
 
+        if (RoleDistribution.IsActive) RoleDistribution.InitialTaskAssignmentFinished = true;
+
         // Always replace the temporary zero-cooldown startup options, even if
         // task initialization failed. Cooldown repair uses these senders too.
         GameOptionsSender.AllSenders.Clear();

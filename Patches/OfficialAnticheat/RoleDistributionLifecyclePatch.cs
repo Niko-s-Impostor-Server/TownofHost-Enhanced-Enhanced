@@ -67,13 +67,6 @@ internal static class RoleDistributionRepairGate
     }
 }
 
-[HarmonyPatch(typeof(LogicGameFlowNormal), nameof(LogicGameFlowNormal.CheckEndCriteria))]
-internal static class RoleDistributionEndGate
-{
-    [HarmonyPrefix, HarmonyPriority(Priority.First)]
-    private static bool Prefix() => RoleDistribution.GameplayReady;
-}
-
 [HarmonyPatch]
 internal static class RoleDistributionSkillGate
 {

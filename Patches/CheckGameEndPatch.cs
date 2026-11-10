@@ -41,11 +41,12 @@ class GameEndCheckerForNormal
     public static bool GameIsEnded = false;
     public static bool ShouldNotCheck = false;
 
+    [HarmonyPriority(Priority.First)]
     public static bool Prefix()
     {
-        if (!AmongUsClient.Instance.AmHost) return true;
+        if (!AmongUsClient.Instance.AmHost) return RoleDistribution.GameplayReady;
 
-        if (predicate == null || ShouldNotCheck) return false;
+        if (predicate == null || ShouldNotCheck || RoleDistribution.BlocksHostGameEnd) return false;
 
         if (Options.NoGameEnd.GetBool() && WinnerTeam is not CustomWinner.Draw and not CustomWinner.Error) return false;
 

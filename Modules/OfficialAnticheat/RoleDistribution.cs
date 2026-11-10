@@ -19,8 +19,10 @@ internal static class RoleDistribution
     internal static RoleDistributionPhase Phase { get; private set; }
     internal static bool IsActive => Phase != RoleDistributionPhase.Idle;
     internal static bool RestoreComplete { get; private set; }
+    internal static bool InitialTaskAssignmentFinished { get; set; }
     internal static bool GameplayReady => !IsActive ||
         RestoreComplete && Main.IntroDestroyed;
+    internal static bool BlocksHostGameEnd => IsActive && (!GameplayReady || !InitialTaskAssignmentFinished);
     internal static bool BlocksOrdinaryRoleChanges => IsActive && !GameplayReady;
     internal static bool IsMaskActive => mask?.Active == true;
     internal static RoleDistributionPlan Plan { get; private set; }
@@ -31,7 +33,8 @@ internal static class RoleDistribution
     private static Dictionary<byte, PlayerControl> players;
     private static Dictionary<byte, CustomRoles> customRoles;
     private static Dictionary<byte, nint> identities;
-    private static float introStartedAt = float.PositiveInfinity;
+    private static bool introStarted;
+    private static float tasksStartAt = float.PositiveInfinity;
     private static bool applyingNative;
     internal static bool AllowNativeRole => !BlocksOrdinaryRoleChanges || applyingNative || Phase == RoleDistributionPhase.Preparing;
     internal static bool IsAuthoritativeRoleCall => applyingNative || Phase == RoleDistributionPhase.Preparing;
@@ -191,6 +194,14 @@ internal static class RoleDistribution
         RequireCurrent();
         SendRoles(hostOnly: true, moddedOnly: false);
         Apply(players[Plan.HostPlayerId], Plan.DesiredNativeRole[(Plan.HostPlayerId, Plan.HostPlayerId)], true);
+        // Keep the mask in place while clients process the final role RPC.
+        float restoreAt = Time.realtimeSinceStartup + 1.5f;
+        while (Time.realtimeSinceStartup < restoreAt)
+        {
+            RequireCurrent();
+            yield return null;
+        }
+        RequireCurrent();
         Phase = RoleDistributionPhase.RestoringStartMask;
         var restoreIds = GameData.Instance.AllPlayers.ToArray().Select(info => info.PlayerId).OrderBy(id => id).ToArray();
         int restored = 0;
@@ -199,7 +210,11 @@ internal static class RoleDistribution
         {
             RequireCurrent();
             var info = mask.Restore(id);
-            if (info != null) SendPlayerInfo(info);
+            if (info != null)
+            {
+                SendPlayerInfo(info);
+                tasksStartAt = Time.realtimeSinceStartup + 5f;
+            }
             mask.CommitRestore(id);
             GameStartProgress.HostCount("StartProgress.Restoring", ++restored, restoreIds.Length);
             yield return null;
@@ -286,12 +301,11 @@ internal static class RoleDistribution
     {
         if (!IsActive) return true;
         if (Phase is < RoleDistributionPhase.PublishingHostRole or > RoleDistributionPhase.Running) return false;
-        if (!float.IsPositiveInfinity(introStartedAt)) return false;
-        introStartedAt = Time.realtimeSinceStartup;
+        if (introStarted) return false;
+        introStarted = true;
         if (Phase == RoleDistributionPhase.PublishingHostRole) Phase = RoleDistributionPhase.Intro;
         return true;
     }
-    internal static bool TasksMayBegin => RestoreComplete && Time.realtimeSinceStartup >= introStartedAt + 4f;
     internal static IEnumerator AfterRestore(Action action, bool tasks = false)
     {
         var captured = OfficialSessionContext.Capture();
@@ -301,7 +315,7 @@ internal static class RoleDistribution
             if (Cancelled()) yield break;
             yield return null;
         }
-        while (captured.IsCurrent() && !Cancelled() && tasks && !TasksMayBegin) yield return null;
+        while (captured.IsCurrent() && !Cancelled() && tasks && (!RestoreComplete || Time.realtimeSinceStartup < tasksStartAt)) yield return null;
         if (captured.IsCurrent() && !Cancelled()) action();
     }
 
@@ -341,7 +355,9 @@ internal static class RoleDistribution
         identities = null;
         Plan = null;
         RestoreComplete = false;
-        introStartedAt = float.PositiveInfinity;
+        InitialTaskAssignmentFinished = false;
+        introStarted = false;
+        tasksStartAt = float.PositiveInfinity;
         Phase = RoleDistributionPhase.Idle;
     }
 
