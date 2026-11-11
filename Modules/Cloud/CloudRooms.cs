@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Http;
 using System.Text.Json;
@@ -55,6 +56,7 @@ internal static class CloudRooms
     private static bool running;
     private static long retryAt;
     private static long rateLimitedUntil;
+    private static long nextCreateAt;
     private static long heartbeatAt;
     private static Uri confirmedOrigin;
     private static string confirmedIdentity;
@@ -167,7 +169,8 @@ internal static class CloudRooms
             if (changed) desiredVersion++;
             long now = Environment.TickCount64;
             if (!running && !forbiddenPending && (token != unauthorizedToken || origin != unauthorizedOrigin)
-                && now >= retryAt && (activeRoomId == null || activeEpoch != desiredEpoch
+                && now >= retryAt && (activeRoomId != null || Stopwatch.GetTimestamp() >= nextCreateAt)
+                && (activeRoomId == null || activeEpoch != desiredEpoch
                     || activeSnapshot != snapshot || now >= heartbeatAt))
             {
                 running = true;
@@ -235,6 +238,7 @@ internal static class CloudRooms
                 if (token == unauthorizedToken && origin == unauthorizedOrigin) { running = false; return; }
                 version = desiredVersion;
                 method = deleting ? HttpMethod.Delete : roomId == null ? HttpMethod.Post : HttpMethod.Put;
+                if (method == HttpMethod.Post && Stopwatch.GetTimestamp() < nextCreateAt) { running = false; return; }
                 requestKey = key;
                 requestOperation = deleting ? RequestOperation.Delete : roomId == null ? RequestOperation.Create : RequestOperation.Update;
                 requestStartedAt = Environment.TickCount64;
@@ -298,6 +302,7 @@ internal static class CloudRooms
                     }
                     activeRoomId = activeKey = activeToken = activeIdentity = activeSnapshot = null;
                     activeOrigin = null;
+                    nextCreateAt = Stopwatch.GetTimestamp() + 5 * Stopwatch.Frequency;
                     retryAt = rateLimitedUntil = 0;
                     lastNotice = null;
                     if (wasConfirmed) Messages.Enqueue("CloudRoomUnshared");
