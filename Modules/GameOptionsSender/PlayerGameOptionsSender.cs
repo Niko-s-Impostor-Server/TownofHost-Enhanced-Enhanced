@@ -31,10 +31,7 @@ public class PlayerGameOptionsSender(PlayerControl player) : GameOptionsSender
     {
         get
         {
-            var manager = GameOptionsManager.Instance;
-            var current = manager.CurrentGameOptions;
-            var copy = manager.gameOptionsFactory.FromBytes(manager.gameOptionsFactory.ToBytes(current, false));
-            return Main.RealOptionsData.Restore(copy);
+            return Main.RealOptionsData.Restore(RoundGameOptions.ForPlayer(player.PlayerId));
         }
     }
     public override bool IsDirty { get; protected set; }
@@ -177,6 +174,8 @@ public class PlayerGameOptionsSender(PlayerControl player) : GameOptionsSender
             opt.SetInt(Int32OptionNames.KillDistance, 0);
         }
 
+        if (RoundGameOptions.LobbyOptions != null)
+            AURoleOptions.SetOpt(GameOptionsManager.Instance.CurrentGameOptions);
         return opt;
     }
 

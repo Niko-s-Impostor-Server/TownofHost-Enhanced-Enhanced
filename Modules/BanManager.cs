@@ -5,15 +5,16 @@ using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
+using TOHE.Modules;
 using static TOHE.Translator;
 
 namespace TOHE;
 
 public static class BanManager
 {
-    private const string DenyNameListPath = "./TOHEE-DATA/DenyName.txt";
-    private const string BanListPath = "./TOHEE-DATA/BanList.txt";
-    private const string WhiteListListPath = "./TOHEE-DATA/WhiteList.txt";
+    private static string DenyNameListPath => Path.Combine(DataDirectoryMigration.DataDirectory, "DenyName.txt");
+    private static string BanListPath => Path.Combine(DataDirectoryMigration.DataDirectory, "BanList.txt");
+    private static string WhiteListListPath => Path.Combine(DataDirectoryMigration.DataDirectory, "WhiteList.txt");
     // Full PUIDs stay banned for this room even if the client reconnects from another IP.
     private static readonly HashSet<string> SessionBannedPuids = new(StringComparer.Ordinal);
     private static readonly object SessionBanLock = new();
@@ -43,7 +44,7 @@ public static class BanManager
     {
         try
         {
-            Directory.CreateDirectory("TOHEE-DATA");
+            Directory.CreateDirectory(DataDirectoryMigration.DataDirectory);
 
             if (!File.Exists(BanListPath))
             {
@@ -108,7 +109,8 @@ public static class BanManager
             {
                 var additionalInfo = "";
                 if (CheckEACList(player?.FriendCode, player?.GetHashedPuid())) additionalInfo = " //added by EAC";
-                File.AppendAllText(BanListPath, $"{player?.FriendCode},{player?.GetHashedPuid()},{player.PlayerName.RemoveHtmlTags()}{additionalInfo}\n");
+                File.AppendAllText(BanListPath, $"{player?.FriendCode},{player?.GetHashedPuid()},{player.PlayerName.RemoveHtmlTags()},{player.ProductUserId},{additionalInfo}\n");
+                Logger.Info($"Added {player.FriendCode} to {BanListPath}", "AddBanPlayer");
                 Logger.SendInGame(string.Format(GetString("Message.AddedPlayerToBanList"), player.PlayerName));
             }
             else Logger.Info($"Failed to add player {player?.PlayerName.RemoveHtmlTags()}/{player?.FriendCode}/{player?.GetHashedPuid()} to ban list!", "AddBanPlayer");
@@ -121,7 +123,7 @@ public static class BanManager
 
         try
         {
-            Directory.CreateDirectory("TOHEE-DATA");
+            Directory.CreateDirectory(DataDirectoryMigration.DataDirectory);
             if (!File.Exists(DenyNameListPath)) File.Create(DenyNameListPath).Close();
             using StreamReader sr = new(DenyNameListPath);
             string line;
@@ -204,7 +206,7 @@ public static class BanManager
 
         try
         {
-            Directory.CreateDirectory("TOHEE-DATA");
+            Directory.CreateDirectory(DataDirectoryMigration.DataDirectory);
             if (!File.Exists(BanListPath)) File.Create(BanListPath).Close();
             using StreamReader sr = new(BanListPath);
             string line;
@@ -254,6 +256,21 @@ public static class BanManager
         if (!File.Exists(WhiteListListPath)) File.Create(WhiteListListPath).Close();
         var friendcodes = File.ReadAllLines(WhiteListListPath);
         return friendcodes.Any(x => x == friendcode || x.Contains(friendcode));
+    }
+}
+[HarmonyPatch(typeof(BanMenu), nameof(BanMenu.Kick))]
+class BanMenuKickPatch
+{
+    public static void Prefix(BanMenu __instance, [HarmonyArgument(0)] bool ban)
+    {
+        var client = AmongUsClient.Instance;
+        int clientId = __instance.selectedClientId;
+        if (!ban || !client.AmHost || clientId < 0 || clientId == client.ClientId) return;
+
+        var player = client.GetClient(clientId) ?? client.GetRecentClient(clientId);
+        if (player == null) return;
+        BanManager.AddSessionBan(player);
+        BanManager.AddBanPlayer(player);
     }
 }
 [HarmonyPatch(typeof(BanMenu), nameof(BanMenu.Select))]

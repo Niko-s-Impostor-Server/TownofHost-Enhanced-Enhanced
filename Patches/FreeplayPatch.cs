@@ -139,7 +139,11 @@ internal static class FreeplayInitialization
         state.SetMainRole(role);
         if (!Main.PlayerStates.Values.Any(other => other.MainRole == previousRole))
             previousRole.GetStaticRoleClass().OnInit();
-        if (setNativeRole) player.RpcSetRole(role.GetRoleTypes(), true);
+        if (setNativeRole)
+        {
+            if (role == CustomRoles.JudgeTOHE) PrepareJudgeOptions();
+            player.RpcSetRole(role.GetRoleTypes(), true);
+        }
         state.RoleClass.OnAdd(player.PlayerId);
         state.InitTask(player);
         CustomRoleManager.Add();
@@ -147,6 +151,13 @@ internal static class FreeplayInitialization
         // must also invalidate that text even when the native tasks stay the same.
         if (player.AmOwner && HudManager.Instance != null)
             HudManager.Instance.taskDirtyTimer = 0.25f;
+    }
+
+    internal static void PrepareJudgeOptions()
+    {
+        var options = GameOptionsManager.Instance.CurrentGameOptions;
+        options.SetFloat(FloatOptionNames.JudgeTaskRequirementPercentage, Roles.Vanilla.JudgeTOHE.TaskRequirementPercentage);
+        GameManager.Instance.LogicOptions.SetGameOptions(options);
     }
 
     public static void Release(TutorialManager owner)

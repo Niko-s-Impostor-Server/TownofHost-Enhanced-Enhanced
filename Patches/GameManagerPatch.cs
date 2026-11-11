@@ -11,11 +11,24 @@ class GameManagerSerializeFix
         for (int index = 0; index < __instance.LogicComponents.Count; ++index)
         {
             GameLogicComponent logicComponent = __instance.LogicComponents[index];
-            // Per-player options are sent through CustomSyncSettings after initial spawn.
-            if (logicComponent.TryCast<LogicOptions>() != null && !initialState)
+            // The mod sends player-specific options after the initial spawn.
+            if (logicComponent.TryCast<LogicOptions>() != null)
             {
-                logicComponent.ClearDirtyFlag();
-                continue;
+                if (!initialState)
+                {
+                    logicComponent.ClearDirtyFlag();
+                    continue;
+                }
+                if (TOHE.Modules.RoundGameOptions.LobbyOptions != null)
+                {
+                    flag = true;
+                    writer.StartMessage((byte)index);
+                    writer.WriteBytesAndSize(GameOptionsManager.Instance.gameOptionsFactory.ToBytes(
+                        TOHE.Modules.RoundGameOptions.LobbyOptions, AprilFoolsMode.IsAprilFoolsModeToggledOn));
+                    writer.EndMessage();
+                    logicComponent.ClearDirtyFlag();
+                    continue;
+                }
             }
             if (initialState || logicComponent.IsDirty)
             {

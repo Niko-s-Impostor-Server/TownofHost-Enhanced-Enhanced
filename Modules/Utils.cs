@@ -1630,6 +1630,10 @@ public static class Utils
         Color32 color32 = (Color32)color;
         return $"{color32.r:X2}{color32.g:X2}{color32.b:X2}{color32.a:X2}";
     }
+    public static string GetColoredTextByRole(this CustomRoles role, string text)
+    {
+        return ColorString(GetRoleColor(role), text);
+    }
     public static void ApplySuffix(PlayerControl player)
     {
         // Only host
@@ -2503,19 +2507,31 @@ public static class Utils
         }
         if (file == null) throw new FileNotFoundException("Active BepInEx log file was not found.");
 
-        string f = $"{Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory)}/TOHE-logs/";
         string t = DateTime.Now.ToString("yyyy-MM-dd_HH.mm.ss");
+#if ANDROID
+        string f = Path.Combine(DataDirectoryMigration.RootDirectory, "TOHE-logs");
+        string filename = Path.Combine(f, $"TOHE-v{Main.PluginVersion}-{t}.log");
+#else
+        string f = $"{Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory)}/TOHE-logs/";
         string filename = $"{f}TOHE-v{Main.PluginVersion}-{t}.log";
+#endif
         if (!Directory.Exists(f)) Directory.CreateDirectory(f);
         file.CopyTo(@filename);
 
+#if ANDROID
+        string savedFileName = filename;
+#else
+        string savedFileName = $"TOHE - v{Main.PluginVersion}-{t}.log";
+#endif
         if (PlayerControl.LocalPlayer != null)
-            HudManager.Instance?.Chat?.AddChat(PlayerControl.LocalPlayer, string.Format(GetString("Message.DumpfileSaved"), $"TOHE - v{Main.PluginVersion}-{t}.log"));
+            HudManager.Instance?.Chat?.AddChat(PlayerControl.LocalPlayer, string.Format(GetString("Message.DumpfileSaved"), savedFileName));
 
         SendMessage(string.Format(GetString("Message.DumpcmdUsed"), PlayerControl.LocalPlayer.GetNameWithRole()));
 
+#if !ANDROID
         ProcessStartInfo psi = new("Explorer.exe") { Arguments = "/e,/select," + @filename.Replace("/", "\\") };
         Process.Start(psi);
+#endif
     }
 
 

@@ -140,8 +140,10 @@ internal static class FeatureChatCommands
                     : GetString(result.TranslationKey));
                 return true;
             case "/tags":
+            case "/tagreload":
                 if (!host || !sender.AmOwner) { Denied(); return true; }
-                if (args.Length != 2 || args[1] != "reload") { Reply(GetString("LocalTagsUsage")); return true; }
+                if (command == "/tags" ? args.Length != 2 || args[1] != "reload" : args.Length != 1)
+                { Reply(GetString("LocalTagsUsage")); return true; }
                 bool loaded = ReloadTags();
                 Reply(GetString(loaded ? "LocalTagsReloaded" : "LocalTagsFailed"));
                 return true;

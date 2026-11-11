@@ -9,6 +9,12 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using UnityEngine;
+#if ANDROID
+using System.Collections;
+using System.Collections.Concurrent;
+using System.Threading;
+using UnityEngine.Networking;
+#endif
 
 namespace TOHE.Modules;
 
@@ -18,12 +24,20 @@ internal static class CloudService
     internal readonly record struct MenuState(bool UserAgentReady, string UserAgent, bool HasIdentity,
         bool AccountLoading, bool AccountRequestInFlight, CloudAccount.State Account, string AccountError, bool TagsLoading,
         bool OnlineRoom, bool CurrentRoom, bool IsHost, CloudRooms.SharingStatus Room,
-        bool RoomManuallyStopped, bool ShareEnabled, bool TagsEnabled, bool UseSystemProxy);
+        bool RoomManuallyStopped, bool ShareEnabled, bool TagsEnabled, bool UseSystemProxy, bool LobbyButtonEnabled);
+#if ANDROID
+    private sealed record PendingRequest(string Url, string Method, string Token, string Json, string UserAgent,
+        TaskCompletionSource<Response> Completion);
+    private static readonly ConcurrentQueue<PendingRequest> pendingRequests = new();
+    private static CancellationTokenSource requestShutdown = new();
+#else
     private static readonly HttpClient systemProxyHttp = new(new HttpClientHandler { UseProxy = true }) { Timeout = TimeSpan.FromSeconds(10) };
     private static readonly HttpClient directHttp = new(new HttpClientHandler { UseProxy = false }) { Timeout = TimeSpan.FromSeconds(10) };
+#endif
     private static readonly Uri Origin = new("https://tohee.niko233.top/");
     private static ConfigEntry<bool> shareRooms;
     private static ConfigEntry<bool> systemProxy;
+    private static ConfigEntry<bool> showLobbyButton;
     private static volatile bool useSystemProxy = true;
     private static Uri accountOrigin;
     private static string accountToken;
@@ -50,6 +64,7 @@ internal static class CloudService
     internal static bool ShareEnabled => shareRooms?.Value == true;
     internal static bool TagsEnabled => CloudTags.Enabled;
     internal static bool UseSystemProxy => useSystemProxy;
+    internal static bool LobbyButtonEnabled => showLobbyButton?.Value != false;
     private static bool IsCurrentRoom
     {
         get
@@ -71,6 +86,8 @@ internal static class CloudService
     internal static bool CanChangeTags => !IsBusy;
     internal static bool CanChangeProxy => !IsBusy;
     internal static bool RoomIsShared => RoomStatus.IsShared;
+    internal static bool ShowLobbyButton => LobbyButtonEnabled && GameStates.IsLobby && GameStates.IsOnlineGame
+        && CloudAccount.DisplayState is { Bound: true, SharingEnabled: true };
     internal static bool CanChangeRoomShare => IsCurrentRoom && AmongUsClient.Instance.AmHost
         && !IsBusy && (RoomIsShared || (ShareEnabled && CanEnableShare));
     internal static bool CanManage => !IsBusy;
@@ -104,14 +121,23 @@ internal static class CloudService
         var room = CloudRooms.GetStatus(currentRoom ? sessionRoomKey : null);
         return new(userAgentReady, userAgent, accountToken != null && accountPuid != null,
             CloudAccount.IsLoading, CloudAccount.IsRequestInFlight, CloudAccount.Current, CloudAccount.Error, CloudTags.IsLoading,
-            onlineRoom, currentRoom, onlineRoom && client.AmHost, room, roomManuallyStopped, ShareEnabled, TagsEnabled, UseSystemProxy);
+            onlineRoom, currentRoom, onlineRoom && client.AmHost, room, roomManuallyStopped, ShareEnabled, TagsEnabled, UseSystemProxy,
+            LobbyButtonEnabled);
     }
 
     internal static void Initialize(ConfigFile config)
     {
+#if ANDROID
+        if (requestShutdown.IsCancellationRequested) requestShutdown = new();
+#endif
         shareRooms = config.Bind("TOHEE Cloud", "Share rooms", false, "Room codes become visible to eligible Cloud users and authorized API callers.");
+        showLobbyButton = config.Bind("TOHEE Cloud", "Show lobby button", true, "Show the Cloud button in online lobbies.");
         if (systemProxy != null) systemProxy.SettingChanged -= OnSystemProxyChanged;
+#if ANDROID
+        systemProxy = config.Bind("TOHEE Cloud", "Use system proxy", true, "This setting is unavailable on Android; Cloud uses the device's network settings.");
+#else
         systemProxy = config.Bind("TOHEE Cloud", "Use system proxy", true, "Use the default system proxy for Cloud HTTP requests; disable to connect directly.");
+#endif
         systemProxy.SettingChanged += OnSystemProxyChanged;
         useSystemProxy = systemProxy.Value;
         CloudUserAgent.Initialize();
@@ -119,6 +145,12 @@ internal static class CloudService
     }
 
     private static void OnSystemProxyChanged(object sender, EventArgs args) => useSystemProxy = systemProxy.Value;
+
+    internal static void SetLobbyButtonEnabled(bool enabled)
+    {
+        showLobbyButton.Value = enabled;
+        CloudMenu.Refresh();
+    }
 
     private static void ReadIdentity(out string token, out string puid)
     {
@@ -169,6 +201,18 @@ internal static class CloudService
 
     internal static void Tick()
     {
+#if ANDROID
+        while (pendingRequests.TryDequeue(out var request))
+        {
+            if (request.Completion.Task.IsCompleted) continue;
+            try { Main.Instance.StartCoroutine(SendUnityRequest(request)); }
+            catch (Exception error)
+            {
+                Logger.Warn(error.GetType().Name, "Cloud.Send");
+                request.Completion.TrySetResult(new(0, string.Empty, 0));
+            }
+        }
+#endif
         if (bindingReturned)
         {
             bindingReturned = false;
@@ -281,6 +325,10 @@ internal static class CloudService
         RemoveBindingFocusWatch();
         if (systemProxy != null) systemProxy.SettingChanged -= OnSystemProxyChanged;
         Disconnect();
+#if ANDROID
+        requestShutdown.Cancel();
+        while (pendingRequests.TryDequeue(out _)) { }
+#endif
     }
 
     internal static void RefreshAccount(bool ensureAfterCurrent = false)
@@ -377,7 +425,11 @@ internal static class CloudService
     {
         try
         {
+#if ANDROID
+            Constants.OpenURL(url);
+#else
             Application.OpenURL(url);
+#endif
             return true;
         }
         catch (Exception error)
@@ -450,22 +502,22 @@ internal static class CloudService
         return account + "\n" + sharing + tag;
     }
 
-    internal static string RoomStatusText()
+    internal static string RoomStatusText(bool compact = false)
     {
         var client = AmongUsClient.Instance;
         if (!client || !client.AmConnected || !GameStates.IsOnlineGame)
             return Translator.GetString("CloudRoomStatusNoRoom");
 
         var state = RoomStatus;
-        return Translator.GetString(state.Operation switch
+        return Translator.GetString((compact ? "CloudLobbyStatus" : "CloudRoomStatus") + (state.Operation switch
         {
-            CloudRooms.RequestOperation.Create => "CloudRoomStatusSharing",
-            CloudRooms.RequestOperation.Update when state.IsShared => "CloudRoomStatusUpdating",
-            CloudRooms.RequestOperation.Update => "CloudRoomStatusSharing",
-            CloudRooms.RequestOperation.Delete => "CloudRoomStatusStopping",
-            _ when state.IsShared && roomManuallyStopped => "CloudRoomStatusStopPending",
-            _ => state.IsShared ? "CloudRoomStatusShared" : "CloudRoomStatusNotShared"
-        });
+            CloudRooms.RequestOperation.Create => "Sharing",
+            CloudRooms.RequestOperation.Update when state.IsShared => "Updating",
+            CloudRooms.RequestOperation.Update => "Sharing",
+            CloudRooms.RequestOperation.Delete => "Stopping",
+            _ when state.IsShared && roomManuallyStopped => "StopPending",
+            _ => state.IsShared ? "Shared" : "NotShared"
+        }));
     }
 
     private static string SharingReason(string reason) => Translator.GetString(reason switch
@@ -579,8 +631,16 @@ internal static class CloudService
 
     internal static async Task<Response> Send(Uri origin, HttpMethod method, string path, string token, string json = null)
     {
-        HttpClient client = useSystemProxy ? systemProxyHttp : directHttp;
         if (!CloudUserAgent.TryGet(out string userAgent)) return new(0, string.Empty, 0);
+#if ANDROID
+        var completion = new TaskCompletionSource<Response>(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(requestShutdown.Token);
+        timeout.CancelAfter(TimeSpan.FromSeconds(10));
+        using var registration = timeout.Token.Register(() => completion.TrySetResult(new(0, string.Empty, 0)));
+        pendingRequests.Enqueue(new(new Uri(origin, path).AbsoluteUri, method.Method, token, json, userAgent, completion));
+        return await completion.Task.ConfigureAwait(false);
+#else
+        HttpClient client = useSystemProxy ? systemProxyHttp : directHttp;
         try
         {
             using var request = new HttpRequestMessage(method, new Uri(origin, path));
@@ -599,5 +659,67 @@ internal static class CloudService
         {
             return new(0, string.Empty, 0);
         }
+#endif
     }
+
+#if ANDROID
+    private static IEnumerator SendUnityRequest(PendingRequest pending)
+    {
+        UnityWebRequest request = null;
+        UnityWebRequestAsyncOperation operation;
+        try
+        {
+            request = new UnityWebRequest(pending.Url, pending.Method)
+            {
+                downloadHandler = new DownloadHandlerBuffer(),
+                timeout = 10
+            };
+            request.SetRequestHeader("User-Agent", pending.UserAgent);
+            if (!string.IsNullOrEmpty(pending.Token)) request.SetRequestHeader("Authorization", "Bearer " + pending.Token);
+            if (pending.Json != null)
+            {
+                request.uploadHandler = new UploadHandlerRaw(Encoding.UTF8.GetBytes(pending.Json));
+                request.SetRequestHeader("Content-Type", "application/json; charset=utf-8");
+            }
+            operation = request.SendWebRequest();
+        }
+        catch (Exception error)
+        {
+            request?.Dispose();
+            Logger.Warn(error.GetType().Name, "Cloud.Send");
+            pending.Completion.TrySetResult(new(0, string.Empty, 0));
+            yield break;
+        }
+
+        try
+        {
+            while (!operation.isDone && !pending.Completion.Task.IsCompleted) yield return null;
+            if (pending.Completion.Task.IsCompleted)
+            {
+                request.Abort();
+                yield break;
+            }
+
+            try
+            {
+                if (request.result is not (UnityWebRequest.Result.Success or UnityWebRequest.Result.ProtocolError))
+                {
+                    pending.Completion.TrySetResult(new(0, string.Empty, 0));
+                    yield break;
+                }
+                RetryConditionHeaderValue.TryParse(request.GetResponseHeader("Retry-After"), out var retryHeader);
+                double delay = retryHeader?.Delta?.TotalSeconds ??
+                    (retryHeader?.Date is { } date ? (date - DateTimeOffset.UtcNow).TotalSeconds : 0);
+                int retry = (int)Math.Clamp(Math.Ceiling(delay), 0, int.MaxValue);
+                pending.Completion.TrySetResult(new((HttpStatusCode)request.responseCode, request.downloadHandler.text ?? string.Empty, retry));
+            }
+            catch (Exception error)
+            {
+                Logger.Warn(error.GetType().Name, "Cloud.Send");
+                pending.Completion.TrySetResult(new(0, string.Empty, 0));
+            }
+        }
+        finally { request.Dispose(); }
+    }
+#endif
 }

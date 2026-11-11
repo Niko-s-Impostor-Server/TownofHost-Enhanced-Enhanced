@@ -30,6 +30,9 @@ public class ClientOptionItem
             this.forced = forced;
 
             var mouseMoveToggle = optionsMenuBehaviour.DisableMouseMovement;
+            const float originalBackgroundScaleX = 0.9f;
+            const float customBackgroundScaleX = 1.4f;
+            const float horizontalScaleRatio = originalBackgroundScaleX / customBackgroundScaleX;
 
             // 1つ目のボタンの生成時に背景も生成
             if (CustomBackground == null)
@@ -37,12 +40,17 @@ public class ClientOptionItem
                 numOptions = 0;
                 CustomBackground = Object.Instantiate(optionsMenuBehaviour.Background, optionsMenuBehaviour.transform);
                 CustomBackground.name = "CustomBackground";
-                CustomBackground.transform.localScale = new(0.9f, 0.9f, 1f);
+                CustomBackground.transform.localScale = new(customBackgroundScaleX, originalBackgroundScaleX, 1f);
                 CustomBackground.transform.localPosition += Vector3.back * 8;
                 CustomBackground.gameObject.SetActive(false);
 
                 var closeButton = Object.Instantiate(mouseMoveToggle, CustomBackground.transform);
-                closeButton.transform.localPosition = new(1.3f, -2.3f, -6f);
+                var closeButtonScale = closeButton.transform.localScale;
+                closeButton.transform.localScale = new(
+                    closeButtonScale.x * horizontalScaleRatio,
+                    closeButtonScale.y,
+                    closeButtonScale.z);
+                closeButton.transform.localPosition = new(0f, -2.3f, -6f);
                 closeButton.name = "Back";
                 closeButton.Text.text = Translator.GetString("Back");
                 closeButton.Background.color = Palette.DisabledGrey;
@@ -87,10 +95,18 @@ public class ClientOptionItem
 
             // ボタン生成
             ToggleButton = Object.Instantiate(mouseMoveToggle, CustomBackground.transform);
+            var toggleScale = ToggleButton.transform.localScale;
+            ToggleButton.transform.localScale = new(
+                toggleScale.x * horizontalScaleRatio,
+                toggleScale.y,
+                toggleScale.z);
+            const float columnSpacing = 2.7f * horizontalScaleRatio;
+            const float rowSpacing = 0.55f;
+            var column = numOptions % 3;
+            var row = numOptions / 3;
             ToggleButton.transform.localPosition = new Vector3(
-                // 現在のオプション数を基に位置を計算
-                numOptions % 2 == 0 ? -1.3f : 1.3f,
-                2.2f - (0.45f * (numOptions / 2)),
+                (column - 1) * columnSpacing,
+                2.2f - (rowSpacing * row),
                 -6f);
             ToggleButton.name = name;
             ToggleButton.Text.text = Translator.GetString(name);

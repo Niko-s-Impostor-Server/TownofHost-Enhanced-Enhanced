@@ -21,7 +21,13 @@ public static class GameStartManagerMinPlayersPatch
 }
 public class GameStartManagerPatch
 {
-    public static float timer = 600f;
+    private static long lobbyStartTimestamp = Utils.GetTimeStamp();
+    private static long lobbyTimerEndTimestamp = lobbyStartTimestamp + 600;
+    public static float timer
+    {
+        get => Math.Max(0, lobbyTimerEndTimestamp - Utils.GetTimeStamp());
+        set => lobbyTimerEndTimestamp = Utils.GetTimeStamp() + (long)value;
+    }
     private static Vector3 GameStartTextlocalPosition;
     private static TextMeshPro warningText;
     private static TextMeshPro timerText;
@@ -32,11 +38,12 @@ public class GameStartManagerPatch
         public static TextMeshPro HideName;
         public static void Postfix(GameStartManager __instance)
         {
-            GameStartManagerUpdatePatch.AlredyBegin = false;
+            GameStartManagerUpdatePatch.CancelPendingAutoStart();
             Main.DoBlockNameChange = false;
             __instance.GameRoomNameCode.text = GameCode.IntToGameName(AmongUsClient.Instance.GameId);
-            // Reset lobby countdown timer
-            timer = 600f;
+            // Reset lobby start and official expiry times.
+            lobbyStartTimestamp = Utils.GetTimeStamp();
+            lobbyTimerEndTimestamp = lobbyStartTimestamp + 600;
 
             HideName = Object.Instantiate(__instance.GameRoomNameCode, __instance.GameRoomNameCode.transform);
             HideName.text = ColorUtility.TryParseHtmlString(Main.HideColor.Value, out _)
@@ -110,7 +117,7 @@ public class GameStartManagerPatch
     [HarmonyPatch(typeof(GameStartManager), nameof(GameStartManager.Update))]
     public static class GameStartManagerUpdatePatch
     {
-        public static bool AlredyBegin = false;
+        private static LateTask pendingAutoStart;
         private static bool update = false;
         private static string currentText = "";
         public static float exitTimer = -1f;
@@ -123,7 +130,7 @@ public class GameStartManagerPatch
             minWait = Options.MinWaitAutoStart.GetFloat();
             maxWait = Options.MaxWaitAutoStart.GetFloat();
             minPlayer = Options.PlayerAutoStart.GetInt();
-            minWait = 600f - minWait * 60f;
+            minWait *= 60f;
             maxWait *= 60f;
             // Lobby code
             if (DataManager.Settings.Gameplay.StreamerMode)
@@ -146,21 +153,22 @@ public class GameStartManagerPatch
                 if (Main.updateTime >= 50)
                 {
                     Main.updateTime = 0;
-                    if (!GameStates.IsCountDown)
+                    if (__instance.startState == GameStartManager.StartingStates.NotStarting)
                     {
                         if (Options.ImmediateAutoStart.GetBool())
                         {
                             if ((GameData.Instance.PlayerCount >= Options.StartWhenPlayersReach.GetInt() && Options.StartWhenPlayersReach.GetInt() > 1) ||
-                                (timer <= Options.StartWhenTimerLowerThan.GetInt() && Options.StartWhenTimerLowerThan.GetInt() > 0))
+                                (GameStates.IsVanillaServer && timer <= Options.StartWhenTimerLowerThan.GetInt() && Options.StartWhenTimerLowerThan.GetInt() > 0))
                             {
-                                BeginGameAutoStart(Options.ImmediateStartTimer.GetInt());
+                                BeginGameAutoStart(__instance, Options.ImmediateStartTimer.GetInt());
                                 return;
                             }
                         }
 
-                        if ((GameData.Instance.PlayerCount >= minPlayer && timer <= minWait) || timer <= maxWait)
+                        if ((GameData.Instance.PlayerCount >= minPlayer && (GameStates.IsVanillaServer ? 600f - timer : Utils.GetTimeStamp() - lobbyStartTimestamp) >= minWait) ||
+                            (GameStates.IsVanillaServer && timer <= maxWait))
                         {
-                            BeginGameAutoStart(Options.AutoStartTimer.GetInt());
+                            BeginGameAutoStart(__instance, Options.AutoStartTimer.GetInt());
                             return;
                         }
                     }
@@ -233,25 +241,36 @@ public class GameStartManagerPatch
 
             __instance.RulesPresetText.text = OptionItem.FastOptions[OptionItem.PresetId].GetString();
 
-            // Lobby timer
+            // Only official servers have an expiring lobby timer.
             if (!GameData.Instance || AmongUsClient.Instance.NetworkMode == NetworkModes.LocalGame || !GameStates.IsVanillaServer) return;
 
             if (update) currentText = __instance.PlayerCounter.text;
 
-            timer = Mathf.Max(0f, timer -= Time.deltaTime);
-            int minutes = (int)timer / 60;
-            int seconds = (int)timer % 60;
+            float remainingTime = timer;
+            int minutes = (int)remainingTime / 60;
+            int seconds = (int)remainingTime % 60;
             string countDown = $"{minutes:00}:{seconds:00}";
-            if (timer <= 60) countDown = Utils.ColorString(Color.red, countDown);
+            if (remainingTime <= 60) countDown = Utils.ColorString(Color.red, countDown);
             timerText.text = countDown;
         }
-        private static void BeginGameAutoStart(float countdown)
+        public static void CancelPendingAutoStart()
         {
-            if (AlredyBegin) return;
-            AlredyBegin = true;
+            if (pendingAutoStart == null) return;
+            LateTask.Tasks.Remove(pendingAutoStart);
+            pendingAutoStart = null;
+        }
 
-            _ = new LateTask(() =>
+        private static void BeginGameAutoStart(GameStartManager manager, float countdown)
+        {
+            if (pendingAutoStart != null) return;
+
+            pendingAutoStart = new LateTask(() =>
             {
+                pendingAutoStart = null;
+                if (!manager || GameStartManager.Instance != manager || !AmongUsClient.Instance ||
+                    !AmongUsClient.Instance.AmHost || !GameStates.IsLobby || !Main.AutoStart.Value ||
+                    manager.startState != GameStartManager.StartingStates.NotStarting) return;
+
                 var invalidColor = Main.AllPlayerControls.Where(p => p.Data.DefaultOutfit.ColorId < 0 || Palette.PlayerColors.Length <= p.Data.DefaultOutfit.ColorId).ToArray();
 
                 if (invalidColor.Any())
@@ -266,9 +285,9 @@ public class GameStartManagerPatch
 
                 GameStartManagerBeginGamePatch.DoTasksForBeginGame();
 
-                GameStartManager.Instance.startState = GameStartManager.StartingStates.Countdown;
-                GameStartManager.Instance.countDownTimer = (countdown == 0 ? 0.2f : countdown);
-                GameStartManager.Instance.StartButton.gameObject.SetActive(false);
+                manager.startState = GameStartManager.StartingStates.Countdown;
+                manager.countDownTimer = (countdown == 0 ? 0.2f : countdown);
+                manager.StartButton.gameObject.SetActive(false);
             }, 0.8f, "Auto Start");
         }
         private static bool MatchVersions(int clientId, bool acceptVanilla = false)
@@ -416,10 +435,9 @@ class ResetStartStatePatch
 {
     public static void Prefix(GameStartManager __instance)
     {
+        GameStartManagerPatch.GameStartManagerUpdatePatch.CancelPendingAutoStart();
         if (GameStates.IsCountDown)
         {
-            GameStartManagerPatch.GameStartManagerUpdatePatch.AlredyBegin = false;
-
             SoundManager.Instance.StopSound(__instance.gameStartSound);
 
             PlayerControl.LocalPlayer.RpcSyncSettings(GameOptionsManager.Instance.gameOptionsFactory.ToBytes(GameOptionsManager.Instance.CurrentGameOptions, AprilFoolsMode.IsAprilFoolsModeToggledOn));

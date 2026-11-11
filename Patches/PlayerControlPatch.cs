@@ -37,6 +37,9 @@ class CheckProtectPatch
             return false;
         }
 
+        if (angel != target && Socialite.BlocksInteraction(angel, target, "CheckProtect"))
+            return false;
+
         if (!angel.GetRoleClass().OnCheckProtect(angel, target))
             return false;
 
@@ -576,7 +579,8 @@ public static class CheckShapeshiftPatch
         logger.Info($"Self:{shapeshifter.PlayerId == target.PlayerId} - Is animate:{shouldAnimate} - In Meeting:{GameStates.IsMeeting}");
 
         var shapeshifterRoleClass = shapeshifter.GetRoleClass();
-        if (shapeshifterRoleClass?.OnCheckShapeshift(shapeshifter, target, ref resetCooldown, ref shouldAnimate) == false)
+        if ((shapeshifter != target && Socialite.BlocksInteraction(shapeshifter, target, "CheckShapeshift")) ||
+            shapeshifterRoleClass?.OnCheckShapeshift(shapeshifter, target, ref resetCooldown, ref shouldAnimate) == false)
         {
             // role need specific reject shapeshift if player use desync shapeshift
             if (shapeshifterRoleClass.CanDesyncShapeshift)
@@ -1537,7 +1541,7 @@ class CoEnterVentPatch
     }
     public static void Postfix()
     {
-        _ = new LateTask(() => VentSystemDeterioratePatch.ForceUpadate = false, 1f, "Set Force Upadate As False", shoudLog: false);
+        _ = new LateTask(() => VentSystemDeterioratePatch.ForceUpdate = false, 1f, "Set Force Upadate As False", shoudLog: false);
     }
 }
 // Player entered in vent
@@ -1979,6 +1983,7 @@ class PlayerControlLocalSetRolePatch
                 RoleTypes.Phantom => CustomRoles.PhantomTOHE,
                 RoleTypes.Tracker => CustomRoles.TrackerTOHE,
                 RoleTypes.Detective => CustomRoles.DetectiveTOHE,
+                RoleTypes.Judge => CustomRoles.JudgeTOHE,
                 RoleTypes.Viper => CustomRoles.ViperTOHE,
                 RoleTypes.SpiritGuide => CustomRoles.SpiritGuideTOHE,
                 _ => CustomRoles.NotAssigned,

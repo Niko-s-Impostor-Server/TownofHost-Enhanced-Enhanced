@@ -8,11 +8,13 @@ A classic **Host Only** mod based on the stable **Town of Host: Enhanced v2.1.1*
 
 Through this project, the developer is actively exploring the possibilities of AI-assisted development, with the goal of lowering the barrier to Among Us modding and enabling every player to participate in mod development with AI tools. We are committed to turning this vision into reality through continuous experimentation and practical development.
 
-**Official Website:** https://tohee.niko233.top/
+**Official Website and Documentation:** https://tohee.niko233.top/
 
 **Discord Community:** https://discord.gg/guf9ca4YSA
 
 **QQ Group:** 975714136
+
+If you encounter any issues while playing the mod, please feedback with the above methods. We value your feedback and we are there to help!
 
 ## Why TOHEE?
 

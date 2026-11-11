@@ -28,7 +28,7 @@ ExecuteCommandAccess: false
 AssignGameMaster: false
 ```
 
-`TagColor` 不带 `#`；六位十六进制颜色可设置单色。开启渐变标签选项时，也可写成两个颜色，如 `33CCFF FF99CC`。`TagColor` 可以留空；这样可单独使用 `TagName` 中的格式标记。`TagName` 可使用颜色、大小和字体标记，例如 `<color=#FF0000>R</color><size=150%>ain</size>bow`。启用“Enable Gradient Tags”时保留这些富文本格式；关闭时会去掉格式标记但保留可见文字。填写无效 `TagColor` 会回退为黄色。若希望标签和名字之间有空格，在 `TagName` 末尾保留空格。
+`TagColor` 不带 `#`；六位十六进制颜色可设置单色。开启渐变标签选项时，也可写成两个颜色，如 `33CCFF FF99CC`。`TagColor` 可以留空；这样可单独使用 `TagName` 中的格式标记。`TagName` 可使用颜色、大小和字体标记，例如 `<color=#FF0000>R</color><size=150%>ain</size>bow`，并可用 `\n` 换行。启用“Enable Gradient Tags”时保留这些富文本格式；关闭时会去掉格式标记但保留可见文字。填写无效 `TagColor` 会回退为黄色。若希望标签和名字之间有空格，在 `TagName` 末尾保留空格。
 
 ## 使用 MAUL 标签生成器
 
@@ -93,7 +93,7 @@ otheruser#5678=<color=#FF00AAFF>活动主持人 </color>
 
 等号只在好友码后面的第一个位置充当分隔符，因此颜色标记和标签文字中的 `=` 可以正常读取。手工编辑后，房主输入 `/tags reload` 即可重载文件；在大厅执行时还会立即刷新显示，重新开房也会重新加载。删除文件中的某行并重载，会移除该玩家的后备标签；单玩家 TXT 中的标签不受影响。文件不存在时不会自动给任何人加后备标签。
 
-房主也可以在 Client Options 中开启“自动重载标签”。启用后每 5 秒检查 `TOHEE-DATA/Tags` 根目录及直接子目录中的 `.txt` 文件，以及后备文件 `TOHEE-DATA/tags.txt`；发现文件增删、重命名、大小或修改时间变化时，自动重载标签，并在大厅刷新玩家名字。`/tags reload` 仍可随时手动使用。该选项默认关闭。
+“自动重载标签”默认开启，可在 Client Options 中关闭。启用后每 5 秒检查 `TOHEE-DATA/Tags` 根目录及直接子目录中的 `.txt` 文件，以及后备文件 `TOHEE-DATA/tags.txt`；发现文件增删、重命名、大小或修改时间变化时，自动重载标签，并在大厅刷新玩家名字。也可随时使用 `/tags reload` 或 `/tagreload` 手动重载。已有的选项设置会保留。
 
 `LocalPlayerTags.json` 已停用，里面的数据不会迁移。旧的 Moderator/VIP 名单及颜色目录也不会自动迁移，旧文件不会被自动删除。本地文件中的权限和 GM 身份只从单玩家 TXT 读取；`tags.txt` 仍是外观后备，不会授予权限。
 

@@ -28,7 +28,7 @@ ExecuteCommandAccess: false
 AssignGameMaster: false
 ```
 
-Do not include `#` in `TagColor`; a six-digit hexadecimal color sets a solid color. When the gradient-tag option is enabled, you can also specify two colors, such as `33CCFF FF99CC`. `TagColor` can be left empty to use formatting in `TagName` on its own. `TagName` supports color, size, and font markup, for example `<color=#FF0000>R</color><size=150%>ain</size>bow`. When **Enable Gradient Tags** is on, this rich-text markup is kept; when it is off, the markup is stripped while its visible text remains. An invalid `TagColor` falls back to yellow. To put a space between the tag and the name, leave a trailing space at the end of `TagName`.
+Do not include `#` in `TagColor`; a six-digit hexadecimal color sets a solid color. When the gradient-tag option is enabled, you can also specify two colors, such as `33CCFF FF99CC`. `TagColor` can be left empty to use formatting in `TagName` on its own. `TagName` supports color, size, and font markup, for example `<color=#FF0000>R</color><size=150%>ain</size>bow`, and `\n` for a line break. When **Enable Gradient Tags** is on, this rich-text markup is kept; when it is off, the markup is stripped while its visible text remains. An invalid `TagColor` falls back to yellow. To put a space between the tag and the name, leave a trailing space at the end of `TagName`.
 
 ## Use the MAUL tag generator
 
@@ -93,7 +93,7 @@ otheruser#5678=<color=#FF00AAFF>Event host </color>
 
 Only the first `=` after the friend code acts as the separator, so `=` characters in color markup and tag text are read correctly. After manual edits, the host can enter `/tags reload` to reload the file; when run in the lobby, it also refreshes the display immediately. The file is reloaded when hosting a room again as well. Deleting a line from the file and reloading removes that player's fallback tag; a tag in a per-player TXT file is unaffected. If the file does not exist, no one receives a fallback tag automatically.
 
-Hosts can also enable **Auto Reload Tags** in Client Options. Every 5 seconds, it checks `.txt` files in the `TOHEE-DATA/Tags` root and its immediate subdirectories, plus the fallback `TOHEE-DATA/tags.txt`. When a file is added, removed, renamed, or changes size or modification time, it reloads the tags and refreshes player names in the lobby. `/tags reload` remains available for manual reloads. The option is off by default.
+**Auto Reload Tags** is on by default and can be disabled in Client Options. Every 5 seconds, it checks `.txt` files in the `TOHEE-DATA/Tags` root and its immediate subdirectories, plus the fallback `TOHEE-DATA/tags.txt`. When a file is added, removed, renamed, or changes size or modification time, it reloads the tags and refreshes player names in the lobby. Use `/tags reload` or `/tagreload` for a manual reload. Existing option settings are preserved.
 
 `LocalPlayerTags.json` is no longer used, and its data is not migrated. Old Moderator/VIP lists and color directories are not migrated automatically, and existing files are not deleted automatically. Permissions and GM status from local files come only from per-player TXT files; `tags.txt` remains a cosmetic fallback and does not grant permissions.
 

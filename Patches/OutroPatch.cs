@@ -148,7 +148,7 @@ class EndGamePatch
         Main.GameIsLoaded = false;
         Main.IntroDestroyed = false;
 
-        if (AmongUsClient.Instance.AmHost)
+        if (AmongUsClient.Instance.AmHost && RoundGameOptions.LobbyOptions == null)
         {
             Main.RealOptionsData.Restore(GameOptionsManager.Instance.CurrentGameOptions);
             GameOptionsSender.AllSenders.Clear();

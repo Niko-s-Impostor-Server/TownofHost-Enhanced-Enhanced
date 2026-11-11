@@ -191,6 +191,7 @@ class DisconnectInternalPatch
 {
     public static void Prefix(InnerNetClient __instance, [HarmonyArgument(0)] DisconnectReasons reason, [HarmonyArgument(1)] string stringReason)
     {
+        RoundGameOptions.End();
         OfficialHazelSendHistory.OnDisconnect(reason);
         // ExitGame calls DisconnectInternal directly, without OnDisconnected.
         BanManager.ClearSessionBans();
@@ -317,10 +318,18 @@ public static class OnPlayerJoinedPatch
                 (platform == Platforms.Playstation && Options.OptKickPlayStationPlayer.GetBool()) ||
                 (platform == Platforms.Switch && Options.OptKickNintendoPlayer.GetBool()))
             {
-                string msg = string.Format(GetString("MsgKickOtherPlatformPlayer"), client?.PlayerName, platform.ToString());
-                AmongUsClient.Instance.KickPlayer(client.Id, false);
-                Logger.SendInGame(msg);
-                Logger.Info(msg, "Other Platform Kick"); ;
+                if (Options.WhiteListNoKick.GetBool() && BanManager.CheckAllowList(client?.FriendCode) && !GameStates.IsLocalGame)
+                {
+                    Logger.SendInGame(string.Format(GetString("MsgWhiteListNoKick"), client?.PlayerName, platform.ToString()));
+                    Logger.Info($"{client?.PlayerName} should be kicked because platform, but is in whitelist so they will not be kicked", "Other Platform Kick");
+                }
+                else
+                {
+                    string msg = string.Format(GetString("MsgKickOtherPlatformPlayer"), client?.PlayerName, platform.ToString());
+                    AmongUsClient.Instance.KickPlayer(client.Id, false);
+                    Logger.SendInGame(msg);
+                    Logger.Info(msg, "Other Platform Kick");
+                }
             }
         }
         if (DestroyableSingleton<FriendsListManager>.Instance.IsPlayerBlockedUsername(client.FriendCode) && AmongUsClient.Instance.AmHost)

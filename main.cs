@@ -35,7 +35,9 @@ namespace TOHE;
 [BepInIncompatibility("com.bhr.bedderhostroles")]
 [BepInIncompatibility("dev.allofus.overloaded")]
 [BepInIncompatibility("xyz.crowdedmods.crowdedmod")]
+#if !ANDROID
 [BepInProcess("Among Us.exe")]
+#endif
 public class Main : BasePlugin
 {
     // == Program Config ==
@@ -53,8 +55,8 @@ public class Main : BasePlugin
     public static ConfigEntry<string> DebugKeyInput { get; private set; }
 
     public const string PluginGuid = "top.niko233.townofhostenhancedenhanced";
-    public const string PluginVersion = "2026.1104.211.0";
-    public const string PluginDisplayVersion = "2.1.1-20261104";
+    public const string PluginVersion = "2026.1111.211.0";
+    public const string PluginDisplayVersion = "2.1.1-20261111";
     public const string SupportedVersionAU = "2026.9.29";
 
     /******************* Change one of the three variables to true before making a release. *******************/
@@ -97,6 +99,7 @@ public class Main : BasePlugin
     public static ConfigEntry<bool> DarkTheme { get; private set; }
     public static ConfigEntry<bool> DisableLobbyMusic { get; private set; }
     public static ConfigEntry<bool> ShowTextOverlay { get; private set; }
+    public static ConfigEntry<bool> EnableOptionsShowerInLobby { get; private set; }
     public static ConfigEntry<bool> HorseMode { get; private set; }
     public static ConfigEntry<bool> ForceOwnLanguage { get; private set; }
     public static ConfigEntry<bool> ForceOwnLanguageRoleName { get; private set; }
@@ -138,8 +141,6 @@ public class Main : BasePlugin
     public static readonly Dictionary<byte, Color32> PlayerColors = [];
     public static readonly Dictionary<byte, PlayerState.DeathReason> AfterMeetingDeathPlayers = [];
     public static readonly Dictionary<CustomRoles, string> roleColors = [];
-    const string LANGUAGE_FOLDER_NAME = "Language";
-
     public static bool IsFixedCooldown => CustomRoles.Vampire.IsEnable() || CustomRoles.Poisoner.IsEnable();
     public static float RefixCooldownDelay = 0f;
     public static NetworkedPlayerInfo LastVotedPlayerInfo;
@@ -254,12 +255,12 @@ public class Main : BasePlugin
     {
         var sb = new StringBuilder();
         foreach (var title in roleColors) sb.Append($"{title.Key}:\n");
-        File.WriteAllText(@$"./{LANGUAGE_FOLDER_NAME}/templateRoleColor.dat", sb.ToString());
+        File.WriteAllText(Path.Combine(DataDirectoryMigration.LanguageDirectory, "templateRoleColor.dat"), sb.ToString());
     }
     public static void LoadCustomRoleColor()
     {
         const string filename = "RoleColor.dat";
-        string path = @$"./{LANGUAGE_FOLDER_NAME}/{filename}";
+        string path = Path.Combine(DataDirectoryMigration.LanguageDirectory, filename);
         if (File.Exists(path))
         {
             TOHE.Logger.Info($"Load custom Role Color file：{filename}", "LoadCustomRoleColor");
@@ -365,9 +366,9 @@ public class Main : BasePlugin
                         break;
                 }
             }
-            if (!Directory.Exists(LANGUAGE_FOLDER_NAME)) Directory.CreateDirectory(LANGUAGE_FOLDER_NAME);
+            if (!Directory.Exists(DataDirectoryMigration.LanguageDirectory)) Directory.CreateDirectory(DataDirectoryMigration.LanguageDirectory);
             CreateTemplateRoleColorFile();
-            if (File.Exists(@$"./{LANGUAGE_FOLDER_NAME}/RoleColor.dat"))
+            if (File.Exists(Path.Combine(DataDirectoryMigration.LanguageDirectory, "RoleColor.dat")))
             {
                 UpdateCustomTranslation();
                 LoadCustomRoleColor();
@@ -438,7 +439,7 @@ public class Main : BasePlugin
     }
     static void UpdateCustomTranslation()
     {
-        string path = @$"./{LANGUAGE_FOLDER_NAME}/RoleColor.dat";
+        string path = Path.Combine(DataDirectoryMigration.LanguageDirectory, "RoleColor.dat");
         if (File.Exists(path))
         {
             TOHE.Logger.Info("Updating Custom Role Colors", "UpdateRoleColors");
@@ -487,7 +488,7 @@ public class Main : BasePlugin
         {
             sb.Append($"{kvp.Key.ToString()}:{kvp.Value}\n");
         }
-        File.WriteAllText(@$"./{LANGUAGE_FOLDER_NAME}/export_RoleColor.dat", sb.ToString());
+        File.WriteAllText(Path.Combine(DataDirectoryMigration.LanguageDirectory, "export_RoleColor.dat"), sb.ToString());
     }
 
     public override bool Unload()
@@ -518,10 +519,11 @@ public class Main : BasePlugin
         ShowFPS = Config.Bind("Client Options", "ShowFPS", false);
         EnableGM = Config.Bind("Client Options", "EnableGM", false);
         AutoStart = Config.Bind("Client Options", "AutoStart", false);
-        AutoReloadTags = Config.Bind("Client Options", "AutoReloadTags", false);
+        AutoReloadTags = Config.Bind("Client Options", "AutoReloadTags", true);
         DarkTheme = Config.Bind("Client Options", "DarkTheme", false);
         DisableLobbyMusic = Config.Bind("Client Options", "DisableLobbyMusic", false);
         ShowTextOverlay = Config.Bind("Client Options", "ShowTextOverlay", false);
+        EnableOptionsShowerInLobby = Config.Bind("Client Options", "EnableOptionsShowerInLobby", true);
         HorseMode = Config.Bind("Client Options", "HorseMode", false);
         ForceOwnLanguage = Config.Bind("Client Options", "ForceOwnLanguage", false);
         ForceOwnLanguageRoleName = Config.Bind("Client Options", "ForceOwnLanguageRoleName", false);
@@ -543,10 +545,7 @@ public class Main : BasePlugin
         Logger.LogInfo($"AU MCI GUID: {ModRegistration.Register(PluginVersion)}");
         coroutines = AddComponent<Coroutines>();
         TOHE.Logger.Enable();
-        DataDirectoryMigration.Initialize(Environment.CurrentDirectory);
-#if ANDROID
-        DataDirectoryMigration.Initialize(Application.persistentDataPath);
-#endif
+        DataDirectoryMigration.Initialize();
         //TOHE.Logger.Disable("NotifyRoles");
         TOHE.Logger.Disable("SwitchSystem");
         TOHE.Logger.Disable("ModNews");
@@ -622,6 +621,10 @@ public class Main : BasePlugin
         handler.Info($"{nameof(ThisAssembly.Git.Tag)}: {ThisAssembly.Git.Tag}");
 
         ClassInjector.RegisterTypeInIl2Cpp<ErrorText>();
+        ClassInjector.RegisterTypeInIl2Cpp<AbstractPagingBehaviour>();
+        ClassInjector.RegisterTypeInIl2Cpp<MeetingHudPagingBehaviour>();
+        ClassInjector.RegisterTypeInIl2Cpp<ShapeShifterPagingBehaviour>();
+        ClassInjector.RegisterTypeInIl2Cpp<VitalsPagingBehaviour>();
         CustomRpcTransport.Register();
 
         Harmony.PatchAll();
@@ -909,8 +912,11 @@ public enum CustomRoles
     ViperTOHE = 483,
     SpiritGuide = 484,
     SpiritGuideTOHE = 485,
-    Cop = 486,
-    Robber = 487,
+    Socialite = 486,
+    JudgeVanilla = 487,
+    JudgeTOHE = 488,
+    Cop = 489,
+    Robber = 490,
 
     // Sub-role after 500
     NotAssigned = 500,

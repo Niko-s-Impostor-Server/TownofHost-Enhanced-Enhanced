@@ -35,10 +35,6 @@ $versionMarkers = @([regex]::Matches([Text.Encoding]::Latin1.GetString($settings
 if ($versionMarkers.Count -ne 1 -or $versionMarkers[0] -cne $gameVersion) {
     throw "Game version marker in globalgamemanagers does not match $gameVersion."
 }
-$notes = Get-Content -LiteralPath (Join-Path $packaging 'RELEASE-NOTES.md') -Raw
-if (!$notes.StartsWith("# TOHEE v$version`n") -and !$notes.StartsWith("# TOHEE v$version`r`n")) {
-    throw 'Update packaging/RELEASE-NOTES.md for the release version in main.cs.'
-}
 
 function Get-PeInfo([string]$Path) {
     $reader = [System.Reflection.PortableExecutable.PEReader]::new([IO.File]::OpenRead($Path))
@@ -73,9 +69,9 @@ try {
     $commit = (git rev-parse HEAD).Trim()
     if ($LASTEXITCODE -ne 0) { throw 'Cannot resolve source commit.' }
     New-Item -ItemType Directory -Path $CacheDirectory -Force | Out-Null
+    # Package the pinned official BepInEx distributions, downloaded and verified by Get-Dependency.
     $runtimeArchives = @{ x64 = Get-Dependency 'bepinex-x64'; x86 = Get-Dependency 'bepinex-x86' }
     $regionDll = Get-Dependency 'region-installer'
-    $gcMaxTimeSliceDll = Get-Dependency 'remove-gc-max-time-slice'
     $gcFixDll = Get-Dependency 'il2cpp-interop-gc-fix'
     $work = Join-Path $repoRoot ('artifacts/release-staging/' + [guid]::NewGuid().ToString('N'))
     New-Item -ItemType Directory -Path $work | Out-Null
@@ -87,9 +83,6 @@ try {
     if (!$pluginPe.managed -or !$pluginPe.ilOnly -or $pluginPe.requires32Bit) { throw 'TOHE.dll must be AnyCPU IL.' }
     if ([Reflection.AssemblyName]::GetAssemblyName($dll).Version.ToString() -ne $assemblyVersion) { throw 'Plugin assembly version mismatch.' }
     $dllHash = (Get-FileHash -LiteralPath $dll).Hash
-    $gcPluginPe = Get-PeInfo $gcMaxTimeSliceDll
-    if (!$gcPluginPe.managed -or !$gcPluginPe.ilOnly -or $gcPluginPe.requires32Bit) { throw 'RemoveGcMaxTimeSlice.Plugin.dll must be AnyCPU IL for both release architectures.' }
-    $gcPluginHash = (Get-FileHash -LiteralPath $gcMaxTimeSliceDll).Hash
     $gcFixPe = Get-PeInfo $gcFixDll
     if (!$gcFixPe.managed -or !$gcFixPe.ilOnly -or $gcFixPe.requires32Bit) { throw 'Il2CppInteropGcFix.dll must be AnyCPU IL for both release architectures.' }
     $gcFixHash = (Get-FileHash -LiteralPath $gcFixDll).Hash
@@ -115,11 +108,10 @@ try {
         $patchers = Join-Path $stage 'BepInEx/patchers'
         $config = Join-Path $stage 'BepInEx/config'
         New-Item -ItemType Directory -Path $plugins, $patchers, $config -Force | Out-Null
-        Copy-Item -LiteralPath $dll, $regionDll, $gcMaxTimeSliceDll -Destination $plugins
+        Copy-Item -LiteralPath $dll, $regionDll -Destination $plugins
         Copy-Item -LiteralPath $gcFixDll -Destination $patchers
         Copy-Item -LiteralPath (Join-Path $packaging 'BepInEx.cfg'), (Join-Path $packaging 'at.duikbo.regioninstall.cfg') -Destination $config
         Copy-Item -LiteralPath (Join-Path $repoRoot 'LICENSE') -Destination (Join-Path $stage 'LICENSE.TOHEE.txt')
-        Copy-Item -LiteralPath (Join-Path $packaging 'LICENSE.RemoveGcMaxTimeSlice.txt') -Destination (Join-Path $stage 'LICENSE.RemoveGcMaxTimeSlice.txt')
         Copy-Item -LiteralPath (Join-Path $packaging 'LICENSE.Il2CppInteropGcFix.txt') -Destination (Join-Path $stage 'LICENSE.Il2CppInteropGcFix.txt')
         Copy-Item -LiteralPath (Join-Path $packaging 'LICENSE.Overloaded.txt') -Destination (Join-Path $stage 'LICENSE.Overloaded.txt')
         $platforms = if ($arch -eq 'x64') { 'Steam / Epic Games / Microsoft Store' } else { 'itch.io' }
@@ -135,25 +127,20 @@ try {
         $archive = [IO.Compression.ZipFile]::OpenRead($zipPath)
         try {
             $names = @($archive.Entries | ForEach-Object FullName)
-            foreach ($required in @('.doorstop_version', 'doorstop_config.ini', 'winhttp.dll', 'dotnet/coreclr.dll', 'BepInEx/plugins/TOHE.dll', 'BepInEx/plugins/Mini.RegionInstall.dll', 'BepInEx/plugins/RemoveGcMaxTimeSlice.Plugin.dll', 'BepInEx/patchers/Il2CppInteropGcFix.dll', 'BepInEx/config/BepInEx.cfg', 'LICENSE.RemoveGcMaxTimeSlice.txt', 'LICENSE.Il2CppInteropGcFix.txt')) {
+            foreach ($required in @('.doorstop_version', 'doorstop_config.ini', 'winhttp.dll', 'dotnet/coreclr.dll', 'BepInEx/plugins/TOHE.dll', 'BepInEx/plugins/Mini.RegionInstall.dll', 'BepInEx/patchers/Il2CppInteropGcFix.dll', 'BepInEx/config/BepInEx.cfg', 'LICENSE.Il2CppInteropGcFix.txt')) {
                 if ($names -notcontains $required) { throw "Missing release file: $required" }
             }
             if ($names -match '(^|/)(interop|TOHEE-DATA|TOHE-DATA|Among Us_Data|requests|responses|captures)/|\.log$|RuntimeProbe|GameAssembly\.dll|Assembly-CSharp\.dll|Among Us\.exe') {
                 throw 'Generated interop, game, private data or probe files found in release archive.'
             }
         } finally { $archive.Dispose() }
-        $packages += [ordered]@{ file = [IO.Path]::GetFileName($zipPath); platforms = $platforms; architecture = $arch; nativeMachine = $machine; pluginSHA256 = $dllHash; removeGcMaxTimeSliceSHA256 = $gcPluginHash; il2CppInteropGcFixSHA256 = $gcFixHash }
+        $packages += [ordered]@{ file = [IO.Path]::GetFileName($zipPath); platforms = $platforms; architecture = $arch; nativeMachine = $machine; pluginSHA256 = $dllHash; il2CppInteropGcFixSHA256 = $gcFixHash }
     }
-    $sourceZip = Join-Path $OutputDirectory "TOHEE.v${version}_Source.zip"
-    & git archive --format=zip "--prefix=TOHEE-$version/" "--output=$sourceZip" HEAD
-    if ($LASTEXITCODE -ne 0) { throw 'Source archive failed.' }
-    Copy-Item -LiteralPath (Join-Path $packaging 'RELEASE-NOTES.md') -Destination (Join-Path $OutputDirectory 'RELEASE-NOTES.md')
     [ordered]@{
         version = $version; assemblyVersion = $assemblyVersion; gameVersion = $gameVersion
         sourceCommit = $commit; sourceDirty = $false; builtAtUtc = [DateTime]::UtcNow.ToString('o')
         plugin = [ordered]@{ file = 'TOHE.dll'; sha256 = $dllHash; pe = $pluginPe }
         runtimeVersion = $dependencies.bepinexVersion; dependencies = $dependencies; packages = $packages
-        bundledPlugin = [ordered]@{ file = 'RemoveGcMaxTimeSlice.Plugin.dll'; version = $dependencies.'remove-gc-max-time-slice'.version; sha256 = $gcPluginHash; pe = $gcPluginPe; source = $dependencies.'remove-gc-max-time-slice'.repository; license = $dependencies.'remove-gc-max-time-slice'.license }
         bundledPatcher = [ordered]@{ file = 'Il2CppInteropGcFix.dll'; version = $dependencies.'il2cpp-interop-gc-fix'.version; sha256 = $gcFixHash; pe = $gcFixPe; source = $dependencies.'il2cpp-interop-gc-fix'.repository; license = $dependencies.'il2cpp-interop-gc-fix'.license }
         referenceInteropSHA256 = (Get-FileHash -LiteralPath (Join-Path $gameRoot 'BepInEx/interop/Assembly-CSharp.dll')).Hash
         inputGameVersion = $versionMarkers[0]

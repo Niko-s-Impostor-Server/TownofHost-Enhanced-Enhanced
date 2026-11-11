@@ -316,7 +316,6 @@ internal class DollMaster : RoleBase
         // If target is on imp team return.
         if (!IsControllingPlayer && target.GetCustomRole().IsImpostorTeam())
         {
-            AURoleOptions.ShapeshifterCooldown = 0;
             pc.Notify(Utils.ColorString(Utils.GetRoleColor(CustomRoles.DollMaster), GetString("DollMaster_CannotPossessImpTeammate")));
             return false;
         }
@@ -324,7 +323,6 @@ internal class DollMaster : RoleBase
         // If players can be taken over.
         if (!target.CanBeTeleported() || Pelican.IsEaten(pc.PlayerId) || Pelican.IsEaten(target.PlayerId))
         {
-            AURoleOptions.ShapeshifterCooldown = 0;
             pc.Notify(Utils.ColorString(Utils.GetRoleColor(CustomRoles.DollMaster), target.IsAlive() ? GetString("DollMaster_CouldNotSwapWithTarget") : GetString("DollMaster_CanNotSwapWithDeadTarget")));
             return false;
         }

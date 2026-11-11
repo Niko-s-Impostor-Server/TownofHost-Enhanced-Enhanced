@@ -340,7 +340,7 @@ static class ExtendedPlayerControl
         // The game directs a client's own vote to the host and handles host votes locally.
         MeetingHud.Instance.CmdCastVote(playerId, suspectIdx);
     }
-    public static void RpcClearVoteDelay(this MeetingHud meeting, int clientId)
+    public static void RpcClearVoteDelay(this MeetingHud meeting, int clientId, bool onlyIfUncast = false)
     {
         if (!AmongUsClient.Instance.AmHost) return;
         var gameId = AmongUsClient.Instance.GameId;
@@ -358,6 +358,13 @@ static class ExtendedPlayerControl
             {
                 if (remaining <= 1) VoteCommand.PendingClears.Remove(pendingClear);
                 else VoteCommand.PendingClears[pendingClear] = remaining - 1;
+            }
+            if (onlyIfUncast)
+            {
+                if (meeting.CurrentState is not (MeetingHud.MeetingStates.NotVoted or MeetingHud.MeetingStates.Voted)) return;
+                var uncastVoter = clientId == AmongUsClient.Instance.ClientId
+                    ? PlayerControl.LocalPlayer : AmongUsClient.Instance.GetClient(clientId)?.Character;
+                if (uncastVoter == null || meeting.playerStates.FirstOrDefault(area => area.PlayerId.Value == uncastVoter.PlayerId)?.VotedForId.Value != byte.MaxValue) return;
             }
             if (AmongUsClient.Instance.ClientId == clientId)
             {

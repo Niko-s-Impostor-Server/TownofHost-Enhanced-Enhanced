@@ -29,7 +29,8 @@ internal static class OfficialChat
         var sentPages = new List<SentPage>();
         lock (TransactionLock)
         {
-            title ??= actor.Data.PlayerName;
+            string senderName = actor.Data.PlayerName;
+            title ??= senderName;
             byte speakerId = actor.PlayerId;
             // System messages need a living carrier; ghost chat preserves its dead sender
             // because ChatManager sends it only to recipients whose Data.IsDead is true.
@@ -75,7 +76,9 @@ internal static class OfficialChat
                     }
                     catch (Exception error)
                     {
-                        Logger.Error($"Custom chat aborted for recipient {seer.PlayerId}: {error.GetType().Name}", "OfficialChat");
+                        Logger.Error($"Custom chat aborted: sender={senderName} ({speakerId}), " +
+                            $"recipient={seer.Data?.PlayerName} ({seer.PlayerId}), title={title}, message={text}\n{error}",
+                            "OfficialChat", escapeCRLF: false);
                     }
                     continue;
                 }
@@ -119,7 +122,7 @@ internal static class OfficialChat
                     }
                     finally { probe.Recycle(); }
                     if (available <= 0) throw new InvalidOperationException("The name restoration leaves no message budget.");
-                    Logger.Test($"recipient={seer.PlayerId}, inputNameUtf8Bytes={inputNameBytes}, " +
+                    Logger.Info($"recipient={seer.PlayerId}, inputNameUtf8Bytes={inputNameBytes}, " +
                         $"setHeadingUtf8Bytes={(actor == carrier ? 0 : Encoding.UTF8.GetByteCount(heading))}, " +
                         $"actorRestoreUtf8Bytes={actorRestoreBytes}, carrierRestoreUtf8Bytes={carrierRestoreBytes}, " +
                         $"textUtf8Bytes={textBytes}, paginatedBodyUtf8Bytes={Encoding.UTF8.GetByteCount(body)}, " +
@@ -127,7 +130,7 @@ internal static class OfficialChat
                     // Materialize all pages before sending so a later invalid token cannot leave
                     // a partially delivered message. Padding is repeated, outside the rich text.
                     var pages = Paginate(body, available).ToArray();
-                    Logger.Test($"recipient={seer.PlayerId}, pageCount={pages.Length}", "OfficialChat.Pagination");
+                    Logger.Info($"recipient={seer.PlayerId}, pageCount={pages.Length}", "OfficialChat.Pagination");
                     int pageIndex = 0;
                     foreach (string page in pages)
                     {
@@ -135,7 +138,7 @@ internal static class OfficialChat
                         using var packet = BuildTransaction(actor, carrier, target, heading, padding + page + PageFooter, actorRestore, carrierRestore);
                         if (packet.Writer.Length > HardPacketBytes)
                             throw new InvalidOperationException("The complete chat transaction exceeds 1200 bytes.");
-                        Logger.Test($"recipient={seer.PlayerId}, page={++pageIndex}/{pages.Length}, " +
+                        Logger.Info($"recipient={seer.PlayerId}, page={++pageIndex}/{pages.Length}, " +
                             $"setCarrierNameUtf8Bytes={Encoding.UTF8.GetByteCount(padding + page + PageFooter)}, " +
                             $"packetBytes={packet.Writer.Length}", "OfficialChat.Pagination");
                         if (send == null) OfficialNetworkSend.Send(client, packet.Writer);
@@ -145,8 +148,9 @@ internal static class OfficialChat
                 }
                 catch (Exception error)
                 {
-                    // Never include private message text or player names in transport diagnostics.
-                    Logger.Error($"Chat transaction aborted for recipient {seer.PlayerId}: {error.GetType().Name}", "OfficialChat");
+                    Logger.Error($"Chat transaction aborted: sender={senderName} ({speakerId}), " +
+                        $"recipient={seer.Data?.PlayerName} ({seer.PlayerId}), title={title}, message={text}\n{error}",
+                        "OfficialChat", escapeCRLF: false);
                 }
             }
         }
@@ -162,16 +166,18 @@ internal static class OfficialChat
         bool textHasNamePadding = false, bool allowDeadSpeaker = false)
     {
         if (actor?.Data == null || !DestroyableSingleton<HudManager>.Instance) return (title ?? string.Empty, []);
-        title ??= actor.Data.PlayerName;
+        string speakerName = actor.Data.PlayerName;
+        title ??= speakerName;
         text ??= string.Empty;
-        var (heading, pages) = LocalPages(text, title, includeTitlePadding: !textHasNamePadding);
-        string padding = textHasNamePadding ? string.Empty : TitlePadding(heading);
         var previousActor = DisplayActor;
         string previousTitle = DisplayTitle;
-        bool showDeadSpeaker = allowDeadSpeaker && actor.Data.IsDead && PlayerControl.LocalPlayer?.Data != null
-            && !PlayerControl.LocalPlayer.Data.IsDead;
+        bool showDeadSpeaker = false;
         try
         {
+            var (heading, pages) = LocalPages(text, title, includeTitlePadding: !textHasNamePadding);
+            string padding = textHasNamePadding ? string.Empty : TitlePadding(heading);
+            showDeadSpeaker = allowDeadSpeaker && actor.Data.IsDead && PlayerControl.LocalPlayer?.Data != null
+                && !PlayerControl.LocalPlayer.Data.IsDead;
             // Override only the bubble's name at the native presentation boundary. Player data,
             // cosmetics, notifications and name caches continue to see the real player name.
             DisplayActor = actor;
@@ -179,6 +185,13 @@ internal static class OfficialChat
             if (showDeadSpeaker) actor.Data.IsDead = false;
             foreach (string page in pages)
                 DestroyableSingleton<HudManager>.Instance.Chat.AddChat(actor, padding + page + PageFooter, censor);
+            return (heading, pages);
+        }
+        catch (Exception error)
+        {
+            Logger.Error($"Local chat display failed: speaker={speakerName} ({actor.PlayerId}), " +
+                $"title={title}, message={text}\n{error}", "OfficialChat", escapeCRLF: false);
+            throw;
         }
         finally
         {
@@ -186,7 +199,6 @@ internal static class OfficialChat
             DisplayActor = previousActor;
             DisplayTitle = previousTitle;
         }
-        return (heading, pages);
     }
 
     private static (string Heading, string[] Pages) LocalPages(string text, string title, bool includeTitlePadding = true)

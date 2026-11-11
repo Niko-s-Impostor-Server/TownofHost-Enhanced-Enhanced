@@ -231,14 +231,17 @@ public static class AntiBlackout
         for (int i = 0; i < count; i++) bufferedPlayers.Add(reader.ReadByte());
     }
 
-    public static void AntiBlackRpcVotingComplete(this MeetingHud __instance, MeetingHud.VoterState[] states, NetworkedPlayerInfo exiled, bool tie)
+    public static void RpcVotingCompleteByRecipient(this MeetingHud __instance, MeetingHud.VoterState[] states, NetworkedPlayerInfo exiled, bool tie,
+        bool wasOverruled = false, ushort overruleNonce = 0, byte? preserveJudgeUseFor = null)
     {
+        wasOverruled &= exiled != null;
+        if (!wasOverruled) overruleNonce = 0;
         if (AmongUsClient.Instance.AmClient)
         {
-            __instance.VotingComplete(states, exiled, tie, false, 0);
+            __instance.VotingComplete(states, exiled, tie, wasOverruled, overruleNonce);
         }
 
-        using var sender = CustomRpcSender.Create("AntiBlack RpcVotingComplete", SendOption.Reliable);
+        using var sender = CustomRpcSender.Create("RpcVotingComplete by recipient", SendOption.Reliable);
         foreach (var pc in Main.AllPlayerControls)
         {
             if (pc.IsHost()) continue;
@@ -255,8 +258,12 @@ public static class AntiBlackout
                     }
                     sender.Write(exiled != null ? exiled.PlayerId : byte.MaxValue);
                     sender.Write(tie);
-                    sender.Write(false); // wasOverruled
-                    sender.Write((ushort)0); // overruleNonce
+                    // A vanilla Judge consumes its only native use when it
+                    // receives its own overrule. The host still enforces the
+                    // configured count and sends the actual exile here.
+                    bool showOverrule = wasOverruled && pc.PlayerId != preserveJudgeUseFor;
+                    sender.Write(showOverrule);
+                    sender.Write(showOverrule ? overruleNonce : (ushort)0);
                     sender.EndRpc();
                 }
             }
@@ -273,6 +280,7 @@ public static class AntiBlackout
                     }
                     sender.Write(byte.MaxValue);
                     sender.Write(true);
+                    // A hidden exile must stay a plain tie: native VotingComplete dereferences it for an overrule.
                     sender.Write(false);
                     sender.Write((ushort)0);
                     sender.EndRpc();
@@ -406,8 +414,9 @@ public static class AntiBlackout
                 writer.WritePacked(seer.GetClientId());
                 if (restoration.Cooldown is float cooldown)
                 {
-                    options.SetFloat(FloatOptionNames.KillCooldown, cooldown * 2f);
-                    WriteOptions(factory.ToBytes(options, AprilFoolsMode.IsAprilFoolsModeToggledOn));
+                    var temporaryOptions = factory.FromBytes(normalOptions);
+                    temporaryOptions.SetFloat(FloatOptionNames.KillCooldown, cooldown * 2f);
+                    WriteOptions(factory.ToBytes(temporaryOptions, AprilFoolsMode.IsAprilFoolsModeToggledOn));
                 }
                 if (restoration.RestoreSelf)
                 {
