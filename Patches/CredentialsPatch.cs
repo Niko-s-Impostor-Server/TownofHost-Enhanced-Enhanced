@@ -22,6 +22,7 @@ class PingTrackerUpdatePatch
     private static Vector2 preferredSize;
     private static float measuredFontSize;
     private static string renderedStatus;
+    private static bool renderedInMeeting;
     private static TextMeshPro styledText;
     private const float LayoutProbeInterval = 0.1f;
     private static bool layoutCached;
@@ -31,7 +32,7 @@ class PingTrackerUpdatePatch
     private static Camera layoutCamera;
     private static PlayerControl layoutOwner;
     private static int layoutOwnerId, layoutScreenWidth, layoutScreenHeight;
-    private static MeetingHud layoutMeeting;
+    private static bool layoutInMeeting;
     private static Rect layoutScreen, layoutViewport;
     private static string layoutValue;
     private static float layoutFontSize;
@@ -53,7 +54,8 @@ class PingTrackerUpdatePatch
             fpsSampleTime += Time.unscaledDeltaTime;
             fpsSampleFrames++;
             float now = Time.realtimeSinceStartup;
-            if (now < nextStatusUpdate && sb.Length > 0)
+            bool inMeeting = MeetingHud.Instance;
+            if (now < nextStatusUpdate && sb.Length > 0 && renderedInMeeting == inMeeting)
             {
                 ApplyStatusText(__instance);
                 return false;
@@ -66,7 +68,7 @@ class PingTrackerUpdatePatch
 
             sb.Clear();
 
-            sb.Append(Main.credentialsText);
+            sb.Append(inMeeting ? VersionShowerStartPatch.MeetingCredentialsText : Main.credentialsText);
 
             var ping = AmongUsClient.Instance.Ping;
             string pingcolor = "#ff4500";
@@ -74,7 +76,8 @@ class PingTrackerUpdatePatch
             else if (ping < 100) pingcolor = "#7bc690";
             else if (ping < 200) pingcolor = "#f3920e";
             else if (ping < 400) pingcolor = "#ff146e";
-            sb.Append($"\r\n<color={pingcolor}>Ping: {ping} ms</color>\r\n<color=#a54aff>Server: <color=#f34c50>{Utils.GetRegionName()}</color>");
+            sb.Append($"\r\n<color={pingcolor}>Ping: {ping} ms</color>");
+            if (!inMeeting) sb.Append($"\r\n<color=#a54aff>Server: <color=#f34c50>{Utils.GetRegionName()}</color>");
 
             if (!GameStates.IsModHost)
             {
@@ -107,6 +110,7 @@ class PingTrackerUpdatePatch
             }
 
             renderedStatus = sb.ToString();
+            renderedInMeeting = inMeeting;
             ApplyStatusText(__instance, refreshStyle: true);
 
             return false;
@@ -138,29 +142,40 @@ class PingTrackerUpdatePatch
     }
     private static void PositionStatusText(PingTracker tracker)
     {
-        if (!tracker || !tracker.text || !HudManager.InstanceExists) return;
-        var hud = HudManager.Instance;
+        var text = tracker.text;
+        var renderer = text.renderer;
+        if (!renderer) return;
+        var hud = HudManager.InstanceExists ? HudManager.Instance : null;
+        var chat = hud ? hud.Chat : null;
+        var gameMenu = hud ? hud.GameMenu : null;
+        bool visible = !(chat && chat.IsOpenOrOpening) && !(gameMenu && gameMenu.IsOpen);
+        if (renderer.enabled != visible)
+        {
+            renderer.enabled = visible;
+            layoutCached = false;
+        }
+        if (!visible || !hud) return;
+
         var camera = hud.UICamera;
         if (!camera) camera = tracker.aspectPosition ? tracker.aspectPosition.parentCam : Camera.main;
         if (!camera) return;
         var screen = Screen.safeArea;
         var viewport = camera.pixelRect;
-        var text = tracker.text;
         var value = text.text;
         float fontSize = text.fontSize;
         var owner = PlayerControl.LocalPlayer;
         int ownerId = owner ? owner.OwnerId : -1;
-        var meeting = MeetingHud.Instance;
+        bool inMeeting = renderedInMeeting;
         int screenWidth = Screen.width, screenHeight = Screen.height;
         bool dirty = !layoutCached || layoutTracker != tracker || layoutHud != hud || layoutCamera != camera ||
-            layoutOwner != owner || layoutOwnerId != ownerId || layoutMeeting != meeting ||
+            layoutOwner != owner || layoutOwnerId != ownerId || layoutInMeeting != inMeeting ||
             layoutScreenWidth != screenWidth || layoutScreenHeight != screenHeight ||
             layoutScreen != screen || layoutViewport != viewport || layoutValue != value || layoutFontSize != fontSize;
         float now = Time.realtimeSinceStartup;
         if (!dirty && now < nextLayoutProbe) return;
 
         // Resolution/safe-area/text/owner changes bypass the timer. Stable UI
-        // probes dynamic toolbar/task/meeting bounds at most ten times per second.
+        // probes dynamic toolbar/task bounds at most ten times per second.
         layoutCached = true;
         nextLayoutProbe = now + LayoutProbeInterval;
         layoutTracker = tracker;
@@ -168,7 +183,7 @@ class PingTrackerUpdatePatch
         layoutCamera = camera;
         layoutOwner = owner;
         layoutOwnerId = ownerId;
-        layoutMeeting = meeting;
+        layoutInMeeting = inMeeting;
         layoutScreenWidth = screenWidth;
         layoutScreenHeight = screenHeight;
         layoutScreen = screen;
@@ -179,54 +194,7 @@ class PingTrackerUpdatePatch
             Mathf.Min(screen.xMax, viewport.xMax), Mathf.Min(screen.yMax, viewport.yMax));
         if (safe.Width <= 0 || safe.Height <= 0) return;
 
-        layoutObstacles.Clear();
-        AddStatusObstacles(hud.SettingsButton, camera);
-        if (hud.MatchInfoButton) AddStatusObstacles(hud.MatchInfoButton.gameObject, camera);
-        if (hud.MapButton) AddStatusObstacles(hud.MapButton.gameObject, camera);
-        if (hud.Chat && hud.Chat.chatButton) AddStatusObstacles(hud.Chat.chatButton.gameObject, camera);
-        if (hud.Chat && hud.Chat.chatScreen && hud.Chat.chatScreen.activeInHierarchy && hud.Chat.backgroundImage)
-            AddStatusObstacles(hud.Chat.backgroundImage.gameObject, camera);
-        if (hud.GameMenu && hud.GameMenu.IsOpen && hud.GameMenu.Background)
-            AddStatusObstacles(hud.GameMenu.Background.gameObject, camera);
-        var actionButtons = hud.transform.Find("Buttons/BottomRight");
-        if (actionButtons) AddStatusObstacles(actionButtons.gameObject, camera);
-        AddStatusObstacles(hud.TaskStuff, camera);
-        if (hud.TaskPanel) AddStatusObstacles(hud.TaskPanel.gameObject, camera);
-        if (LobbySettingsPreview.Text) AddStatusObstacles(LobbySettingsPreview.Text.gameObject, camera);
-        if (LobbyInfoPane.InstanceExists && LobbyInfoPane.Instance.InfoPaneBackground)
-            AddStatusObstacles(LobbyInfoPane.Instance.InfoPaneBackground.gameObject, camera);
-        if (ModManager.InstanceExists && ModManager.Instance.ModStamp)
-            AddStatusObstacles(ModManager.Instance.ModStamp.gameObject, camera);
-        if (meeting)
-        {
-            if (meeting.TitleText) AddStatusObstacles(meeting.TitleText.gameObject, camera);
-            if (meeting.TimerText) AddStatusObstacles(meeting.TimerText.gameObject, camera);
-            if (meeting.SkipVoteButton) AddStatusObstacles(meeting.SkipVoteButton.gameObject, camera);
-            if (meeting.ProceedButton) AddStatusObstacles(meeting.ProceedButton.gameObject, camera);
-            if (meeting.MeetingAbilityButton) AddStatusObstacles(meeting.MeetingAbilityButton.gameObject, camera);
-            foreach (var area in meeting.playerStates)
-                if (area) AddStatusObstacles(area.gameObject, camera);
-            var phone = meeting.transform.Find("MeetingContents/PhoneUI");
-            if (phone)
-            {
-                var battery = phone.Find("UI_Icon_Battery");
-                if (battery) AddStatusObstacles(battery.gameObject, camera);
-                var wifi = phone.Find("UI_Icon_Wifi");
-                if (wifi) AddStatusObstacles(wifi.gameObject, camera);
-                var button = phone.Find("UI_Phone_Button");
-                if (button) AddStatusObstacles(button.gameObject, camera);
-            }
-        }
-
-        bool moved = layoutObstacles.Count != previousLayoutObstacles.Count;
-        if (!moved)
-        {
-            for (int index = 0; index < layoutObstacles.Count; index++)
-                if (layoutObstacles[index] != previousLayoutObstacles[index]) { moved = true; break; }
-        }
-        if (!dirty && !moved) return;
-        previousLayoutObstacles.Clear();
-        previousLayoutObstacles.AddRange(layoutObstacles);
+        if (!inMeeting && !UpdateStatusObstacles(hud, camera) && !dirty) return;
 
         bool newText = measuredText != text || measuredValue != text.text || measuredFontSize != text.fontSize;
         if (newText)
@@ -241,43 +209,83 @@ class PingTrackerUpdatePatch
         text.enableWordWrapping = false;
         text.rectTransform.sizeDelta = preferred;
         if (changedLayout) text.ForceMeshUpdate();
-        var renderer = text.GetComponent<Renderer>();
-        if (!renderer) return;
-        renderer.enabled = true;
         var bounds = StatusScreenBounds(renderer.bounds, camera);
-        float lineHeight = bounds.Height / Mathf.Max(1, text.textInfo.lineCount);
-        float gap = Mathf.Max(2f, lineHeight * 0.35f);
-        bool placed = HudStatusLayout.TryPlace(safe, bounds.Width, bounds.Height, layoutObstacles, gap, out var position);
-        if (!placed)
+        Vector2 anchor;
+        if (inMeeting)
         {
-            // A narrow viewport can need wrapping rather than moving over task/vote UI.
-            // Keep the font size; progressively reduce the block width to find a free column.
-            for (int step = 1; step <= 8; step++)
-            {
-                text.enableWordWrapping = true;
-                float width = preferred.x * (1f - step / 10f);
-                var wrapped = text.GetPreferredValues(text.text, width, float.PositiveInfinity);
-                text.rectTransform.sizeDelta = new Vector2(width, wrapped.y);
-                text.ForceMeshUpdate();
-                bounds = StatusScreenBounds(renderer.bounds, camera);
-                placed = HudStatusLayout.TryPlace(safe, bounds.Width, bounds.Height, layoutObstacles, gap, out position);
-                if (placed) break;
-            }
+            var button = hud.MatchInfoButton;
+            if (!button) return;
+            // Use the normal sprite bounds so hover and selection keep the same anchor.
+            var buttonRenderer = button.inactiveSprites ? button.inactiveSprites.GetComponentInChildren<SpriteRenderer>(true) : null;
+            var buttonBounds = buttonRenderer ? buttonRenderer.bounds : new Bounds(button.transform.position, new Vector3(0.6f, 0.6f, 0f));
+            var buttonScreen = StatusScreenBounds(buttonBounds, camera);
+            // The frame extends beyond the icon. Keep the text clear of its left edge.
+            var frame = button.transform.Find("Background");
+            var frameRenderer = frame ? frame.GetComponent<Renderer>() : null;
+            float left = frameRenderer ? StatusScreenBounds(frameRenderer.bounds, camera).Left : buttonScreen.Left;
+            anchor = new Vector2(left - Mathf.Max(2f, buttonScreen.Height * 0.15f), buttonScreen.Top);
         }
-        if (!placed)
+        else
         {
-            // A busy screen may have no free spot. Keep the full-size text visible
-            // at its current position and allow unavoidable overlap.
-            text.enableWordWrapping = false;
-            text.rectTransform.sizeDelta = preferred;
-            text.ForceMeshUpdate();
-            return;
+            float lineHeight = bounds.Height / Mathf.Max(1, text.textInfo.lineCount);
+            float gap = Mathf.Max(2f, lineHeight * 0.35f);
+            bool placed = HudStatusLayout.TryPlace(safe, bounds.Width, bounds.Height, layoutObstacles, gap, out var position);
+            if (!placed)
+            {
+                // Keep the font size; progressively reduce the block width to find a free column.
+                for (int step = 1; step <= 8; step++)
+                {
+                    text.enableWordWrapping = true;
+                    float width = preferred.x * (1f - step / 10f);
+                    var wrapped = text.GetPreferredValues(text.text, width, float.PositiveInfinity);
+                    text.rectTransform.sizeDelta = new Vector2(width, wrapped.y);
+                    text.ForceMeshUpdate();
+                    bounds = StatusScreenBounds(renderer.bounds, camera);
+                    placed = HudStatusLayout.TryPlace(safe, bounds.Width, bounds.Height, layoutObstacles, gap, out position);
+                    if (placed) break;
+                }
+            }
+            if (!placed)
+            {
+                // Keep the full-size text visible at its current position on a busy screen.
+                text.enableWordWrapping = false;
+                text.rectTransform.sizeDelta = preferred;
+                text.ForceMeshUpdate();
+                return;
+            }
+            anchor = new Vector2(position.Right, position.Top);
         }
         if (tracker.aspectPosition) tracker.aspectPosition.enabled = false;
-        // Use the rendered glyph bounds, rather than assuming TMP pivot/parent scaling.
+        // Use the rendered glyph bounds to account for the TMP pivot and parent scale.
         var origin = camera.WorldToScreenPoint(text.transform.position);
         text.transform.position = camera.ScreenToWorldPoint(new Vector3(
-            origin.x + position.Right - bounds.Right, origin.y + position.Top - bounds.Top, origin.z));
+            origin.x + anchor.x - bounds.Right, origin.y + anchor.y - bounds.Top, origin.z));
+    }
+
+    private static bool UpdateStatusObstacles(HudManager hud, Camera camera)
+    {
+        layoutObstacles.Clear();
+        AddStatusObstacles(hud.SettingsButton, camera);
+        if (hud.MatchInfoButton) AddStatusObstacles(hud.MatchInfoButton.gameObject, camera);
+        if (hud.MapButton) AddStatusObstacles(hud.MapButton.gameObject, camera);
+        if (hud.Chat && hud.Chat.chatButton) AddStatusObstacles(hud.Chat.chatButton.gameObject, camera);
+        var actionButtons = hud.transform.Find("Buttons/BottomRight");
+        if (actionButtons) AddStatusObstacles(actionButtons.gameObject, camera);
+        AddStatusObstacles(hud.TaskStuff, camera);
+        if (hud.TaskPanel) AddStatusObstacles(hud.TaskPanel.gameObject, camera);
+        if (LobbySettingsPreview.Text) AddStatusObstacles(LobbySettingsPreview.Text.gameObject, camera);
+        if (LobbyInfoPane.InstanceExists && LobbyInfoPane.Instance.InfoPaneBackground)
+            AddStatusObstacles(LobbyInfoPane.Instance.InfoPaneBackground.gameObject, camera);
+        if (ModManager.InstanceExists && ModManager.Instance.ModStamp)
+            AddStatusObstacles(ModManager.Instance.ModStamp.gameObject, camera);
+
+        bool moved = layoutObstacles.Count != previousLayoutObstacles.Count;
+        for (int index = 0; !moved && index < layoutObstacles.Count; index++)
+            moved = layoutObstacles[index] != previousLayoutObstacles[index];
+        if (!moved) return false;
+        previousLayoutObstacles.Clear();
+        previousLayoutObstacles.AddRange(layoutObstacles);
+        return true;
     }
 
     private static void AddStatusObstacles(GameObject gameObject, Camera camera)
@@ -294,8 +302,7 @@ class PingTrackerUpdatePatch
                 Mathf.Max(combined.Right, bounds.Right), Mathf.Max(combined.Top, bounds.Top)) : bounds;
             found = true;
         }
-        // Treat each control/panel as one obstacle, rather than packing around
-        // hundreds of individual label/icon meshes during a full meeting.
+        // Combine each control or panel into a single obstacle.
         if (found) layoutObstacles.Add(combined);
     }
 
@@ -329,12 +336,13 @@ class PingTrackerUpdatePatch
 [HarmonyPatch(typeof(VersionShower), nameof(VersionShower.Start))]
 class VersionShowerStartPatch
 {
+    internal static string MeetingCredentialsText { get; private set; }
     static TextMeshPro SpecialEventText;
     private static TextMeshPro credentials;
     private static Sprite backgroundSprite;
     private static void Postfix(VersionShower __instance)
     {
-        Main.credentialsText = $"<size=70%><size=85%><color={Main.ModColor}>{Main.ModName}</color> v{Main.PluginDisplayVersion}</size>";
+        var versionText = $"<size=70%><size=85%><color={Main.ModColor}>{Main.ModName}</color> v{Main.PluginDisplayVersion}</size>";
         var buildtype = "";
 
 #if RELEASE
@@ -342,20 +350,20 @@ class VersionShowerStartPatch
 #endif
 
 #if CANARY
-        Main.credentialsText += $"\r\n<color=#ffc0cb>Canary:</color><color=#f34c50>{ThisAssembly.Git.Branch}</color>(<color=#ffc0cb>{ThisAssembly.Git.Commit}</color>)";
+        versionText += $"\r\n<color=#ffc0cb>Canary:</color><color=#f34c50>{ThisAssembly.Git.Branch}</color>(<color=#ffc0cb>{ThisAssembly.Git.Commit}</color>)";
         buildtype = "Canary";
 #endif
 
 #if DEBUG
-        Main.credentialsText += $"\r\n<color=#ffc0cb>Debug:</color><color=#f34c50>{ThisAssembly.Git.Branch}</color>(<color=#ffc0cb>{ThisAssembly.Git.Commit}</color>)";
+        versionText += $"\r\n<color=#ffc0cb>Debug:</color><color=#f34c50>{ThisAssembly.Git.Branch}</color>(<color=#ffc0cb>{ThisAssembly.Git.Commit}</color>)";
         buildtype = "Debug";
 #endif
-        Main.credentialsText += "\r\n<color=#a54aff>By <color=#f34c50>AmongLLM</color></color>";
-        Main.credentialsText += "</size>";
+        MeetingCredentialsText = $"{versionText}</size>";
+        Main.credentialsText = $"{versionText}\r\n<color=#a54aff>By <color=#f34c50>AmongLLM</color></color></size>";
         Logger.Info($"v{Main.PluginVersion}, {buildtype}:{ThisAssembly.Git.Branch}:({ThisAssembly.Git.Commit}), link [{ThisAssembly.Git.RepositoryUrl}], dirty: [{ThisAssembly.Git.IsDirty}]", "TOHE version");
 
         if (Main.IsAprilFools)
-            Main.credentialsText = $"<color=#00bfff>Town Of Host</color> v11.45.14";
+            MeetingCredentialsText = Main.credentialsText = "<color=#00bfff>Town Of Host</color> v11.45.14";
 
         if (credentials)
         {

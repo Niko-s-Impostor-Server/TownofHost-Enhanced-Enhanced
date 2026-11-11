@@ -1,50 +1,15 @@
+using AmongUs.Data;
 using TMPro;
 using UnityEngine;
 
 namespace TOHE.Patches;
 
 // Thanks TOU-R: https://github.com/eDonnes124/Town-Of-Us-R/blob/master/source/Patches/ShowHostMeetingPatch.cs
+// Who skid this code? Original implementation really sucks
 
 [HarmonyPatch]
 public class ShowHostMeetingPatch
 {
-    private static PlayerControl HostControl = null;
-    private static string HostName = string.Empty;
-    private static int HostColor = int.MaxValue;
-
-    [HarmonyPatch(typeof(PlayerControl), nameof(PlayerControl.OnDestroy))]
-    [HarmonyPostfix]
-    public static void OnDestroy_Postfix()
-    {
-        try
-        {
-            if (GameStates.IsInGame && HostControl == null)
-            {
-                var client = AmongUsClient.Instance;
-                var host = client == null ? null : client.GetHost();
-                var hostCharacter = host?.Character;
-                var hostData = hostCharacter == null ? null : hostCharacter.Data;
-                if (hostData == null || !Main.PlayerStates.TryGetValue(hostData.PlayerId, out var hostState) || hostState.NormalOutfit == null) return;
-
-                HostControl = hostCharacter;
-                HostName = hostState.NormalOutfit.PlayerName;
-                HostColor = hostState.NormalOutfit.ColorId;
-            }
-        }
-        catch (System.Exception error)
-        {
-            Logger.Exception(error, "ShowHostMeetingPatch.OnDestroy_Postfix");
-        }
-    }
-
-    [HarmonyPatch(typeof(IntroCutscene), nameof(IntroCutscene.ShowRole))]
-    [HarmonyPostfix]
-    public static void ShowRole_Postfix()
-    {
-        HostControl = AmongUsClient.Instance.GetHost().Character;
-        HostName = AmongUsClient.Instance.GetHost().Character.CurrentOutfit.PlayerName;
-        HostColor = AmongUsClient.Instance.GetHost().Character.CurrentOutfit.ColorId;
-    }
 
     [HarmonyPatch(typeof(MeetingHud), nameof(MeetingHud.Update))]
     [HarmonyPostfix]
@@ -53,8 +18,13 @@ public class ShowHostMeetingPatch
         // Not display in local game, because it will be impossible to complete the meeting
         if (!GameStates.IsOnlineGame) return;
 
-        PlayerMaterial.SetColors(HostColor, __instance.HostIcon);
-        __instance.ProceedButton.gameObject.GetComponentInChildren<TextMeshPro>().text = string.Format(Translator.GetString("HostIconInMeeting"), HostName);
+        NetworkedPlayerInfo host = GameData.Instance.GetHost();
+
+        if (host == null) return;
+
+        PlayerMaterial.SetColors(host.DefaultOutfit.ColorId, __instance.HostIcon);
+        var hostName = AmongUsClient.Instance.AmHost ? DataManager.Player.Customization.Name : (Main.AllClientRealNames[host.ClientId] ?? "ERROR");
+        __instance.ProceedButton.gameObject.GetComponentInChildren<TextMeshPro>().text = string.Format(Translator.GetString("HostIconInMeeting"), hostName);
     }
 
     [HarmonyPatch(typeof(MeetingHud), nameof(MeetingHud.Start))]
