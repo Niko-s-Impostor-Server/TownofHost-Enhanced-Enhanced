@@ -31,6 +31,7 @@ public static class CustomRolesHelper
             CustomRoles.NoisemakerTOHE => CustomRoles.Noisemaker,
             CustomRoles.TrackerTOHE => CustomRoles.Tracker,
             CustomRoles.DetectiveTOHE => CustomRoles.DetectiveVanilla,
+            CustomRoles.JudgeTOHE => CustomRoles.JudgeVanilla,
             CustomRoles.ViperTOHE => CustomRoles.Viper,
             _ => role.IsImpostor() ? CustomRoles.Impostor : CustomRoles.Crewmate,
         };
@@ -394,6 +395,7 @@ public static class CustomRolesHelper
             CustomRoles.Phantom => RoleTypes.Phantom,
             CustomRoles.Tracker => RoleTypes.Tracker,
             CustomRoles.DetectiveVanilla => RoleTypes.Detective,
+            CustomRoles.JudgeVanilla => RoleTypes.Judge,
             CustomRoles.Viper => RoleTypes.Viper,
             _ => role.IsImpostor() ? RoleTypes.Impostor : RoleTypes.Crewmate,
         };
@@ -434,7 +436,7 @@ public static class CustomRolesHelper
             CustomRoles.Shapeshifter or
             CustomRoles.Noisemaker or
             CustomRoles.Phantom or
-            CustomRoles.Tracker or CustomRoles.DetectiveVanilla or CustomRoles.Viper;
+            CustomRoles.Tracker or CustomRoles.DetectiveVanilla or CustomRoles.JudgeVanilla or CustomRoles.Viper;
     }
     public static Custom_Team GetCustomRoleTeam(this CustomRoles role)
     {
@@ -467,6 +469,7 @@ public static class CustomRolesHelper
                 CustomRoles.Phantom => roleOpt.GetNumPerGame(RoleTypes.Phantom),
                 CustomRoles.Tracker => roleOpt.GetNumPerGame(RoleTypes.Tracker),
                 CustomRoles.DetectiveVanilla => roleOpt.GetNumPerGame(RoleTypes.Detective),
+                CustomRoles.JudgeVanilla => roleOpt.GetNumPerGame(RoleTypes.Judge),
                 CustomRoles.Viper => roleOpt.GetNumPerGame(RoleTypes.Viper),
                 _ => 0
             };
@@ -494,6 +497,7 @@ public static class CustomRolesHelper
                 CustomRoles.Phantom => roleOpt.GetChancePerGame(RoleTypes.Phantom),
                 CustomRoles.Tracker => roleOpt.GetChancePerGame(RoleTypes.Tracker),
                 CustomRoles.DetectiveVanilla => roleOpt.GetChancePerGame(RoleTypes.Detective),
+                CustomRoles.JudgeVanilla => roleOpt.GetChancePerGame(RoleTypes.Judge),
                 CustomRoles.Viper => roleOpt.GetChancePerGame(RoleTypes.Viper),
                 _ => 0
             } / 100f;

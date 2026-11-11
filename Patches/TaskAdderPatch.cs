@@ -38,10 +38,7 @@ public static class ShowFolderPatch
     {
         if (!GameStates.IsFreePlay || !FreeplayInitialization.IsReady) return;
 
-        // New native abilities need their own mod state/HUD integration. Do not
-        // expose a button that changes the native role while retaining a different
-        // custom role (the existing Judge is an unrelated mod role; native
-        // Detective uses the dedicated DetectiveTOHE wrapper).
+        // Only expose native roles that have a matching mod role wrapper.
         for (int index = taskFolder.RoleChildren.Count - 1; index >= 0; index--)
             if (!AddTaskButtonPatch.TryMapNativeRole(taskFolder.RoleChildren[index].Role, out _))
                 taskFolder.RoleChildren.RemoveAt(index);
@@ -189,6 +186,7 @@ class AddTaskButtonPatch
             RoleTypes.Phantom => CustomRoles.Phantom,
             RoleTypes.Tracker => CustomRoles.Tracker,
             RoleTypes.Detective => CustomRoles.DetectiveTOHE,
+            RoleTypes.Judge => CustomRoles.JudgeTOHE,
             RoleTypes.Viper => CustomRoles.ViperTOHE,
             _ => CustomRoles.NotAssigned
         };
@@ -221,7 +219,8 @@ class AddTaskButtonPatch
         }
         if (__instance.Role != null)
         {
-            if (!FreeplayInitialization.IsReady || !TryMapNativeRole(__instance.Role.Role, out _)) return false;
+            if (!FreeplayInitialization.IsReady || !TryMapNativeRole(__instance.Role.Role, out var mappedRole)) return false;
+            if (mappedRole == CustomRoles.JudgeTOHE) FreeplayInitialization.PrepareJudgeOptions();
             __state = true;
         }
         return true;

@@ -907,6 +907,8 @@ public enum CustomRoles
     SpiritGuide = 484,
     SpiritGuideTOHE = 485,
     Socialite = 486,
+    JudgeVanilla = 487,
+    JudgeTOHE = 488,
 
     // Sub-role after 500
     NotAssigned = 500,

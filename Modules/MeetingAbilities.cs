@@ -1,7 +1,9 @@
 using AmongUs.GameOptions;
 using Hazel;
+using Il2CppInterop.Runtime.InteropTypes.Arrays;
 using InnerNet;
 using TOHE.Roles.Core;
+using TOHE.Roles.Vanilla;
 using UnityEngine;
 
 namespace TOHE;
@@ -27,6 +29,7 @@ internal static class MeetingAbilities
     private static readonly MeetingAbilityReplayWindow replay = new();
     private static LocalSlot local;
     private static bool changingBase;
+    private static ShipStatus commsPausedOn;
 
     private sealed class HostSlot(PlayerControl actor, IMeetingTargetAbility ability)
     {
@@ -118,6 +121,19 @@ internal static class MeetingAbilities
             foreach (var player in Main.AllAlivePlayerControls)
                 if (Alive(player) && CompatiblePeer(player) && player.GetRoleClass() is IMeetingTargetAbility ability)
                     hostSlots[player.PlayerId] = new HostSlot(player, ability);
+
+            var ship = ShipStatus.Instance;
+            if (ship && Utils.IsActive(SystemTypes.Comms) &&
+                (hostSlots.Values.Any(slot => slot.Ability.CanUseMeetingAbility(slot.Actor)) ||
+                 Main.AllAlivePlayerControls.Any(player => Alive(player) && player.GetRoleClass() is JudgeTOHE { AbilityLimit: >= 1 })))
+            {
+                // Stock clients disable the Judge button while they have a comms
+                // task. Pause comms in the native ship state for the meeting.
+                var comms = ship.Systems[SystemTypes.Comms];
+                if (comms.TryCast<HqHudSystemType>() != null) UpdateComms(comms, 17);
+                UpdateComms(comms, 16);
+                commsPausedOn = ship;
+            }
         }
         if (local == null) return;
         if (AmongUsClient.Instance.AmHost) Register(actor);
@@ -315,6 +331,11 @@ internal static class MeetingAbilities
     internal static void EndMeeting(MeetingHud instance)
     {
         if (instance == null || meeting == null || instance.Pointer != meeting.Pointer) return;
+        if (commsPausedOn && commsPausedOn == ShipStatus.Instance && AmongUsClient.Instance &&
+            AmongUsClient.Instance.AmHost && AmongUsClient.Instance.GameId == gameId && !GameStates.IsEnded)
+            UpdateComms(commsPausedOn.Systems[SystemTypes.Comms], 128);
+        commsPausedOn = null;
+
         if (local != null)
         {
             local.Ending = true;
@@ -329,5 +350,14 @@ internal static class MeetingAbilities
         hostSlots.Clear();
         replay.Clear();
         meeting = null;
+    }
+
+    private static void UpdateComms(ISystemType comms, byte amount)
+    {
+        // Update the native system directly so a meeting transition is not
+        // treated as a repair or sabotage performed by the host player.
+        var reader = MessageReader.Get(new Il2CppStructArray<byte>(new[] { amount }));
+        try { comms.UpdateSystem(PlayerControl.LocalPlayer, reader); }
+        finally { reader.Recycle(); }
     }
 }

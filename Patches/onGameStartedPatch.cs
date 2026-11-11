@@ -9,6 +9,7 @@ using TOHE.Modules.ChatManager;
 using TOHE.Patches;
 using TOHE.Roles.Core;
 using TOHE.Roles.Core.AssignManager;
+using TOHE.Roles.Vanilla;
 using UnityEngine;
 using static TOHE.Translator;
 
@@ -257,6 +258,7 @@ internal class StartGameHostPatch
             { RoleTypes.Phantom, RoleAssign.AddPhantomNum },
             { RoleTypes.Tracker, RoleAssign.AddTrackerNum },
             { RoleTypes.Detective, RoleAssign.AddDetectiveNum },
+            { RoleTypes.Judge, RoleAssign.AddJudgeNum },
             { RoleTypes.Viper, RoleAssign.AddViperNum }
         };
     }
@@ -376,6 +378,7 @@ internal class StartGameHostPatch
         {
             if (pc == null || pc.Data == null || pc.Data.Disconnected) continue;
             var opt = Main.RealOptionsData.Restore(RoundGameOptions.ForPlayer(pc.PlayerId));
+            opt.SetFloat(FloatOptionNames.JudgeTaskRequirementPercentage, JudgeTOHE.TaskRequirementPercentage);
             opt.SetFloat(FloatOptionNames.KillCooldown, 0f);
             opt.SetFloat(FloatOptionNames.ShapeshifterCooldown, 0f);
             opt.SetFloat(FloatOptionNames.GuardianAngelCooldown, 0f);
@@ -475,6 +478,7 @@ internal class StartGameHostPatch
                     RoleTypes.Phantom => CustomRoles.Phantom,
                     RoleTypes.Tracker => CustomRoles.Tracker,
                     RoleTypes.Detective => CustomRoles.DetectiveTOHE,
+                    RoleTypes.Judge => CustomRoles.JudgeTOHE,
                     RoleTypes.Viper => CustomRoles.ViperTOHE,
                     _ => CustomRoles.NotAssigned
                 };
