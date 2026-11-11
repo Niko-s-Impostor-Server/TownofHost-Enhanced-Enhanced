@@ -99,6 +99,7 @@ public class Main : BasePlugin
     public static ConfigEntry<bool> DarkTheme { get; private set; }
     public static ConfigEntry<bool> DisableLobbyMusic { get; private set; }
     public static ConfigEntry<bool> ShowTextOverlay { get; private set; }
+    public static ConfigEntry<bool> EnableOptionsShowerInLobby { get; private set; }
     public static ConfigEntry<bool> HorseMode { get; private set; }
     public static ConfigEntry<bool> ForceOwnLanguage { get; private set; }
     public static ConfigEntry<bool> ForceOwnLanguageRoleName { get; private set; }
@@ -522,6 +523,7 @@ public class Main : BasePlugin
         DarkTheme = Config.Bind("Client Options", "DarkTheme", false);
         DisableLobbyMusic = Config.Bind("Client Options", "DisableLobbyMusic", false);
         ShowTextOverlay = Config.Bind("Client Options", "ShowTextOverlay", false);
+        EnableOptionsShowerInLobby = Config.Bind("Client Options", "EnableOptionsShowerInLobby", true);
         HorseMode = Config.Bind("Client Options", "HorseMode", false);
         ForceOwnLanguage = Config.Bind("Client Options", "ForceOwnLanguage", false);
         ForceOwnLanguageRoleName = Config.Bind("Client Options", "ForceOwnLanguageRoleName", false);

@@ -1263,6 +1263,7 @@
   "RoleOptions": "Role Options",
   "DarkTheme": "Enable Dark Theme",
   "DisableLobbyMusic": "Disable Lobby Music",
+  "EnableOptionsShowerInLobby": "Enable Options Shower in Lobby",
   "AutoStart": "Auto start",
   "AutoReloadTags": "Auto Reload Tags",
   "CloudSettings": "TOHEE Cloud...",

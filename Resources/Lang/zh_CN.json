@@ -1247,6 +1247,7 @@
   "RoleOptions": "职业设置",
   "DarkTheme": "启用深色主题",
   "DisableLobbyMusic": "禁用大厅音乐",
+  "EnableOptionsShowerInLobby": "启用大厅设置显示",
   "AutoStart": "自动开始",
   "AutoReloadTags": "自动重载标签",
   "CloudSettings": "TOHEE Cloud…",

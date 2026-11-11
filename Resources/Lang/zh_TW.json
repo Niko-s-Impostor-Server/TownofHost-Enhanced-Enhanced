@@ -1193,6 +1193,7 @@
   "RoleOptions": "職業設定",
   "DarkTheme": "啟用深色主題",
   "DisableLobbyMusic": "禁用大廳音樂",
+  "EnableOptionsShowerInLobby": "啟用大廳設定顯示",
   "AutoStart": "自動開始",
   "AutoReloadTags": "自動重載標籤",
   "EnableCustomButton": "使用模組按鈕樣式",

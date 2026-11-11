@@ -20,7 +20,7 @@ public static class LobbySettingsPreview
 
     public static void Update(HudManager hud)
     {
-        if (!hud || !AmongUsClient.Instance || !GameStates.IsLobby || !GameStates.IsModHost ||
+        if (!Main.EnableOptionsShowerInLobby.Value || !hud || !AmongUsClient.Instance || !GameStates.IsLobby || !GameStates.IsModHost ||
             !LobbyBehaviour.Instance || !PlayerControl.LocalPlayer || !Options.IsLoaded || Options.HideGameSettings == null)
         {
             Dispose();
