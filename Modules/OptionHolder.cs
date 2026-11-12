@@ -1259,6 +1259,7 @@ public static class Options
             .SetHidden(true)
             .SetGameMode(CustomGameMode.Standard)
             .SetColor(new Color32(193, 255, 209, byte.MaxValue));
+        FactionChat.SetupOptions();
 
         // Random Spawn
         RandomSpawn.SetupCustomOption();

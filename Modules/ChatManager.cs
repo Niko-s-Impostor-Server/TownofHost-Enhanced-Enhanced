@@ -33,6 +33,12 @@ namespace TOHE.Modules.ChatManager
             foreach (var page in pages) RecordSystemPage(page);
         }
 
+        internal static void SendPrivateSystem(PlayerControl actor, string text, IReadOnlyCollection<PlayerControl> recipients, string title)
+        {
+            foreach (var page in OfficialChat.SendPrivate(actor, text, recipients, title))
+                RecordSystemPage(page, ChatViewHistory.Kind.PrivateSystem);
+        }
+
         internal static void SendPlayerText(PlayerControl sender, string text)
         {
             if (sender?.Data == null) return;
@@ -47,11 +53,11 @@ namespace TOHE.Modules.ChatManager
             foreach (var page in pages) RecordPlayerPage(page);
         }
 
-        private static void RecordSystemPage(OfficialChat.SentPage page)
+        private static void RecordSystemPage(OfficialChat.SentPage page, ChatViewHistory.Kind kind = ChatViewHistory.Kind.System)
         {
             int clientId = page.Recipient.GetClientId();
             if (clientId < 0) return;
-            history.Add(clientId, new(ChatViewHistory.Kind.System, page.SpeakerId, page.Heading, page.Text, [], false, []), BufferSize);
+            history.Add(clientId, new(kind, page.SpeakerId, page.Heading, page.Text, [], false, []), BufferSize);
         }
 
         internal static void RecordPlayerChat(PlayerControl sender, string text, bool textHasNamePadding = false)
@@ -117,7 +123,7 @@ namespace TOHE.Modules.ChatManager
 
         internal static bool CanReplay(View view, ChatViewHistory.Entry entry)
         {
-            if (entry.Type == ChatViewHistory.Kind.System) return true;
+            if (entry.Type is ChatViewHistory.Kind.System or ChatViewHistory.Kind.PrivateSystem) return true;
             var actor = entry.SpeakerId.GetPlayer();
             if (actor?.Data == null || actor.Data.Disconnected) return false;
             // Vanilla rejects a dead speaker's chat for a living recipient.
@@ -181,13 +187,28 @@ namespace TOHE.Modules.ChatManager
             {
                 if (!CanReplay(view, entry)) continue;
                 var actor = entry.SpeakerId.GetPlayer();
-                if (entry.Type == ChatViewHistory.Kind.System)
+                if (entry.Type is ChatViewHistory.Kind.System or ChatViewHistory.Kind.PrivateSystem)
                 {
                     if (actor?.Data == null || actor.Data.Disconnected || !actor.IsAlive())
                         actor = Main.AllPlayerControls.FirstOrDefault(p => p?.Data != null && !p.Data.Disconnected && p.IsAlive())
                             ?? view.Recipient;
                     if (actor?.Data == null) continue;
-                    OfficialChat.Send(actor, entry.Text, view.Recipient.PlayerId, entry.Title, send: send);
+                    bool privateTransport = entry.Type == ChatViewHistory.Kind.PrivateSystem;
+                    if (privateTransport && OfficialAnticheatPolicy.Enabled && !view.Recipient.AmOwner && view.Recipient.IsModded())
+                    {
+                        // Private sends are immediate. Submit earlier queued replay
+                        // entries (and cover lines) first to preserve display order.
+                        CustomRpcTransport.FlushPending();
+                        var client = AmongUsClient.Instance;
+                        var queue = client.reliableMessageQueue;
+                        while (queue.Count > 0)
+                        {
+                            int before = queue.Count;
+                            client.PackAndSendQueuedMessages(queue, SendOption.Reliable, out _);
+                            if (OfficialNetworkSend.Failed(client) || queue.Count >= before) return;
+                        }
+                    }
+                    OfficialChat.Send(actor, entry.Text, view.Recipient.PlayerId, entry.Title, send: send, privateTransport: privateTransport);
                 }
                 else if (actor?.Data != null && !actor.Data.Disconnected)
                     ReplayPlayer(actor, view.Recipient, entry, send);

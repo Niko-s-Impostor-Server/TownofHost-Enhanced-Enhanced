@@ -1117,6 +1117,7 @@ class MeetingHudStartPatch
                     pc.RpcSetNameEx(pc.GetRealName(isMeeting: true));
                 }
                 ChatUpdatePatch.DoBlockChat = false;
+                FactionChat.SendMeetingHints();
             }, 3f, "SetName To Chat");
         }
 

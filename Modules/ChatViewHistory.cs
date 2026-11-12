@@ -5,7 +5,7 @@ namespace TOHE;
 
 internal sealed class ChatViewHistory
 {
-    internal enum Kind { System, PlayerText, QuickChat }
+    internal enum Kind { System, PrivateSystem, PlayerText, QuickChat }
     internal readonly record struct ReferencedName(byte PlayerId, string Name);
 
     internal sealed record Entry(Kind Type, byte SpeakerId, string Title, string Text, byte[] QuickChatPayload,

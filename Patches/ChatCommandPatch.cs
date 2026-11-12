@@ -66,6 +66,20 @@ internal class ChatCommands
             return false;
         }
         using var commandScope = privateCommand ? HostOnlyChatCommand.Enter() : null;
+        AfkMonitor.RecordActivity(PlayerControl.LocalPlayer);
+        if (AmongUsClient.Instance.AmHost)
+        {
+            if (FactionChat.TryHandle(PlayerControl.LocalPlayer, text))
+            {
+                __instance.freeChatField.Clear();
+                return false;
+            }
+        }
+        else if (FactionChat.IsCommand(text))
+        {
+            __instance.freeChatField.textArea.SetText(HostOnlyChatCommand.CreateEnvelope(text), string.Empty);
+            return true;
+        }
         __instance.timeSinceLastMessage = 3f;
         if (ChatHistory.Count == 0 || ChatHistory[^1] != historyText) ChatHistory.Add(historyText);
         ChatControllerUpdatePatch.CurrentHistorySelection = ChatHistory.Count;
@@ -76,7 +90,6 @@ internal class ChatCommands
         var cancelVal = "";
         Main.isChatCommand = true;
         Logger.Info(text, "SendChat");
-        AfkMonitor.RecordActivity(PlayerControl.LocalPlayer);
         if (FeatureChatCommands.TryHandle(PlayerControl.LocalPlayer, text)) goto Canceled;
         if (!AmongUsClient.Instance.AmHost && GuessManager.HandleChatGuessCommand(PlayerControl.LocalPlayer, text)) goto Canceled;
         if (!AmongUsClient.Instance.AmHost && HostOnlyChatCommand.IsRoleCommand(text))
@@ -1763,6 +1776,12 @@ internal class ChatCommands
             OnReceiveChatCore(player, command, out _);
             return;
         }
+        // A bare channel command received over public chat is never relayed.
+        if (GameStates.IsModHost && FactionChat.IsCommand(text))
+        {
+            canceled = true;
+            return;
+        }
         OnReceiveChatCore(player, text, out canceled);
     }
 
@@ -1773,6 +1792,7 @@ internal class ChatCommands
             !player || player.Data == null || player.Data.Disconnected) return;
         AfkMonitor.RecordActivity(player);
         text = text.TrimStart('\n');
+        if (HostOnlyChatCommand.IsActive && FactionChat.TryHandle(player, text)) { canceled = true; return; }
         if (FeatureChatCommands.TryHandle(player, text)) { canceled = true; return; }
         if (!Blackmailer.CheckBlackmaile(player)) ChatManager.SendMessage(player, text);
 

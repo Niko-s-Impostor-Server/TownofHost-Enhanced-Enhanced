@@ -30,6 +30,29 @@ public static class OfficialPacketBuilder
         }
     }
 
+    internal sealed class TargetedTransactionBatch
+    {
+        private readonly List<byte[]> transactions = [];
+
+        internal void Add(MessageWriter writer) => transactions.Add(Snapshot(writer, 3));
+
+        internal void Send()
+        {
+            if (transactions.Count == 0) return;
+            var client = AmongUsClient.Instance;
+            var context = OfficialSessionContext.Capture();
+            using var owner = new BoundedWriter(SendOption.Reliable);
+            foreach (var packet in OfficialPacketCodec.PackTargetedTransactions(client.GameId, transactions, OfficialAnticheatPolicy.PackingLimit))
+            {
+                if (!context.IsCurrent()) throw new InvalidOperationException("Chat transaction belongs to an expired room");
+                owner.Writer.Clear(SendOption.Reliable);
+                owner.Writer.Write(new Il2CppStructArray<byte>(packet));
+                OfficialNetworkSend.Send(client, owner.Writer);
+            }
+            transactions.Clear();
+        }
+    }
+
     internal sealed class BoundedWriter : IDisposable
     {
         internal readonly MessageWriter Writer;

@@ -116,6 +116,37 @@ internal static class OfficialPacketCodec
         }
     }
 
+    // Each chat page is a complete GameDataTo transaction. Its temporary names,
+    // Quick Chat and restorations must all reach the recipient in the same container.
+    internal static IEnumerable<byte[]> PackTargetedTransactions(int gameId, IEnumerable<byte[]> transactions, int limit)
+    {
+        const int framingBytes = 3 + 3; // Reliable header and PackedGameDataTo frame.
+        using var body = new MemoryStream(HardLimit);
+        Packed(body, unchecked((uint)gameId));
+        long prefixLength = body.Length;
+        int count = 0;
+        foreach (var transaction in transactions)
+        {
+            if (ReadFrame(transaction, 0, transaction.Length, out byte tag) != transaction.Length || tag != 6)
+                throw new InvalidDataException("Expected one complete GameDataTo transaction");
+            if (count > 0 && (count == limit || body.Length + transaction.Length + framingBytes > HardLimit))
+            {
+                yield return Frame(26, body.ToArray());
+                body.SetLength(prefixLength);
+                body.Position = prefixLength;
+                count = 0;
+            }
+            if (body.Length + transaction.Length + framingBytes > HardLimit)
+            {
+                yield return transaction; // Already fits without the packed wrapper.
+                continue;
+            }
+            body.Write(transaction);
+            count++;
+        }
+        if (count > 0) yield return Frame(26, body.ToArray());
+    }
+
     private static int CountContainers(List<Record> records, int limit)
     {
         if (records[0].Target < 0) return records.Count;
