@@ -6,6 +6,7 @@ using System.Runtime.CompilerServices;
 using TOHE.Modules;
 using TOHE.Roles.Core;
 using TOHE.Roles.Neutral;
+using UnityEngine;
 
 namespace TOHE;
 
@@ -27,6 +28,8 @@ public static class AntiBlackout
     private static readonly HashSet<byte> hiddenRecipients = [];
     private static readonly Dictionary<(byte seer, byte target), RoleTypes> sentMask = [];
     private static readonly Dictionary<(byte seer, byte target), RoleTypes> deferredRoles = [];
+    private static readonly Dictionary<byte, float> airshipSpawnReadyAt = [];
+    private static HashSet<byte> airshipPendingPlayers;
     private static OfficialSessionContext meetingContext;
     private static uint meetingGeneration;
     private static bool votingResultPending;
@@ -36,6 +39,7 @@ public static class AntiBlackout
 
     public static bool IsBuffered(byte playerId) => bufferedPlayers.Contains(playerId);
     public static bool IsProtectedRecipient(byte playerId) => protectedRecipients.Contains(playerId);
+    internal static bool AirshipRecoveryInProgress => airshipPendingPlayers != null;
     internal static bool WaitingForGhostViews => votingResultPending && GhostRoleView.HasPendingPublications;
     internal static bool RedirectingPlayerData => (ProtectingVanilla || WaitingForGhostViews) && !serializing;
 
@@ -83,12 +87,33 @@ public static class AntiBlackout
         meetingGeneration++;
         meetingContext = OfficialSessionContext.Capture();
         votingResultPending = true;
+        airshipSpawnReadyAt.Clear();
         warnedUnavailable = false;
         ExilePlayerId = exiled != null ? exiled.PlayerId : -1;
         var players = Main.AllPlayerControls.Where(player => player.Data != null && !player.Data.Disconnected && player.GetClientId() >= 0).ToArray();
         hiddenRecipients.Clear();
         if (exiled != null && players.Length == 3) hiddenRecipients.UnionWith(FindRiskyRecipients(players));
         BlackOutIsActive = hiddenRecipients.Count > 0;
+    }
+
+    internal static bool TryBeginAirshipRecovery(NetworkedPlayerInfo exiled)
+    {
+        if (GameStates.IsEnded || AirshipRecoveryInProgress) return false;
+        // Forced meeting closes can reach the picker without VotingComplete.
+        if (!votingResultPending) PrepareVotingResult(exiled);
+        if (!meetingContext.IsCurrent()) return false;
+        var players = Main.AllPlayerControls.Where(player => player.Data != null && !player.Data.Disconnected && player.GetClientId() >= 0).ToArray();
+        airshipPendingPlayers = players.Select(player => player.PlayerId).ToHashSet();
+        foreach (var player in players)
+            if (!player.AmOwner && Main.PlayerStates[player.PlayerId].HasSpawned) OnAirshipSpawn(player);
+        return true;
+    }
+
+    internal static void OnAirshipSpawn(PlayerControl player)
+    {
+        if (!AmongUsClient.Instance.AmHost || !votingResultPending || !meetingContext.IsCurrent()) return;
+        // Remote SnapTo precedes the picker closing and three fixed updates.
+        airshipSpawnReadyAt.TryAdd(player.PlayerId, Time.time + (player.AmOwner ? 0f : 0.25f));
     }
 
     public static void SetIsDead(bool doSend = true, [CallerMemberName] string callerMethodName = "")
@@ -105,6 +130,7 @@ public static class AntiBlackout
     {
         var players = Main.AllPlayerControls.Where(player => player.Data != null && !player.Data.Disconnected && player.GetClientId() >= 0).ToArray();
         var risky = FindRiskyRecipients(players);
+        if (airshipPendingPlayers != null) risky.IntersectWith(airshipPendingPlayers);
         protectedRecipients.IntersectWith(players.Select(player => player.PlayerId));
         // Once a recipient has a mask it must keep it until the restoration transaction.
         protectedRecipients.UnionWith(risky);
@@ -125,6 +151,7 @@ public static class AntiBlackout
         int mode = Options.AntiBlackoutBufferMode.GetInt();
         foreach (var player in players)
         {
+            if (airshipPendingPlayers != null && !airshipPendingPlayers.Contains(player.PlayerId)) continue;
             if (mode == 0 || mode == 1 && !player.IsModded() || mode == 2 && protectedRecipients.Contains(player.PlayerId))
                 bufferedPlayers.Add(player.PlayerId);
         }
@@ -159,16 +186,17 @@ public static class AntiBlackout
         SendPlayerData(GameData.Instance.AllPlayers.ToArray());
     }
 
-    internal static void SendPlayerData(IEnumerable<NetworkedPlayerInfo> infos)
+    internal static void SendPlayerData(IEnumerable<NetworkedPlayerInfo> infos, PlayerControl[] recipients = null)
     {
         if (WaitingForGhostViews) return;
+        recipients ??= Main.AllPlayerControls;
         var batch = new OfficialPacketBuilder.Batch();
         List<(byte, byte)> overwrittenNames = [];
         foreach (var info in infos)
         {
             if (info == null) continue;
             string snapshotName = info.PlayerName;
-            foreach (var seer in Main.AllPlayerControls)
+            foreach (var seer in recipients)
             {
                 if (seer.IsHost() || seer.Data == null || seer.Data.Disconnected) continue;
                 int clientId = seer.GetClientId();
@@ -219,6 +247,8 @@ public static class AntiBlackout
         if (!AmongUsClient.Instance.AmHost || !votingResultPending || !player.Disconnected) return;
         bufferedPlayers.Remove(player.PlayerId);
         protectedRecipients.Remove(player.PlayerId);
+        airshipPendingPlayers?.Remove(player.PlayerId);
+        airshipSpawnReadyAt.Remove(player.PlayerId);
         RefreshProtection();
         SendGameData();
         Utils.NotifyRoles();
@@ -334,8 +364,7 @@ public static class AntiBlackout
 
         System.Collections.IEnumerator Complete()
         {
-            // Both anchors are after native recovery; Airship's anchor is after
-            // PrespawnStep, never the WrapUpAndSpawn iterator factory.
+            // On Airship this starts after exile is applied, as the host enters the picker.
             yield return new UnityEngine.WaitForSeconds(1.2f);
             if (!Current()) yield break;
             settle();
@@ -353,6 +382,36 @@ public static class AntiBlackout
                 yield return null;
             }
             if (!Current()) yield break;
+            if (airshipPendingPlayers != null)
+            {
+                while (airshipPendingPlayers.Count > 0)
+                {
+                    if (!GhostRoleView.HasPendingPublications)
+                    {
+                        var connected = Main.AllPlayerControls.Where(player => player.Data != null && !player.Data.Disconnected
+                            && player.GetClientId() >= 0 && airshipPendingPlayers.Contains(player.PlayerId)).ToArray();
+                        airshipPendingPlayers.IntersectWith(connected.Select(player => player.PlayerId));
+                        float now = Time.time;
+                        // Modded GMs skip the picker and do not send its spawn SnapTo.
+                        var ready = connected.Where(player => player.IsModded() && player.Is(CustomRoles.GM)
+                            || airshipSpawnReadyAt.TryGetValue(player.PlayerId, out float readyAt)
+                            && now >= readyAt).ToArray();
+                        if (ready.Length > 0) RestoreAirshipPlayers(ready);
+                    }
+                    if (!Current()) yield break;
+                    if (airshipPendingPlayers.Count == 0) break;
+                    yield return null;
+                    if (!Current()) yield break;
+                }
+                bufferedPlayers.Clear();
+                protectedRecipients.Clear();
+                sentMask.Clear();
+                deferredRoles.Clear();
+                ProtectingVanilla = false;
+                ResetAfterMeeting();
+                yield break;
+            }
+
             var releasedPlayers = bufferedPlayers.ToHashSet();
             bufferedPlayers.Clear();
             SetRealPlayerRoles(releasedPlayers);
@@ -372,15 +431,40 @@ public static class AntiBlackout
             && AmongUsClient.Instance.AmHost && !GameStates.IsEnded && votingResultPending;
     }
 
-    public static void SetRealPlayerRoles(HashSet<byte> releasedPlayers, bool sendGameDataAfter = false)
+    private static void RestoreAirshipPlayers(PlayerControl[] recipients)
+    {
+        var restoredIds = recipients.Select(player => player.PlayerId).ToHashSet();
+        var releasedPlayers = bufferedPlayers.Where(restoredIds.Contains).ToHashSet();
+        bufferedPlayers.ExceptWith(releasedPlayers);
+        SetRealPlayerRoles(releasedPlayers, recipients: recipients);
+        foreach (var player in recipients)
+        {
+            if (player.IsAlive() || player.HasGhostRole()) player.RpcResetAbilityCooldown();
+            player.MarkDirtySettings();
+        }
+
+        airshipPendingPlayers.ExceptWith(restoredIds);
+        protectedRecipients.ExceptWith(restoredIds);
+        foreach (var key in sentMask.Keys.Where(key => restoredIds.Contains(key.seer)).ToArray())
+            sentMask.Remove(key);
+        ProtectingVanilla = protectedRecipients.Count > 0;
+        SendPlayerData(GameData.Instance.AllPlayers.ToArray(), recipients);
+        if (releasedPlayers.Count > 0) SyncBuffer();
+        GameOptionsSender.SendAllGameOptions();
+        foreach (var player in recipients) Utils.NotifyRoles(SpecifySeer: player);
+    }
+
+    public static void SetRealPlayerRoles(HashSet<byte> releasedPlayers, bool sendGameDataAfter = false, PlayerControl[] recipients = null)
     {
         if (GameStates.IsEnded) return;
-        var vanillaPlayers = Main.AllPlayerControls.Where(player => !player.IsModded() && player.Data != null && !player.Data.Disconnected).ToArray();
+        var players = recipients ?? Main.AllPlayerControls;
+        var vanillaPlayers = players.Where(player => !player.IsModded() && player.Data != null && !player.Data.Disconnected).ToArray();
         Dictionary<byte, (RoleTypes SelfRole, bool RestoreSelf, float? Cooldown)> restorations = [];
 
         foreach (var seer in vanillaPlayers)
         {
-            bool restoreSelf = IsProtectedRecipient(seer.PlayerId) || deferredRoles.ContainsKey((seer.PlayerId, seer.PlayerId));
+            bool restoreSelf = IsProtectedRecipient(seer.PlayerId) || sentMask.ContainsKey((seer.PlayerId, seer.PlayerId))
+                || deferredRoles.ContainsKey((seer.PlayerId, seer.PlayerId));
             if (!restoreSelf && !releasedPlayers.Contains(seer.PlayerId)) continue;
             RoleTypes selfRole = default;
             if (restoreSelf)
@@ -396,13 +480,13 @@ public static class AntiBlackout
                 restorations[seer.PlayerId] = (selfRole, restoreSelf, null);
         }
 
-        ResetAllCooldown(releasedPlayers, restorations);
+        ResetAllCooldown(players, releasedPlayers, restorations);
         publishing = true;
         try
         {
             foreach (var seer in vanillaPlayers)
             {
-                bool masked = IsProtectedRecipient(seer.PlayerId);
+                bool masked = IsProtectedRecipient(seer.PlayerId) || sentMask.Keys.Any(key => key.seer == seer.PlayerId);
                 foreach (var target in Main.AllPlayerControls.Where(player => player.Data != null && !player.Data.Disconnected && player != seer))
                 {
                     if (!RpcSetRoleReplacer.RoleMap.TryGetValue((seer.PlayerId, target.PlayerId), out var view)) continue;
@@ -471,13 +555,19 @@ public static class AntiBlackout
             }
         }
         finally { publishing = false; }
-        deferredRoles.Clear();
+        if (recipients == null) deferredRoles.Clear();
+        else
+        {
+            var recipientIds = vanillaPlayers.Select(player => player.PlayerId).ToHashSet();
+            foreach (var key in deferredRoles.Keys.Where(key => recipientIds.Contains(key.seer)).ToArray())
+                deferredRoles.Remove(key);
+        }
         if (sendGameDataAfter) SendGameData();
     }
-    private static void ResetAllCooldown(HashSet<byte> releasedPlayers,
+    private static void ResetAllCooldown(PlayerControl[] players, HashSet<byte> releasedPlayers,
         Dictionary<byte, (RoleTypes SelfRole, bool RestoreSelf, float? Cooldown)> restorations)
     {
-        foreach (var seer in Main.AllPlayerControls)
+        foreach (var seer in players)
         {
             if (seer.IsAlive())
             {
@@ -510,6 +600,8 @@ public static class AntiBlackout
         ExilePlayerId = -1;
         BlackOutIsActive = false;
         votingResultPending = false;
+        airshipPendingPlayers = null;
+        airshipSpawnReadyAt.Clear();
         warnedUnavailable = false;
     }
     public static void Reset()
@@ -521,6 +613,8 @@ public static class AntiBlackout
         hiddenRecipients.Clear();
         deferredRoles.Clear();
         sentMask.Clear();
+        airshipPendingPlayers = null;
+        airshipSpawnReadyAt.Clear();
         publishing = serializing = false;
         GhostRoleView.ResetPending();
         IsCached = false;

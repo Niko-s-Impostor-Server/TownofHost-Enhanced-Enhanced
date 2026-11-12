@@ -1291,6 +1291,7 @@ static class ExtendedPlayerControl
     public static void NoCheckStartMeeting(this PlayerControl reporter, NetworkedPlayerInfo target, bool force = false)
     {
         //Method that can cause a meeting to occur regardless of whether it is in sabotage.
+        if (AntiBlackout.AirshipRecoveryInProgress) return;
         //If target is null, it becomes a button.
         if (Options.DisableMeeting.GetBool() && !force) return;
 

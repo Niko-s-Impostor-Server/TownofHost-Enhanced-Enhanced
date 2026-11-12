@@ -729,7 +729,7 @@ class ReportDeadBodyPatch
     public static Dictionary<byte, List<NetworkedPlayerInfo>> WaitReport = [];
     public static bool Prefix(PlayerControl __instance, [HarmonyArgument(0)] NetworkedPlayerInfo target)
     {
-        if (GameStates.IsMeeting || GameStates.IsHideNSeek) return false;
+        if (GameStates.IsMeeting || GameStates.IsHideNSeek || AntiBlackout.AirshipRecoveryInProgress) return false;
 
         if (EAC.RpcReportDeadBodyCheck(__instance, target))
         {

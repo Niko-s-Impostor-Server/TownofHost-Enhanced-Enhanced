@@ -10,6 +10,7 @@ public static class AirshipStatusPrespawnStepPatch
 {
     public static bool Prefix(ref Il2CppSystem.Collections.IEnumerator __result)
     {
+        ExileControllerWrapUpPatch.BeginAirshipMeeting();
         if (PlayerControl.LocalPlayer.Is(CustomRoles.GM))
         {
             RandomSpawn.AirshipSpawn(PlayerControl.LocalPlayer);

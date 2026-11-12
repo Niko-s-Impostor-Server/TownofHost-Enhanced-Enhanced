@@ -155,6 +155,7 @@ class RandomSpawn
             }
         }
         Main.PlayerStates[player.PlayerId].HasSpawned = true;
+        if (!player.AmOwner) AntiBlackout.OnAirshipSpawn(player);
     }
     public static bool IsRandomSpawn() => RandomSpawnMode.GetBool();
     public static bool CanSpawnInFirstRound() => SpawnInFirstRound.GetBool();

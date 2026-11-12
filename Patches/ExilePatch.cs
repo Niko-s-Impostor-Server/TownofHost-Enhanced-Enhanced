@@ -37,23 +37,29 @@ class ExileControllerWrapUpPatch
     {
         public static void Postfix(ExileController __instance)
         {
-            // WrapUpAndSpawn is an iterator factory and can be inlined by IL2CPP.
-            // This native call runs after PrespawnStep finishes and resets the
-            // controller/camera, so meeting tasks cannot race the spawn picker.
             if (!__instance.TryCast<AirshipExileController>()) return;
+            AntiBlackout.OnAirshipSpawn(PlayerControl.LocalPlayer);
+            RestoreLocalGameplay();
+        }
+    }
 
-            try
-            {
-                WrapUpPostfix(__instance.initData.networkedPlayer);
-            }
-            catch (Exception error)
-            {
-                Logger.Error($"Error after airship spawn: {error}", "ReEnableGameplay");
-            }
-            finally
-            {
-                WrapUpFinalizer(__instance.initData.networkedPlayer);
-            }
+    internal static void BeginAirshipMeeting()
+    {
+        if (!AmongUsClient.Instance.AmHost) return;
+        var controller = ExileController.Instance?.TryCast<AirshipExileController>();
+        if (controller == null || !AntiBlackout.TryBeginAirshipRecovery(controller.initData.networkedPlayer)) return;
+
+        try
+        {
+            WrapUpPostfix(controller.initData.networkedPlayer);
+        }
+        catch (Exception error)
+        {
+            Logger.Error($"Error before airship spawn: {error}", "PrespawnStep");
+        }
+        finally
+        {
+            CompleteHostMeeting();
         }
     }
     private static void CheckAndDoRandomSpawn()
@@ -134,6 +140,12 @@ class ExileControllerWrapUpPatch
     {
         ExileText.Reset();
         // Even if an exception occurs in WrapUpPostfix, this is the only part that will be executed reliably.
+        CompleteHostMeeting();
+        RestoreLocalGameplay();
+    }
+
+    private static void CompleteHostMeeting()
+    {
         if (AmongUsClient.Instance.AmHost)
         {
             AntiBlackout.CompleteAfterMeeting(() =>
@@ -162,7 +174,10 @@ class ExileControllerWrapUpPatch
                 Utils.CheckAndSetVentInteractions();
             });
         }
+    }
 
+    private static void RestoreLocalGameplay()
+    {
         //This should happen shortly after the Exile Controller wrap up finished for clients
         //For Certain Laggy clients 0.8f delay is still not enough. The finish time can differ.
         //If the delay is too long, it will influence other normal players' view
