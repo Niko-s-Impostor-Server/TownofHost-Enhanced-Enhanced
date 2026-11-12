@@ -160,7 +160,6 @@ class ExileControllerWrapUpPatch
                 Utils.AfterMeetingTasks();
                 Utils.SyncAllSettings();
                 Utils.CheckAndSetVentInteractions();
-                Utils.NotifyRoles(NoCache: true);
             });
         }
 

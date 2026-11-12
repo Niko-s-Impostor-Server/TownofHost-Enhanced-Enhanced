@@ -150,43 +150,51 @@ public static class AntiBlackout
             }
             finally { publishing = false; }
         }
-        Utils.NotifyRoles(NoCache: true);
     }
 
     // No authoritative death flag is changed. Only the affected recipient's
     // serialization sees the living mask, including native dirty-player updates.
     public static void SendGameData([CallerMemberName] string callerMethodName = "")
     {
-        var batch = new OfficialPacketBuilder.Batch();
-        foreach (var info in GameData.Instance.AllPlayers)
-            if (info != null) SendPlayerData(info, batch);
-        batch.Send();
+        SendPlayerData(GameData.Instance.AllPlayers.ToArray());
     }
 
-    internal static void SendPlayerData(NetworkedPlayerInfo info, OfficialPacketBuilder.Batch batch = null)
+    internal static void SendPlayerData(IEnumerable<NetworkedPlayerInfo> infos)
     {
         if (WaitingForGhostViews) return;
-        bool ownsBatch = batch == null;
-        batch ??= new OfficialPacketBuilder.Batch();
-        foreach (var seer in Main.AllPlayerControls)
+        var batch = new OfficialPacketBuilder.Batch();
+        List<(byte, byte)> overwrittenNames = [];
+        foreach (var info in infos)
         {
-            if (seer.IsHost() || seer.Data == null || seer.Data.Disconnected || seer.GetClientId() < 0) continue;
-            batch.AddChild(seer.GetClientId(), writer =>
+            if (info == null) continue;
+            string snapshotName = info.PlayerName;
+            foreach (var seer in Main.AllPlayerControls)
             {
-                writer.StartMessage(1);
-                writer.WritePacked(info.NetId);
-                bool dead = info.IsDead;
-                serializing = true;
-                try
+                if (seer.IsHost() || seer.Data == null || seer.Data.Disconnected) continue;
+                int clientId = seer.GetClientId();
+                if (clientId < 0) continue;
+                batch.AddChild(clientId, writer =>
                 {
-                    if (IsProtectedRecipient(seer.PlayerId) && !info.Disconnected) info.IsDead = false;
-                    info.Serialize(writer, true);
-                }
-                finally { info.IsDead = dead; serializing = false; }
-                writer.EndMessage();
-            });
+                    writer.StartMessage(1);
+                    writer.WritePacked(info.NetId);
+                    bool dead = info.IsDead;
+                    serializing = true;
+                    try
+                    {
+                        if (IsProtectedRecipient(seer.PlayerId) && !info.Disconnected) info.IsDead = false;
+                        info.Serialize(writer, true);
+                    }
+                    finally { info.IsDead = dead; serializing = false; }
+                    writer.EndMessage();
+                });
+                var key = (info.PlayerId, seer.PlayerId);
+                if (Main.LastNotifyNames.TryGetValue(key, out var sentName) && sentName != snapshotName)
+                    overwrittenNames.Add(key);
+            }
         }
-        if (ownsBatch) batch.Send();
+        batch.Send();
+        // Player info also overwrites the client's default outfit name.
+        foreach (var key in overwrittenNames) Main.LastNotifyNames.Remove(key);
     }
 
     public static void RestoreIsDead(bool doSend = true, [CallerMemberName] string callerMethodName = "")
@@ -213,6 +221,7 @@ public static class AntiBlackout
         protectedRecipients.Remove(player.PlayerId);
         RefreshProtection();
         SendGameData();
+        Utils.NotifyRoles();
     }
 
     private static void SyncBuffer()
@@ -318,6 +327,7 @@ public static class AntiBlackout
         // views before the delayed business callbacks publish any of the deaths.
         RefreshProtection();
         SendGameData();
+        Utils.NotifyRoles(NoCache: true);
         var generation = meetingGeneration;
         var context = meetingContext;
         Main.Instance.StartCoroutine(Complete());
@@ -331,6 +341,7 @@ public static class AntiBlackout
             settle();
             if (!Current()) yield break;
             RefreshProtection();
+            Utils.NotifyRoles();
             SendGameData();
             // Fixed empirical allowance, not a receiver WrapUp acknowledgement.
             // The first 1.2 seconds above already belongs to this two-second hold.
@@ -354,7 +365,7 @@ public static class AntiBlackout
             SyncBuffer();
             ResetAfterMeeting();
             Utils.SyncAllSettings();
-            Utils.NotifyRoles(NoCache: true);
+            Utils.NotifyRoles();
         }
 
         bool Current() => generation == meetingGeneration && context.IsCurrent()
@@ -539,7 +550,7 @@ internal static class AntiBlackoutPlayerInfoPatch
         // IsDead first makes RoleManager skip the native Die transition.
         if (!AntiBlackout.WaitingForGhostViews)
         {
-            AntiBlackout.SendPlayerData(__instance);
+            AntiBlackout.SendPlayerData([__instance]);
             __instance.ClearOrDecrementDirt();
         }
         __result = false;
