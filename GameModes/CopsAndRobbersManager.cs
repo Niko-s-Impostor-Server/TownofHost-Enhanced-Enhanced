@@ -47,6 +47,7 @@ internal static class CopsAndRobbersManager
     private static int numCaptures;
     private static int numRobbers;
     public static int RoundTime;
+    public static bool IntroRoleInfoActive;
 
     public static OptionItem CandR_NumCops;
     private static OptionItem CandR_CaptureCooldown;
@@ -344,6 +345,7 @@ internal static class CopsAndRobbersManager
     {
         if (Options.CurrentGameMode != CustomGameMode.CandR) return;
 
+        IntroRoleInfoActive = true;
         cops.Clear();
         robbers.Clear();
         captured.Clear();

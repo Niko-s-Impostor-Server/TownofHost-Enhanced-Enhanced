@@ -2003,7 +2003,9 @@ public static class Utils
                 }
 
                 bool IsDisplayInfo = false;
-                if (MeetingStates.FirstMeeting && Options.ChangeNameToRoleInfo.GetBool() && !isForMeeting && Options.CurrentGameMode != CustomGameMode.FFA)
+                if (MeetingStates.FirstMeeting && Options.ChangeNameToRoleInfo.GetBool() && !isForMeeting
+                    && Options.CurrentGameMode != CustomGameMode.FFA
+                    && (Options.CurrentGameMode != CustomGameMode.CandR || CopsAndRobbersManager.IntroRoleInfoActive))
                 {
                     IsDisplayInfo = true;
                     var SeerRoleInfo = seer.GetRoleInfo();

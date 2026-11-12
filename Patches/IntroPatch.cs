@@ -1086,6 +1086,17 @@ class IntroCutsceneDestroyPatch
         if (AmongUsClient.Instance.AmHost && GameStates.IsHideNSeek && PlayerIdentifiers.Shows(false, false))
             PlayerIdentifiers.RefreshLobby(hideAndSeek: true);
         Utils.DoNotifyRoles(NoCache: true);
+        if (AmongUsClient.Instance.AmHost && Options.CurrentGameMode == CustomGameMode.CandR)
+        {
+            // This mode has no meeting to clear the first-round role description.
+            _ = new LateTask(() =>
+            {
+                if (!context.IsCurrent() || !AmongUsClient.Instance.AmHost || !GameStates.IsInGame
+                    || GameStates.IsEnded || Options.CurrentGameMode != CustomGameMode.CandR) return;
+                CopsAndRobbersManager.IntroRoleInfoActive = false;
+                Utils.DoNotifyRoles(ForceLoop: false);
+            }, 8f, "Clear Cops and Robbers intro role info");
+        }
         Logger.Info("OnDestroy", "IntroCutscene");
     }
 }
