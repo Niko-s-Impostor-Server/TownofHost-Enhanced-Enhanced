@@ -53,6 +53,7 @@ public static class MainMenuManagerPatch
     private static PassiveButton discordButton;
     private static PassiveButton cloudButton;
     private static TMP_Text cloudButtonText;
+    private static readonly List<string> remainingBackgrounds = [];
     //private static PassiveButton patreonButton;
 
     [HarmonyPatch(nameof(MainMenuManager.Start)), HarmonyPostfix, HarmonyPriority(Priority.Normal)]
@@ -89,15 +90,31 @@ public static class MainMenuManagerPatch
         GameObject splashArt = new("SplashArt");
         splashArt.transform.position = new Vector3(0, 0f, 600f); //= new Vector3(0, 0.40f, 600f);
         var spriteRenderer = splashArt.AddComponent<SpriteRenderer>();
-        string folder = "TOHE.Resources.Background.";
         IRandom rand = IRandom.Instance;
-        if (rand.Next(0, 100) < 30) folder += "PrevArtWinner";
-        else folder += "CurrentArtWinner";
-        var assembly = System.Reflection.Assembly.GetExecutingAssembly();
-        string[] fileNames = assembly.GetManifestResourceNames().Where(resourceName => resourceName.StartsWith(folder) && resourceName.EndsWith(".png")).ToArray();
-        int choice = rand.Next(0, fileNames.Length);
+        var previousBackground = Main.Instance.Config.Bind("Other", "LastMainMenuBackground", "");
+        if (remainingBackgrounds.Count == 0)
+        {
+            var assembly = System.Reflection.Assembly.GetExecutingAssembly();
+            remainingBackgrounds.AddRange(assembly.GetManifestResourceNames().Where(resourceName =>
+                resourceName.StartsWith("TOHE.Resources.Background.", StringComparison.Ordinal) &&
+                (resourceName.EndsWith(".png", StringComparison.OrdinalIgnoreCase) ||
+                 resourceName.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase) ||
+                 resourceName.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase))));
 
-        spriteRenderer.sprite = Utils.LoadSprite(fileNames[choice], 150f);
+            for (int i = remainingBackgrounds.Count - 1; i > 0; i--)
+            {
+                int choice = rand.Next(i + 1);
+                (remainingBackgrounds[i], remainingBackgrounds[choice]) = (remainingBackgrounds[choice], remainingBackgrounds[i]);
+            }
+
+            if (remainingBackgrounds.Count > 1 && remainingBackgrounds[^1] == previousBackground.Value)
+                (remainingBackgrounds[^1], remainingBackgrounds[0]) = (remainingBackgrounds[0], remainingBackgrounds[^1]);
+        }
+
+        string background = remainingBackgrounds[^1];
+        remainingBackgrounds.RemoveAt(remainingBackgrounds.Count - 1);
+        spriteRenderer.sprite = Utils.LoadSprite(background, 150f);
+        previousBackground.Value = background;
 
 
         //__instance.playLocalButton.inactiveSprites.GetComponent<SpriteRenderer>().color = new Color(0.1647f, 0f, 0.7765f);
