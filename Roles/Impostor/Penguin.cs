@@ -245,17 +245,17 @@ internal class Penguin : RoleBase
             // SnapToRPC does not work for players on top of the ladder, and only the host behaves differently, so teleporting is not done uniformly.
             else if (!AbductVictim.MyPhysics.Animations.IsPlayingAnyLadderAnimation())
             {
-                var position = penguin.transform.position;
-                if (!penguin.IsHost())
-                {
-                    AbductVictim.RpcTeleport(position, sendInfoInLogs: false);
-                }
+                var victim = AbductVictim;
+                var position = penguin.GetCustomPosition();
+                if (penguin.IsHost())
+                    _ = new LateTask(DragVictim, 0.25f, "Penguin Teleport", shoudLog: false);
                 else
+                    DragVictim();
+
+                void DragVictim()
                 {
-                    _ = new LateTask(() =>
-                    {
-                        AbductVictim?.RpcTeleport(position, sendInfoInLogs: false);
-                    }, 0.25f, "Penguin Teleport ", shoudLog: false);
+                    if (victim == null || AbductVictim != victim || (victim.GetCustomPosition() - position).sqrMagnitude < 0.3f * 0.3f) return;
+                    victim.RpcTeleport(position, sendInfoInLogs: false);
                 }
             }
         }

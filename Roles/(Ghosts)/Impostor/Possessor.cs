@@ -18,6 +18,7 @@ internal class Possessor : RoleBase
     private static byte controllingTargetId = byte.MaxValue;
     private static float controllingLastSpeed = float.MinValue;
     private static float possessTime = float.MinValue;
+    private static float nextCatchUpAt;
 
     private static OptionItem PossessCooldown;
     private static OptionItem PossessDuration;
@@ -56,9 +57,13 @@ internal class Possessor : RoleBase
         {
             if (controllingPlayer && possessTime >= 0)
             {
-                if (Utils.GetDistance(_Player.GetCustomPosition(), target.GetCustomPosition()) > 5f)
+                var possessorPosition = _Player.GetCustomPosition();
+                var targetPosition = target.GetCustomPosition();
+                float now = Time.realtimeSinceStartup;
+                if (now >= nextCatchUpAt && (possessorPosition - targetPosition).sqrMagnitude > 5f * 5f)
                 {
-                    _Player.RpcTeleport((_Player.GetCustomPosition() + target.GetCustomPosition()) / 2);
+                    nextCatchUpAt = now + 0.1f;
+                    _Player.RpcTeleport((possessorPosition + targetPosition) / 2);
                 }
 
                 foreach (var allPlayers in Main.AllAlivePlayerControls.Where(pc => pc != target))
@@ -152,6 +157,7 @@ internal class Possessor : RoleBase
             Main.AllPlayerSpeed[target.PlayerId] = Main.MinSpeed;
             target.MarkDirtySettings();
             possessTime = PossessDuration.GetFloat();
+            nextCatchUpAt = 0f;
             controllingPlayer = true;
         }
         else
