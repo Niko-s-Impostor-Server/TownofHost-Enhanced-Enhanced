@@ -194,6 +194,14 @@ public class CustomRpcSender : IDisposable
         }
     }
 
+    internal void SendTargetedBatchWithSummary(string rpcName)
+    {
+        int recordCount = RecordCount;
+        int recipientCount = records.Select(record => record.Target).Distinct().Count();
+        if (recordCount > 0) SendMessage();
+        Logger.Info($"END - Recipients: {recipientCount}, {rpcName}: {recordCount}, Packets: {SentPacketCount}", name);
+    }
+
     private int ChildBudget => OfficialPacketCodec.MaxChildLength(sessionGameId, currentRpcTarget,
         sendOption == SendOption.Reliable ? 3 : 1);
 

@@ -47,6 +47,7 @@ internal static class PlayerIdentifiers
         if (Options.PlayerIdAudience == null || Options.PlayerIdPeriod == null || AmongUsClient.Instance == null ||
             !AmongUsClient.Instance.AmHost || (!GameStates.IsLobby && !(hideAndSeek && GameStates.IsHideNSeek && GameStates.IsInGame))) return;
 
+        using var nameSender = OfficialAnticheatPolicy.Enabled ? CustomRpcSender.Create("PlayerIdentifiers.RefreshLobby") : null;
         var players = Main.AllPlayerControls.Where(player => player != null && player.Data != null && !player.Data.Disconnected).ToArray();
         foreach (var viewer in players)
         {
@@ -57,8 +58,9 @@ internal static class PlayerIdentifiers
                 if (target != null && player != target) continue;
                 if (!show && !Main.LastNotifyNames.ContainsKey((player.PlayerId, viewer.PlayerId))) continue;
                 string name = show ? Prefix(player.PlayerId, player.name) : player.name;
-                player.RpcSetNamePrivate(name, viewer, force);
+                player.RpcSetNamePrivate(name, viewer, force, sender: nameSender);
             }
         }
+        nameSender?.SendTargetedBatchWithSummary("SetName");
     }
 }

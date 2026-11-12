@@ -488,6 +488,7 @@ class GameEndCheckerForNormal
         // Set ghost role
         List<byte> ReviveRequiredPlayerIds = [];
         var winner = WinnerTeam;
+        using var roleSender = compatible ? CustomRpcSender.Create("End game role views") : null;
         foreach (var pc in Main.AllPlayerControls)
         {
             if (winner == CustomWinner.Draw)
@@ -532,12 +533,16 @@ class GameEndCheckerForNormal
                     pc.Data.Role.OnRoleSet();
                     foreach (var seer in Main.AllPlayerControls)
                     {
-                        if (seer == null || seer.Data == null || seer.Data.Disconnected || seer.GetClientId() < 0) continue;
-                        pc.RpcSetRoleDesync(role, seer.GetClientId());
+                        if (seer == null || seer.Data == null || seer.Data.Disconnected) continue;
+                        int clientId = seer.GetClientId();
+                        if (clientId < 0) continue;
+                        if (clientId == self.ClientId) pc.RpcSetRoleDesync(role, clientId);
+                        else roleSender.RpcSetRole(pc, role, clientId);
                     }
                 }
             }
         }
+        roleSender?.SendTargetedBatchWithSummary("SetRole");
 
         // Remember true win to display in chat
         SetEverythingUpPatch.LastWinsReason = winner is CustomWinner.Crewmate or CustomWinner.Impostor ? GetString($"GameOverReason.{reason}") : "";

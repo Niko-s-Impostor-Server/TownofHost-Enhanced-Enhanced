@@ -162,6 +162,7 @@ public static class AntiBlackout
         if (ProtectingVanilla)
         {
             var dummyImp = players.First(player => player.PlayerId != ExilePlayerId);
+            using var roleSender = OfficialAnticheatPolicy.Enabled ? CustomRpcSender.Create("AntiBlackout protection") : null;
             publishing = true;
             try
             {
@@ -171,9 +172,18 @@ public static class AntiBlackout
                         var role = target == dummyImp ? RoleTypes.Impostor : RoleTypes.Crewmate;
                         var key = (seer.PlayerId, target.PlayerId);
                         if (sentMask.TryGetValue(key, out var previous) && previous == role) continue;
-                        target.RpcSetRoleDesync(role, seer.GetClientId());
-                        sentMask[key] = role;
+                        if (roleSender == null)
+                        {
+                            target.RpcSetRoleDesync(role, seer.GetClientId());
+                            sentMask[key] = role;
+                        }
+                        else
+                        {
+                            roleSender.RpcSetRole(target, role, seer.GetClientId());
+                            roleSender.onSendDelegate += () => sentMask[key] = role;
+                        }
                     }
+                roleSender?.SendTargetedBatchWithSummary("SetRole");
             }
             finally { publishing = false; }
         }
@@ -484,6 +494,7 @@ public static class AntiBlackout
         publishing = true;
         try
         {
+            using var roleSender = OfficialAnticheatPolicy.Enabled ? CustomRpcSender.Create("AntiBlackout role restoration") : null;
             foreach (var seer in vanillaPlayers)
             {
                 bool masked = IsProtectedRecipient(seer.PlayerId) || sentMask.Keys.Any(key => key.seer == seer.PlayerId);
@@ -493,8 +504,15 @@ public static class AntiBlackout
                     if (!masked && !deferredRoles.ContainsKey((seer.PlayerId, target.PlayerId))) continue;
                     var role = target.Data.IsDead ? GhostRoleView.ForRecipient(target, seer)
                         : deferredRoles.GetValueOrDefault((seer.PlayerId, target.PlayerId), view.Item1);
-                    target.RpcSetRoleDesync(role, seer.GetClientId());
+                    if (roleSender == null) target.RpcSetRoleDesync(role, seer.GetClientId());
+                    else roleSender.RpcSetRole(target, role, seer.GetClientId());
                 }
+            }
+            roleSender?.SendTargetedBatchWithSummary("SetRole");
+
+            // Publish other role views before each recipient's indivisible owner recovery packet.
+            foreach (var seer in vanillaPlayers)
+            {
                 if (!restorations.TryGetValue(seer.PlayerId, out var restoration)) continue;
                 var options = new PlayerGameOptionsSender(seer).BuildGameOptions();
                 var factory = GameOptionsManager.Instance.gameOptionsFactory;
