@@ -17,13 +17,17 @@ internal class Baker : RoleBase
     public static readonly HashSet<byte> playerIdList = [];
     public static bool HasEnabled => playerIdList.Any();
     public override bool IsDesyncRole => true;
-    public override CustomRoles ThisRoleBase => CustomRoles.Impostor;
+    public override CustomRoles ThisRoleBase => BTOS2Baker.GetBool() ? CustomRoles.Shapeshifter : CustomRoles.Impostor;
     public override Custom_RoleType ThisRoleType => Custom_RoleType.NeutralApocalypse;
     //==================================================================\\
 
     private static OptionItem BreadNeededToTransform;
     public static OptionItem FamineStarveCooldown;
     private static OptionItem BTOS2Baker;
+    private static OptionItem ApocCanSeeReveals;
+    private static OptionItem TransformNoMoreBread;
+    private static OptionItem RegenBread;
+    public static OptionItem CanVent;
     private static byte BreadID = 0;
 
     public static readonly Dictionary<byte, HashSet<byte>> BreadList = [];
@@ -41,6 +45,10 @@ internal class Baker : RoleBase
         FamineStarveCooldown = FloatOptionItem.Create(Id + 11, "FamineStarveCooldown", new(0f, 180f, 2.5f), 30f, TabGroup.NeutralRoles, false).SetParent(CustomRoleSpawnChances[CustomRoles.Baker])
                 .SetValueFormat(OptionFormat.Seconds);
         BTOS2Baker = BooleanOptionItem.Create(Id + 12, "BakerBreadGivesEffects", true, TabGroup.NeutralRoles, false).SetParent(CustomRoleSpawnChances[CustomRoles.Baker]);
+        ApocCanSeeReveals = BooleanOptionItem.Create(Id + 16, "BakerApocCanSeeReveals", true, TabGroup.NeutralRoles, false).SetParent(BTOS2Baker);
+        TransformNoMoreBread = BooleanOptionItem.Create(Id + 13, "BakerTransformNoMoreBread", true, TabGroup.NeutralRoles, false).SetParent(CustomRoleSpawnChances[CustomRoles.Baker]);
+        CanVent = BooleanOptionItem.Create(Id + 14, "BakerCanVent", true, TabGroup.NeutralRoles, false).SetParent(CustomRoleSpawnChances[CustomRoles.Baker]);
+        RegenBread = BooleanOptionItem.Create(Id + 15, "BakerRegenBread", true, TabGroup.NeutralRoles, false).SetParent(CustomRoleSpawnChances[CustomRoles.Baker]);
     }
     public override void Init()
     {
@@ -80,7 +88,7 @@ internal class Baker : RoleBase
     public static byte CurrentBread() => BreadID;
     private static void SendRPC(byte typeId, PlayerControl player, PlayerControl target)
     {
-        if (!player.IsNonHostModdedClient()) return;
+        //if (!player.IsNonHostModdedClient()) return;
         MessageWriter writer = CustomRpcTransport.Start(CustomRPC.SyncRoleSkill, SendOption.Reliable);
         writer.WriteNetObject(player);
         writer.Write(typeId);
@@ -119,6 +127,17 @@ internal class Baker : RoleBase
         }
         return false;
     }
+    public static bool ApocKnowRoleTarget(PlayerControl apoc, PlayerControl target)
+    {
+        if (apoc == null || !apoc.IsNeutralApocalypse()) return false;
+        if (!ApocCanSeeReveals.GetBool()) return false;
+        bool result = false;
+        foreach (var baker in RevealList.Keys)
+        {
+            if (RevealList[baker].Contains(target.PlayerId)) result = true;
+        }
+        return result;
+    }
     public override string GetMark(PlayerControl seer, PlayerControl seen = null, bool isForMeeting = false)
     {
         StringBuilder sb = new();
@@ -143,9 +162,13 @@ internal class Baker : RoleBase
         return string.Empty;
     }
     public override bool CanUseKillButton(PlayerControl pc) => pc.IsAlive();
-    public override bool CanUseImpostorVentButton(PlayerControl pc) => true;
+    public override bool CanUseImpostorVentButton(PlayerControl pc) => CanVent.GetBool();
     public override void SetKillCooldown(byte id) => Main.AllPlayerKillCooldown[id] = Main.AllPlayerKillCooldown[id];
-    public override void SetAbilityButtonText(HudManager hud, byte playerId) => hud.KillButton.OverrideText(GetString("BakerKillButtonText"));
+    public override void SetAbilityButtonText(HudManager hud, byte playerId)
+    {
+        hud.KillButton.OverrideText(GetString("BakerKillButtonText"));
+        hud.AbilityButton.OverrideText(GetString("BakerUnshiftButtonText"));
+    }
     public static bool HasBread(byte pc, byte target) => BreadList.TryGetValue(pc, out var breadList) && breadList.Contains(target);
     private static bool AllHasBread(PlayerControl player)
     {
@@ -161,15 +184,22 @@ internal class Baker : RoleBase
     }
     private void OnPlayerDead(PlayerControl killer, PlayerControl deadPlayer, bool inMeeting)
     {
-        foreach (var playerId in BreadList.Keys.ToArray())
+        foreach (var playerId in BreadList.Keys.ToList())
         {
-            if (deadPlayer.PlayerId == playerId)
+            var baker = GetPlayerById(playerId);
+            if (HasBread(playerId, deadPlayer.PlayerId))
             {
-                BreadList[playerId].Remove(playerId);
+                BreadList[playerId].Remove(deadPlayer.PlayerId);
+                Logger.Info($"{deadPlayer.GetNameWithRole()} died, remove them from BreadList", "Baker");
+                if (RegenBread.GetBool())
+                {
+                    CanUseAbility = true;
+                    baker.Notify(string.Format(GetString("BakerBreadDied"), deadPlayer.GetRealName()));
+                }
             }
         }
     }
-    public override void OnEnterVent(PlayerControl pc, Vent vent)
+    public override void UnShapeShiftButton(PlayerControl pc)
     {
         if (BTOS2Baker.GetBool())
         {
@@ -276,9 +306,11 @@ internal class Baker : RoleBase
     }
     public override void OnFixedUpdate(PlayerControl player, bool lowLoad, long nowTime)
     {
-        if (lowLoad || !AllHasBread(player) || player.Is(CustomRoles.Famine)) return;
+        if (lowLoad || (!AllHasBread(player) && !TransformNoMoreBread.GetBool()) || player.Is(CustomRoles.Famine)) return;
+        if (TransformNoMoreBread.GetBool() && BreadedPlayerCount(player.PlayerId).Item1 < Main.AllAlivePlayerControls.Where(x => !x.IsNeutralApocalypse()).Count()) return;
 
         player.RpcSetCustomRole(CustomRoles.Famine);
+        player.RpcChangeRoleBasis(CustomRoles.Famine);
         player.GetRoleClass()?.OnAdd(_Player.PlayerId);
 
         player.Notify(GetString("BakerToFamine"));
@@ -305,7 +337,7 @@ internal class Famine : RoleBase
     public override void SetKillCooldown(byte id) => Main.AllPlayerKillCooldown[id] = Baker.FamineStarveCooldown.GetFloat();
     public override void ApplyGameOptions(IGameOptions opt, byte playerId) => opt.SetVision(true);
     public override bool CanUseKillButton(PlayerControl pc) => true;
-    public override bool CanUseImpostorVentButton(PlayerControl pc) => true;
+    public override bool CanUseImpostorVentButton(PlayerControl pc) => Baker.CanVent.GetBool();
 
     public override bool OnCheckMurderAsTarget(PlayerControl killer, PlayerControl target) => false;
     public override void SetAbilityButtonText(HudManager hud, byte playerId) => hud.KillButton.OverrideText(GetString("FamineKillButtonText"));
