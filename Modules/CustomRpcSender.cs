@@ -36,6 +36,7 @@ public class CustomRpcSender : IDisposable
     private static readonly HashSet<CustomRpcSender> Active = new();
     private readonly List<OfficialPacketCodec.Record> records = new();
     internal int RecordCount => records.Count;
+    internal int SentPacketCount { get; private set; }
     private int childOffset;
 
     private CustomRpcSender() { }
@@ -183,7 +184,7 @@ public class CustomRpcSender : IDisposable
         {
             if (!session.IsCurrent())
                 throw new InvalidOperationException("RPC sender belongs to an expired room");
-            OfficialPacketBuilder.Send(records, sendOption);
+            SentPacketCount = OfficialPacketBuilder.Send(records, sendOption);
             onSendDelegate?.Invoke();
             Logger.Info($"\"{name}\" is finished", "CustomRpcSender");
         }

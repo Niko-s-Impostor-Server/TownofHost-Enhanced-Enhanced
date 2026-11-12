@@ -1916,6 +1916,9 @@ public static class Utils
 
         Logger.Info($" START - Count Seers: {seerList.Length} & Count Target: {targetList.Length}", "DoNotifyRoles");
 
+        using var nameSender = OfficialAnticheatPolicy.Enabled ? CustomRpcSender.Create(nameof(DoNotifyRoles)) : null;
+        var recipients = new HashSet<int>();
+        int setNameCount = 0;
         //seer: player who updates the nickname/role/mark
         //target: seer updates nickname/role/mark of other targets
         foreach (var seer in seerList)
@@ -1939,7 +1942,7 @@ public static class Utils
             // Hide player names in during Mushroom Mixup if seer is alive and desync impostor
             if (!CamouflageIsForMeeting && MushroomMixupIsActive && seer.IsAlive() && !seer.Is(Custom_Team.Impostor) && seer.HasDesyncRole())
             {
-                seer.RpcSetNamePrivate("<size=0%>", force: NoCache);
+                SendName(seer, "\u200B", seer);
             }
             else
             {
@@ -2070,7 +2073,7 @@ public static class Utils
 
                 if (!isForMeeting) SelfName += "\r\n";
 
-                seer.RpcSetNamePrivate(SelfName, force: NoCache);
+                SendName(seer, SelfName, seer);
             }
 
             // Start run loop for target only when condition is "true"
@@ -2096,7 +2099,7 @@ public static class Utils
                     // Hide player names in during Mushroom Mixup if seer is alive and desync impostor
                     if (!CamouflageIsForMeeting && MushroomMixupIsActive && target.IsAlive() && !seer.Is(Custom_Team.Impostor) && seer.HasDesyncRole())
                     {
-                        realTarget.RpcSetNamePrivate("<size=0%>", seer, force: NoCache);
+                        SendName(realTarget, "\u200B", seer);
                     }
                     else
                     {
@@ -2239,14 +2242,22 @@ public static class Utils
                             TargetName = $"{TargetRoleText}<color=#4fa1ff><u></color>{TargetPlayerName}</u>{TargetDeathReason}<color=#4fa1ff>✚</color>{TargetMark}{TargetSuffix}";
                         }
 
-                        realTarget.RpcSetNamePrivate(TargetName, seer, force: NoCache);
+                        SendName(realTarget, TargetName, seer);
                     }
                 }
             }
         }
-        //Logger.Info($" Loop for Targets: {}", "DoNotifyRoles", force: true);
-        Logger.Info($" END", "DoNotifyRoles");
+        if (nameSender is { RecordCount: > 0 }) nameSender.SendMessage();
+        int packetCount = nameSender?.SentPacketCount ?? setNameCount;
+        Logger.Info($" END - Recipients: {recipients.Count}, SetName: {setNameCount}, Packets: {packetCount}", "DoNotifyRoles");
         return Task.CompletedTask;
+
+        void SendName(PlayerControl target, string name, PlayerControl seer)
+        {
+            if (target.RpcSetNamePrivate(name, seer, force: NoCache, sender: nameSender) is not int clientId) return;
+            recipients.Add(clientId);
+            setNameCount++;
+        }
     }
     public static void MarkEveryoneDirtySettings()
     {

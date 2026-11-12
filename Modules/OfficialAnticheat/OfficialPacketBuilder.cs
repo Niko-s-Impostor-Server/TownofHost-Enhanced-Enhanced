@@ -70,7 +70,7 @@ public static class OfficialPacketBuilder
         return bytes;
     }
 
-    internal static void Send(IEnumerable<OfficialPacketCodec.Record> records, SendOption option)
+    internal static int Send(IEnumerable<OfficialPacketCodec.Record> records, SendOption option)
     {
         var client = AmongUsClient.Instance;
         var context = OfficialSessionContext.Capture();
@@ -85,6 +85,7 @@ public static class OfficialPacketBuilder
             owner.Writer.Write(new Il2CppStructArray<byte>(packet));
             OfficialNetworkSend.Send(client, owner.Writer);
         }
+        return packets.Count;
     }
 
     internal static void SendChild(int target, SendOption option, Action<MessageWriter> serialize)

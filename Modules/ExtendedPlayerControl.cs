@@ -390,34 +390,47 @@ static class ExtendedPlayerControl
         player.RpcSetName(name);
     }
 
-    public static void RpcSetNamePrivate(this PlayerControl player, string name, PlayerControl seer = null, bool force = false)
+    public static int? RpcSetNamePrivate(this PlayerControl player, string name, PlayerControl seer = null, bool force = false,
+        CustomRpcSender sender = null)
     {
         //player: player whose name needs to be changed
         //seer: player who can see name changes
-        if (player == null || name == null || !AmongUsClient.Instance.AmHost) return;
+        if (player == null || name == null || !AmongUsClient.Instance.AmHost) return null;
         if (seer == null) seer = player;
 
-        if (!force && Main.LastNotifyNames.TryGetValue((player.PlayerId, seer.PlayerId), out var previousName) && previousName == name)
+        var key = (player.PlayerId, seer.PlayerId);
+        if (!force && Main.LastNotifyNames.TryGetValue(key, out var previousName) && previousName == name)
         {
             //Logger.info($"Cancel:{player.name}:{name} for {seer.name}", "RpcSetNamePrivate");
-            return;
+            return null;
         }
-        Main.LastNotifyNames[(player.PlayerId, seer.PlayerId)] = name;
+        if (sender == null) Main.LastNotifyNames[key] = name;
         HudManagerPatch.LastSetNameDesyncCount++;
         Logger.Info($"Set:{player?.Data?.PlayerName}:{name} for {seer.GetNameWithRole().RemoveHtmlTags()}", "RpcSetNamePrivate");
 
-        if (seer == null || player == null) return;
+        if (seer == null || player == null) return null;
 
         var leftPlayer = OnPlayerLeftPatch.LeftPlayerId;
-        if (seer.PlayerId == leftPlayer || player.PlayerId == leftPlayer) return;
+        if (seer.PlayerId == leftPlayer || player.PlayerId == leftPlayer) return null;
 
         var clientId = seer.GetClientId();
-        if (clientId == -1) return;
+        if (clientId == -1) return null;
+
+        if (sender != null)
+        {
+            sender.AutoStartRpc(player.NetId, (byte)RpcCalls.SetName, clientId)
+                .Write(player.Data.NetId)
+                .Write(name)
+                .EndRpc();
+            sender.onSendDelegate += () => Main.LastNotifyNames[key] = name;
+            return clientId;
+        }
 
         MessageWriter writer = AmongUsClient.Instance.StartImmediate(player.NetId, (byte)RpcCalls.SetName, SendOption.Reliable, clientId);
         writer.Write(player.Data.NetId);
         writer.Write(name);
         AmongUsClient.Instance.FinishImmediate(writer);
+        return clientId;
     }
     public static void RpcEnterVentDesync(this PlayerPhysics physics, int ventId, PlayerControl seer)
     {
