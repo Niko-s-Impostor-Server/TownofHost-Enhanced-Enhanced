@@ -21,10 +21,12 @@ public static class OfficialPacketBuilder
             records.Add(new OfficialPacketCodec.Record(target, Snapshot(owner.Writer, offset)));
         }
 
-        internal void Send()
+        internal int Send()
         {
-            if (records.Count > 0) OfficialPacketBuilder.Send(records, SendOption.Reliable);
+            if (records.Count == 0) return 0;
+            int packets = OfficialPacketBuilder.Send(records, SendOption.Reliable);
             records.Clear();
+            return packets;
         }
     }
 

@@ -1,3 +1,4 @@
+using InnerNet;
 using System;
 using UnityEngine;
 using static TOHE.Utils;
@@ -49,11 +50,14 @@ class DisableDevice
 
         if (!DoDisable) return;
 
+        OfficialPacketBuilder.Batch batch = null;
+        int recipients = 0, updates = 0;
         foreach (var pc in Main.AllPlayerControls)
         {
             try
             {
-                if (pc.IsModded()) continue;
+                int clientId = pc.GetClientId();
+                if (clientId < 0 || pc.Data.Disconnected || pc.IsModded()) continue;
 
                 bool doComms = false;
                 Vector2 PlayerPos = pc.transform.position;
@@ -122,21 +126,44 @@ class DisableDevice
                     if (!DesyncComms.Contains(pc.PlayerId))
                         DesyncComms.Add(pc.PlayerId);
 
-                    pc.RpcDesyncUpdateSystem(SystemTypes.Comms, 128);
+                    QueueComms(128);
+                    recipients++;
                 }
                 else if (!Utils.IsActive(SystemTypes.Comms) && DesyncComms.Contains(pc.PlayerId))
                 {
                     DesyncComms.Remove(pc.PlayerId);
-                    pc.RpcDesyncUpdateSystem(SystemTypes.Comms, 16);
+                    QueueComms(16);
+                    recipients++;
 
                     if (mapId is 1 or 5) // Mira HQ or The Fungle
-                        pc.RpcDesyncUpdateSystem(SystemTypes.Comms, 17);
+                        QueueComms(17);
+                }
+
+                void QueueComms(byte amount)
+                {
+                    (batch ??= new OfficialPacketBuilder.Batch()).AddChild(clientId, writer =>
+                    {
+                        writer.StartMessage(2);
+                        writer.WritePacked(ShipStatus.Instance.NetId);
+                        writer.Write((byte)RpcCalls.UpdateSystem);
+                        writer.Write((byte)SystemTypes.Comms);
+                        writer.WriteNetObject(pc);
+                        writer.Write(amount);
+                        writer.EndMessage();
+                    });
+                    updates++;
                 }
             }
             catch (Exception ex)
             {
                 Logger.Exception(ex, "DisableDevice");
             }
+        }
+
+        if (updates > 0)
+        {
+            int packets = batch.Send();
+            Logger.Info($"END - Recipients: {recipients}, UpdateSystem: {updates}, Packets: {packets}", "DisableDevice.FixedUpdate");
         }
     }
 }
