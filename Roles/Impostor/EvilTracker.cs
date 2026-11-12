@@ -126,22 +126,24 @@ internal class EvilTracker : RoleBase
     }
     public override void AfterMeetingTasks()
     {
+        if (_state == null) return;
+        byte playerId = _state.PlayerId;
         if (CurrentTargetMode == TargetMode.EveryMeeting)
-        {
-            SetTarget();
-            Utils.MarkEveryoneDirtySettings();
-        }
-        foreach (var playerId in playerIdList)
-        {
-            var pc = Utils.GetPlayerById(playerId);
-            var target = Utils.GetPlayerById(GetTargetId(playerId));
-            if (!pc.IsAlive() || !target.IsAlive())
-                SetTarget(playerId);
-            pc?.SyncSettings();
-            pc?.RpcResetAbilityCooldown();
-        }
+            CanSetTarget[playerId] = true;
+
+        byte targetId = GetTargetId(playerId);
+        if (targetId != byte.MaxValue && (!_Player.IsAlive() || !Utils.GetPlayerById(targetId).IsAlive()))
+            SetTarget(playerId, byte.MaxValue);
     }
-    private static void SetTarget(byte trackerId = byte.MaxValue, byte targetId = byte.MaxValue)
+
+    internal static void SyncMeetingTargetSelection()
+    {
+        // Keep the existing all-trackers unlock message, once per meeting.
+        if (HasEnabled && CurrentTargetMode == TargetMode.EveryMeeting)
+            SendRPC(byte.MaxValue, byte.MaxValue);
+    }
+
+    private static void SetTarget(byte trackerId, byte targetId)
     {
         if (trackerId == byte.MaxValue) // Targets can be re-set
             foreach (var playerId in playerIdList)

@@ -2396,6 +2396,8 @@ public static class Utils
                 playerState.RoleClass.HasVoted = false;
             }
 
+            EvilTracker.SyncMeetingTargetSelection();
+
             //Set kill timer
             foreach (var player in Main.AllAlivePlayerControls)
             {
