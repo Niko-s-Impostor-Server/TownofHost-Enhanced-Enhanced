@@ -55,8 +55,8 @@ public class Main : BasePlugin
     public static ConfigEntry<string> DebugKeyInput { get; private set; }
 
     public const string PluginGuid = "top.niko233.townofhostenhancedenhanced";
-    public const string PluginVersion = "2026.1112.211.0";
-    public const string PluginDisplayVersion = "2.1.1-20261112";
+    public const string PluginVersion = "2026.1113.211.0";
+    public const string PluginDisplayVersion = "2.1.1-20261113";
     public static readonly string[] SupportedVersionAU = ["2026.9.29", "2026.11.3"];
 
     /******************* Change one of the three variables to true before making a release. *******************/
