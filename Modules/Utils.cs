@@ -2487,7 +2487,7 @@ public static class Utils
         foreach (char c in t) bc += Encoding.GetEncoding("UTF-8").GetByteCount(c.ToString()) == 1 ? 1 : 2;
         return t?.PadRight(Mathf.Max(num - (bc - t.Length), 0));
     }
-    public static void DumpLog()
+    public static string DumpLog(bool announce = true)
     {
         // BepInEx exposes the disk writer, but not its chosen LogOutput.N.log path.
         string marker = $"[TOHE /dump {Guid.NewGuid():N}]";
@@ -2528,6 +2528,8 @@ public static class Utils
         if (!Directory.Exists(f)) Directory.CreateDirectory(f);
         file.CopyTo(@filename);
 
+        if (!announce) return filename;
+
 #if ANDROID
         string savedFileName = filename;
 #else
@@ -2542,6 +2544,7 @@ public static class Utils
         ProcessStartInfo psi = new("Explorer.exe") { Arguments = "/e,/select," + @filename.Replace("/", "\\") };
         Process.Start(psi);
 #endif
+        return filename;
     }
 
 

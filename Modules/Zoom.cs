@@ -17,7 +17,7 @@ public static class Zoom
             if (Camera.main.orthographicSize > 3.0f)
                 ResetButtons = true;
 
-            if (Input.mouseScrollDelta.y > 0)
+            if (Input.mouseScrollDelta.y > 0 && !DebugShower.WantsScroll())
             {
                 if (Camera.main.orthographicSize > 3.0f)
                 {
@@ -25,7 +25,7 @@ public static class Zoom
                 }
 
             }
-            if (Input.mouseScrollDelta.y < 0)
+            if (Input.mouseScrollDelta.y < 0 && !DebugShower.WantsScroll())
             {
                 if (GameStates.IsDead || GameStates.IsFreePlay || DebugModeManager.AmDebugger || GameStates.IsLobby ||
                     PlayerControl.LocalPlayer.FriendCode.GetDevUser().DeBug)

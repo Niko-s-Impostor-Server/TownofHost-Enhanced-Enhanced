@@ -224,16 +224,7 @@ internal class ControllerManagerUpdatePatch
 
                 if (GameStates.IsMeeting)
                 {
-                    foreach (var pva in MeetingHud.Instance.playerStates)
-                    {
-                        if (pva == null) continue;
-
-                        if (pva.VotedForId.Value < 253)
-                            MeetingHud.Instance.RpcClearVote(pva.PlayerId.Value);
-                    }
-                    List<MeetingHud.VoterState> statesList = [];
-                    MeetingHud.Instance.RpcVotingComplete(statesList.ToArray(), null, true, false, 0);
-                    MeetingHud.Instance.RpcClose();
+                    ForceSkipMeeting(MeetingHud.Instance);
                 }
                 else
                 {
@@ -243,26 +234,13 @@ internal class ControllerManagerUpdatePatch
             // Forse start game       
             if (Input.GetKeyDown(KeyCode.LeftShift) && GameStates.IsCountDown && !HudManager.Instance.Chat.IsOpenOrOpening)
             {
-                var invalidColor = Main.AllPlayerControls.Where(p => p.Data.DefaultOutfit.ColorId < 0 || Palette.PlayerColors.Length <= p.Data.DefaultOutfit.ColorId).ToArray();
-                if (invalidColor.Any())
-                {
-                    GameStartManager.Instance.ResetStartState(); //Hope this works
-                    Logger.SendInGame(GetString("Error.InvalidColorPreventStart"));
-                    Logger.Info("Invalid Color Detected on force start!", "KeyCommand");
-                }
-                else
-                {
-                    Logger.Info("Countdown timer changed to 0", "KeyCommand");
-                    GameStartManager.Instance.countDownTimer = 0;
-                }
+                FinishCountdown();
             }
 
             // Cancel start count down
             if (Input.GetKeyDown(KeyCode.C) && GameStates.IsCountDown && GameStates.IsLobby)
             {
-                Logger.Info("Reset Countdown", "KeyCommand");
-                GameStartManager.Instance.ResetStartState();
-                Logger.SendInGame(GetString("CancelStartCountDown"));
+                CancelCountdown();
             }
             // Displays a description of the currently valid settings
             //if (GetKeysDown(KeyCode.N, KeyCode.LeftShift, KeyCode.LeftControl))
@@ -410,6 +388,41 @@ internal class ControllerManagerUpdatePatch
         {
             Utils.ThrowException(error);
         }
+    }
+
+    internal static void ForceSkipMeeting(MeetingHud meeting)
+    {
+        foreach (var pva in meeting.playerStates)
+        {
+            if (pva == null) continue;
+            if (pva.VotedForId.Value < 253) meeting.RpcClearVote(pva.PlayerId.Value);
+        }
+        List<MeetingHud.VoterState> statesList = [];
+        meeting.RpcVotingComplete(statesList.ToArray(), null, true, false, 0);
+        meeting.RpcClose();
+    }
+
+    internal static void FinishCountdown()
+    {
+        var invalidColor = Main.AllPlayerControls.Where(p => p.Data.DefaultOutfit.ColorId < 0 || Palette.PlayerColors.Length <= p.Data.DefaultOutfit.ColorId).ToArray();
+        if (invalidColor.Any())
+        {
+            GameStartManager.Instance.ResetStartState();
+            Logger.SendInGame(GetString("Error.InvalidColorPreventStart"));
+            Logger.Info("Invalid Color Detected on force start!", "KeyCommand");
+        }
+        else
+        {
+            Logger.Info("Countdown timer changed to 0", "KeyCommand");
+            GameStartManager.Instance.countDownTimer = 0;
+        }
+    }
+
+    internal static void CancelCountdown()
+    {
+        Logger.Info("Reset Countdown", "KeyCommand");
+        GameStartManager.Instance.ResetStartState();
+        Logger.SendInGame(GetString("CancelStartCountDown"));
     }
 
     private static bool GetKeysDown(params KeyCode[] keys)

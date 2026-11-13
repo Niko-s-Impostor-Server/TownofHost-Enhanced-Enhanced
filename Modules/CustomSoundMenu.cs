@@ -15,7 +15,7 @@ internal static class CustomSoundMenu
     private static readonly List<(GameObject Root, TextBoxTMP Input)> Rows = [];
     private static PassiveButton entry;
     private static SpriteRenderer entryImage;
-    private static Sprite enabledIcon, mutedIcon, circle, white;
+    private static Sprite enabledIcon, mutedIcon, circle;
     private static GameObject panel;
     private static Transform listContent;
     private static TextBoxTMP inputTemplate;
@@ -184,8 +184,8 @@ internal static class CustomSoundMenu
         blockerButton.OnMouseOut = new();
         blockerButton.OnClick = new();
 
-        if (!white) white = Sprite.Create(Texture2D.whiteTexture, new Rect(0f, 0f, 1f, 1f), new Vector2(0.5f, 0.5f), 1f, 0, SpriteMeshType.FullRect);
-        Surface(panel.transform, "Dimmer", new Vector3(0f, 0f, 0.5f), new Vector2(30f, 20f), new Color(0f, 0f, 0f, 0.58f));
+        var visuals = new MenuVisuals(labelTemplate);
+        visuals.Surface(panel.transform, "Dimmer", new Vector3(0f, 0f, 0.5f), new Vector2(30f, 20f), new Color(0f, 0f, 0f, 0.58f));
 
         var background = new GameObject("Background");
         background.transform.SetParent(panel.transform, false);
@@ -194,16 +194,16 @@ internal static class CustomSoundMenu
         surface.drawMode = SpriteDrawMode.Sliced;
         surface.size = new Vector2(7.2f, 5.5f);
 
-        Label(panel.transform, "Title", Translator.GetString("CustomSoundsTitle"), new Vector3(-1.45f, 2.34f, -2f), new Vector2(3.5f, 0.5f), 2.7f, TextAlignmentOptions.Left);
-        previewLabel = Label(panel.transform, "PreviewSelection", string.Format(Translator.GetString("CustomSoundsPreview"), selectedSound), new Vector3(1.05f, 2.34f, -2f), new Vector2(2.3f, 0.4f), 1.55f, TextAlignmentOptions.Right);
+        visuals.Label(panel.transform, "Title", Translator.GetString("CustomSoundsTitle"), new Vector3(-1.45f, 2.34f, -2f), new Vector2(3.5f, 0.5f), 2.7f, TextAlignmentOptions.Left);
+        previewLabel = visuals.Label(panel.transform, "PreviewSelection", string.Format(Translator.GetString("CustomSoundsPreview"), selectedSound), new Vector3(1.05f, 2.34f, -2f), new Vector2(2.3f, 0.4f), 1.55f, TextAlignmentOptions.Right);
         previewLabel.color = new Color32(180, 216, 215, 255);
-        var close = Button(panel.transform, "Close", new Vector3(2.7f, 2.3f, -3f), new Vector2(0.55f, 0.45f), "X", () => Close());
-        Surface(panel.transform, "HeaderDivider", new Vector3(0f, 2.03f, -1f), new Vector2(6.55f, 0.018f), new Color(0.36f, 0.48f, 0.5f, 0.75f));
-        Label(panel.transform, "MasterLabel", Translator.GetString("CustomSoundsMaster"), new Vector3(-2.0f, 1.7f, -2f), new Vector2(2.4f, 0.45f), 2.2f, TextAlignmentOptions.Left);
+        var close = visuals.Button(panel.transform, "Close", new Vector3(2.7f, 2.3f, -3f), new Vector2(0.55f, 0.45f), "X", () => Close());
+        visuals.Surface(panel.transform, "HeaderDivider", new Vector3(0f, 2.03f, -1f), new Vector2(6.55f, 0.018f), new Color(0.36f, 0.48f, 0.5f, 0.75f));
+        visuals.Label(panel.transform, "MasterLabel", Translator.GetString("CustomSoundsMaster"), new Vector3(-2.0f, 1.7f, -2f), new Vector2(2.4f, 0.45f), 2.2f, TextAlignmentOptions.Left);
         VolumeControl(panel.transform, null, 1.7f, out masterInput);
-        var listHint = Label(panel.transform, "ListHint", Translator.GetString("CustomSoundsScrollHint"), new Vector3(-1.55f, -2.35f, -2f), new Vector2(3.3f, 0.3f), 1.35f, TextAlignmentOptions.Left);
+        var listHint = visuals.Label(panel.transform, "ListHint", Translator.GetString("CustomSoundsScrollHint"), new Vector3(-1.55f, -2.35f, -2f), new Vector2(3.3f, 0.3f), 1.35f, TextAlignmentOptions.Left);
         listHint.color = new Color32(180, 207, 207, 255);
-        Surface(panel.transform, "ListDivider", new Vector3(0f, 1.3f, -1f), new Vector2(6.55f, 0.018f), new Color(0.36f, 0.48f, 0.5f, 0.75f));
+        visuals.Surface(panel.transform, "ListDivider", new Vector3(0f, 1.3f, -1f), new Vector2(6.55f, 0.018f), new Color(0.36f, 0.48f, 0.5f, 0.75f));
 
         var scrollObject = new GameObject("SoundListScroller");
         scrollObject.SetActive(false);
@@ -235,10 +235,10 @@ internal static class CustomSoundMenu
             var row = new GameObject("Sound_" + id);
             row.transform.SetParent(listContent, false);
             row.transform.localPosition = new Vector3(0f, 0.95f - i * RowSpacing, -1f);
-            Surface(row.transform, "RowBackground", new Vector3(0f, 0f, -0.1f), new Vector2(6.55f, 0.41f), new Color(0.12f, 0.19f, 0.21f, 0.6f));
-            Label(row.transform, "Name", id, new Vector3(-2.25f, 0f, -1f), new Vector2(1.8f, 0.4f), 1.9f, TextAlignmentOptions.Center);
+            visuals.Surface(row.transform, "RowBackground", new Vector3(0f, 0f, -0.1f), new Vector2(6.55f, 0.41f), new Color(0.12f, 0.19f, 0.21f, 0.6f));
+            visuals.Label(row.transform, "Name", id, new Vector3(-2.25f, 0f, -1f), new Vector2(1.8f, 0.4f), 1.9f, TextAlignmentOptions.Center);
             PassiveButton toggle = null;
-            toggle = Button(row.transform, "Toggle_" + id, new Vector3(-0.95f, 0f, -1f), new Vector2(0.7f, 0.34f),
+            toggle = visuals.Button(row.transform, "Toggle_" + id, new Vector3(-0.95f, 0f, -1f), new Vector2(0.7f, 0.34f),
                 Translator.GetString(effect.Enabled ? "CustomSoundsOn" : "CustomSoundsOff"), () =>
                 {
                     SelectSound(id);
@@ -251,73 +251,12 @@ internal static class CustomSoundMenu
             VolumeControl(row.transform, id, 0f, out var input);
             Rows.Add((row, input));
         }
-        Button(panel.transform, "ScrollUp", new Vector3(2.0f, -2.35f, -3f), new Vector2(0.8f, 0.34f), Translator.GetString("CustomSoundsUp"), () => scroller.ScrollRelative(new Vector2(0f, -3 * RowSpacing)));
-        Button(panel.transform, "ScrollDown", new Vector3(3.0f, -2.35f, -3f), new Vector2(0.9f, 0.34f), Translator.GetString("CustomSoundsDown"), () => scroller.ScrollRelative(new Vector2(0f, 3 * RowSpacing)));
+        visuals.Button(panel.transform, "ScrollUp", new Vector3(2.0f, -2.35f, -3f), new Vector2(0.8f, 0.34f), Translator.GetString("CustomSoundsUp"), () => scroller.ScrollRelative(new Vector2(0f, -3 * RowSpacing)));
+        visuals.Button(panel.transform, "ScrollDown", new Vector3(3.0f, -2.35f, -3f), new Vector2(0.9f, 0.34f), Translator.GetString("CustomSoundsDown"), () => scroller.ScrollRelative(new Vector2(0f, 3 * RowSpacing)));
         scrollObject.SetActive(true);
         Update();
         foreach (var item in panel.GetComponentsInChildren<Transform>(true)) item.gameObject.layer = uiLayer;
         ControllerManager.Instance?.OpenOverlayMenu(OverlayName, close);
-
-        SpriteRenderer Surface(Transform parent, string name, Vector3 position, Vector2 size, Color color)
-        {
-            var obj = new GameObject(name);
-            obj.transform.SetParent(parent, false);
-            obj.transform.localPosition = position;
-            var renderer = obj.AddComponent<SpriteRenderer>();
-            renderer.sprite = white;
-            renderer.drawMode = SpriteDrawMode.Sliced;
-            renderer.size = size;
-            renderer.color = color;
-            return renderer;
-        }
-
-        TextMeshPro Label(Transform parent, string name, string text, Vector3 position, Vector2 size, float fontSize, TextAlignmentOptions alignment)
-        {
-            var label = Object.Instantiate(labelTemplate, parent);
-            label.name = name;
-            label.DestroyTranslator();
-            var anchor = label.GetComponent<AspectPosition>();
-            if (anchor != null)
-            {
-                anchor.enabled = false;
-                Object.Destroy(anchor);
-            }
-            label.transform.localPosition = position;
-            label.transform.localScale = Vector3.one;
-            label.rectTransform.sizeDelta = size;
-            label.margin = Vector4.zero;
-            label.alignment = alignment;
-            label.enableAutoSizing = true;
-            label.fontSize = label.fontSizeMax = fontSize;
-            label.fontSizeMin = 1f;
-            label.color = Color.white;
-            label.text = text;
-            label.gameObject.SetActive(true);
-            return label;
-        }
-
-        PassiveButton Button(Transform parent, string name, Vector3 position, Vector2 size, string caption, Action action)
-        {
-            var obj = new GameObject(name);
-            obj.SetActive(false);
-            obj.transform.SetParent(parent, false);
-            obj.transform.localPosition = position;
-            var renderer = obj.AddComponent<SpriteRenderer>();
-            renderer.sprite = white;
-            renderer.drawMode = SpriteDrawMode.Sliced;
-            renderer.size = size;
-            renderer.color = new Color32(65, 91, 96, 255);
-            var collider = obj.AddComponent<BoxCollider2D>();
-            collider.size = size;
-            var button = obj.AddComponent<PassiveButton>();
-            button.OnMouseOver = new();
-            button.OnMouseOut = new();
-            button.OnClick = new();
-            button.OnClick.AddListener((UnityAction)(() => action()));
-            Label(obj.transform, "Label", caption, new Vector3(0f, 0f, -0.2f), size, 1.8f, TextAlignmentOptions.Center);
-            obj.SetActive(true);
-            return button;
-        }
 
         void VolumeControl(Transform parent, string id, float y, out TextBoxTMP input)
         {
@@ -335,7 +274,7 @@ internal static class CustomSoundMenu
             var barObject = new GameObject("Bar");
             barObject.transform.SetParent(sliderObject.transform, false);
             var bar = barObject.AddComponent<SpriteRenderer>();
-            bar.sprite = white;
+            bar.sprite = MenuVisuals.White;
             bar.drawMode = SpriteDrawMode.Sliced;
             bar.size = new Vector2(1.5f, 0.05f);
             var dotObject = new GameObject("Dot");
@@ -378,7 +317,7 @@ internal static class CustomSoundMenu
             field.outputText.enableAutoSizing = true;
             field.outputText.rectTransform.sizeDelta = new Vector2(1.2f, 0.35f);
             field.outputText.alignment = TextAlignmentOptions.Center;
-            Label(parent, "Percent", "%", new Vector3(3.22f, y, -4f), new Vector2(0.3f, 0.35f), 1.7f, TextAlignmentOptions.Center);
+            visuals.Label(parent, "Percent", "%", new Vector3(3.22f, y, -4f), new Vector2(0.3f, 0.35f), 1.7f, TextAlignmentOptions.Center);
             if (field.placeholderText != null) field.placeholderText.gameObject.SetActive(false);
             field.placeholderText = null;
             var checkmark = field.transform.Find("Checkmark");
@@ -423,7 +362,7 @@ internal static class CustomSoundMenu
             field.gameObject.SetActive(true);
             if (inputStyle != null)
             {
-                valueLabel = Label(field.transform, "Value", field.text, new Vector3(0f, 0f, 31f), new Vector2(1.2f, 0.35f), 1.9f, TextAlignmentOptions.Center);
+                valueLabel = visuals.Label(field.transform, "Value", field.text, new Vector3(0f, 0f, 31f), new Vector2(1.2f, 0.35f), 1.9f, TextAlignmentOptions.Center);
                 valueLabel.ForceMeshUpdate(true, true);
             }
             input = field;

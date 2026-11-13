@@ -27,6 +27,8 @@ class HudManagerPatch
         CustomSoundMenu.Update();
         CloudMenu.Update();
         CloudLobbyButton.Update(__instance);
+        HudToolbox.Update(__instance);
+        DebugShower.Update(__instance);
         FeatureChatCommands.UpdateSession();
         FeatureChatCommands.CheckTagChanges();
         BlackScreenFix.Tick();

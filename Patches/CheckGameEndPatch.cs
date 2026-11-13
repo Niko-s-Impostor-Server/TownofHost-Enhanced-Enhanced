@@ -41,6 +41,34 @@ class GameEndCheckerForNormal
     public static bool GameIsEnded = false;
     public static bool ShouldNotCheck = false;
 
+    internal static bool CanEndWithTeam() => AmongUsClient.Instance != null && AmongUsClient.Instance.AmHost &&
+        GameStates.IsInGame && !GameStates.IsEnded && !GameStates.IsHideNSeek && Options.CurrentGameMode == CustomGameMode.Standard &&
+        ShipStatus.Instance != null && predicate != null && !ShouldNotCheck && !ForEndGame && !RoleDistribution.BlocksHostGameEnd;
+
+    internal static void EndWithTeam(CustomWinner team)
+    {
+        if (!CanEndWithTeam()) return;
+        NameNotifyManager.Reset();
+        Main.AllPlayerControls.Do(pc => Camouflage.RpcSetSkin(pc, ForceRevert: true, RevertToDefault: true, GameEnd: true));
+        GameIsEnded = true;
+        Utils.DoNotifyRoles(ForceLoop: true, NoCache: true);
+        ResetAndSetWinner(team);
+        foreach (var pc in Main.AllPlayerControls)
+        {
+            var countType = Main.PlayerStates[pc.PlayerId].countTypes;
+            if (IsTeamWinner(pc, countType, team)) WinnerIds.Add(pc.PlayerId);
+        }
+        ShipStatus.Instance.enabled = false;
+        predicate = null;
+        StartEndGame(team == CustomWinner.Crewmate ? GameOverReason.CrewmatesByVote : GameOverReason.ImpostorsByKill);
+    }
+
+    private static bool IsTeamWinner(PlayerControl pc, CountTypes countType, CustomWinner team) => team == CustomWinner.Crewmate
+        ? (pc.Is(Custom_Team.Crewmate) && (countType == CountTypes.Crew || pc.Is(CustomRoles.Soulless))) ||
+          (pc.Is(CustomRoles.Admired) && !WinnerIds.Contains(pc.PlayerId))
+        : ((pc.Is(Custom_Team.Impostor) || pc.GetCustomRole().IsMadmate()) && (countType == CountTypes.Impostor || pc.Is(CustomRoles.Soulless))) ||
+          (pc.Is(CustomRoles.Madmate) && !WinnerIds.Contains(pc.PlayerId));
+
     [HarmonyPriority(Priority.First)]
     public static bool Prefix()
     {
@@ -96,8 +124,7 @@ class GameEndCheckerForNormal
                 switch (WinnerTeam)
                 {
                     case CustomWinner.Crewmate:
-                        if ((pc.Is(Custom_Team.Crewmate) && (countType == CountTypes.Crew || pc.Is(CustomRoles.Soulless))) ||
-                            pc.Is(CustomRoles.Admired) && !WinnerIds.Contains(pc.PlayerId))
+                        if (IsTeamWinner(pc, countType, CustomWinner.Crewmate))
                         {
                             // When admired neutral win, set end game reason "HumansByVote"
                             if (reason is not GameOverReason.CrewmatesByVote and not GameOverReason.CrewmatesByTask)
@@ -108,8 +135,7 @@ class GameEndCheckerForNormal
                         }
                         break;
                     case CustomWinner.Impostor:
-                        if (((pc.Is(Custom_Team.Impostor) || pc.GetCustomRole().IsMadmate()) && (countType == CountTypes.Impostor || pc.Is(CustomRoles.Soulless)))
-                            || pc.Is(CustomRoles.Madmate) && !WinnerIds.Contains(pc.PlayerId))
+                        if (IsTeamWinner(pc, countType, CustomWinner.Impostor))
                         {
                             WinnerIds.Add(pc.PlayerId);
                         }

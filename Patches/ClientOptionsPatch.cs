@@ -10,6 +10,7 @@ public static class CustomSoundOptionsMenuOpenPatch
     {
         CustomSoundMenu.Close();
         CloudMenu.Close();
+        HudToolbox.Close();
     }
 }
 
@@ -37,6 +38,7 @@ public static class OptionsMenuBehaviourStartPatch
     private static ClientOptionItem ForceOwnLanguage;
     private static ClientOptionItem ForceOwnLanguageRoleName;
     private static ClientOptionItem EnableCustomButton;
+    private static ClientOptionItem EnableHudToolbox;
     private static ClientOptionItem EnableCustomSoundEffect;
     private static ClientOptionItem CustomSoundsManage;
     private static ClientOptionItem EnableCustomDecorations;
@@ -143,6 +145,10 @@ public static class OptionsMenuBehaviourStartPatch
         if (EnableCustomButton == null || EnableCustomButton.ToggleButton == null)
         {
             EnableCustomButton = ClientOptionItem.Create("EnableCustomButton", Main.EnableCustomButton, __instance);
+        }
+        if (EnableHudToolbox == null || EnableHudToolbox.ToggleButton == null)
+        {
+            EnableHudToolbox = ClientOptionItem.Create("EnableHudToolbox", Main.EnableHudToolbox, __instance);
         }
         if (EnableCustomSoundEffect == null || EnableCustomSoundEffect.ToggleButton == null)
         {

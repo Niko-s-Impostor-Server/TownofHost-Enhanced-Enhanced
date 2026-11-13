@@ -20,19 +20,14 @@ namespace TOHE;
 class CheckForEndVotingPatch
 {
     public static string TempExileMsg;
-    public static bool Prefix(MeetingHud __instance)
+    public static bool Prefix(MeetingHud __instance) => CountVotes(__instance, Input.GetKeyDown(KeyCode.F6));
+
+    internal static bool CountVotes(MeetingHud __instance, bool shouldSkip)
     {
         if (!AmongUsClient.Instance.AmHost) return true;
         if (__instance.state is MeetingHud.MeetingStates.Results or MeetingHud.MeetingStates.Proceeding) return false;
 
         VanillaJudgeMeeting.Prune(__instance);
-
-        //Meeting Skip with vote counting on keystroke (m + delete)
-        var shouldSkip = false;
-        if (Input.GetKeyDown(KeyCode.F6))
-        {
-            shouldSkip = true;
-        }
 
         //  HasNotVoted = 255;
         //  MissedVote = 254;

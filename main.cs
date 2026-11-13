@@ -104,6 +104,9 @@ public class Main : BasePlugin
     public static ConfigEntry<bool> ForceOwnLanguage { get; private set; }
     public static ConfigEntry<bool> ForceOwnLanguageRoleName { get; private set; }
     public static ConfigEntry<bool> EnableCustomButton { get; private set; }
+    public static ConfigEntry<bool> EnableHudToolbox { get; private set; }
+    public static ConfigEntry<bool> HudToolboxInstantActions { get; private set; }
+    public static ConfigEntry<bool> ShowHudDiagnostics { get; private set; }
     public static ConfigEntry<bool> EnableCustomSoundEffect { get; private set; }
     public static ConfigEntry<bool> EnableCustomDecorations { get; private set; }
     public static ConfigEntry<bool> SwitchVanilla { get; private set; }
@@ -528,6 +531,9 @@ public class Main : BasePlugin
         ForceOwnLanguage = Config.Bind("Client Options", "ForceOwnLanguage", false);
         ForceOwnLanguageRoleName = Config.Bind("Client Options", "ForceOwnLanguageRoleName", false);
         EnableCustomButton = Config.Bind("Client Options", "EnableCustomButton", true);
+        EnableHudToolbox = Config.Bind("Client Options", "EnableHudToolbox", false);
+        HudToolboxInstantActions = Config.Bind("Client Options", "HudToolboxInstantActions", false);
+        ShowHudDiagnostics = Config.Bind("Client Options", "ShowHudDiagnostics", false);
         EnableCustomSoundEffect = Config.Bind("Client Options", "EnableCustomSoundEffect", true);
         EnableCustomDecorations = Config.Bind("Client Options", "EnableCustomDecorations", true);
         SwitchVanilla = Config.Bind("Client Options", "SwitchVanilla", false);

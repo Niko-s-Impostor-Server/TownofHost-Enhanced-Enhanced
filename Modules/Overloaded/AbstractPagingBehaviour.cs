@@ -40,10 +40,11 @@ public class AbstractPagingBehaviour : MonoBehaviour
 
     public virtual void Update()
     {
-        if (Input.GetKeyDown(KeyCode.UpArrow) || Input.GetKeyDown(KeyCode.LeftArrow) || Input.mouseScrollDelta.y > 0f)
+        if (Input.GetKeyDown(KeyCode.UpArrow) || Input.GetKeyDown(KeyCode.LeftArrow) ||
+            Input.mouseScrollDelta.y > 0f && !DebugShower.WantsScroll())
             Cycle(false);
         else if (Input.GetKeyDown(KeyCode.DownArrow) || Input.GetKeyDown(KeyCode.RightArrow) ||
-                 Input.mouseScrollDelta.y < 0f)
+                 Input.mouseScrollDelta.y < 0f && !DebugShower.WantsScroll())
             Cycle(true);
     }
 

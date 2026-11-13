@@ -35,6 +35,7 @@ public static class AntiBlackout
     private static bool warnedUnavailable;
 
     public static bool IsBuffered(byte playerId) => bufferedPlayers.Contains(playerId);
+    internal static bool TryGetSelfRoleMask(byte playerId, out RoleTypes role) => sentMask.TryGetValue((playerId, playerId), out role);
     internal static bool AirshipRecoveryInProgress => airshipPendingPlayers != null;
     private readonly record struct PlayerView(byte Id, RoleTypes Role, bool Impostor, bool Alive,
         int Margin, bool CanProtect, bool Dead, bool UncertainRole, int SnapshotCost);
