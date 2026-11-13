@@ -2489,6 +2489,7 @@ public static class Utils
     }
     public static string DumpLog(bool announce = true)
     {
+        OfficialHazelSendHistory.Dump();
         // BepInEx exposes the disk writer, but not its chosen LogOutput.N.log path.
         string marker = $"[TOHE /dump {Guid.NewGuid():N}]";
         bool wroteMarker = false;
