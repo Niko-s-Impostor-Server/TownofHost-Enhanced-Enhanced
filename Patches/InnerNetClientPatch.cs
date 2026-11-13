@@ -17,6 +17,9 @@ public enum GameDataTag : byte
     XboxDeclareXuid = 207,
 }
 
+// Windows inlines the coroutine factory, so this patch is bypassed. On Android,
+// returning false leaves the coroutine null and causes "routine is null".
+/*
 [HarmonyPatch(typeof(InnerNetClient), nameof(InnerNetClient.HandleGameDataInner))]
 internal class GameDataHandlerPatch
 {
@@ -152,6 +155,7 @@ internal class GameDataHandlerPatch
         return true;
     }
 }
+*/
 
 #if !ANDROID
 [HarmonyPatch(typeof(AmongUsClient), nameof(AmongUsClient.CoStartGameHost))]
