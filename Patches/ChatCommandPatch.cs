@@ -2671,22 +2671,22 @@ class RpcSendChatPatch
             __result = true;
             return false;
         }
-        if (OfficialAnticheatPolicy.Enabled && AmongUsClient.Instance.AmHost)
+        // The native chat bubble uses the synchronized player name, not the Unity object name.
+        int nameLines = Regex.Matches(__instance.Data.PlayerName, @"\n|<br\s*/?>", RegexOptions.IgnoreCase).Count;
+        int existingPadding = Regex.Matches(chatText, @"\G\r*\n").Count;
+        int padding = Math.Max(0, nameLines - existingPadding);
+        if (OfficialAnticheatPolicy.Enabled && AmongUsClient.Instance.AmHost &&
+            Encoding.UTF8.GetByteCount(chatText) + padding > OfficialPacketCodec.SoftLimit)
         {
-            // This path already adds padding for each recipient's displayed title.
             ChatManager.SendPlayerText(__instance, chatText);
             __result = true;
             return false;
         }
-
-        // The native chat bubble uses the synchronized player name, not the Unity object name.
-        int nameLines = Regex.Matches(__instance.Data.PlayerName, @"\n|<br\s*/?>", RegexOptions.IgnoreCase).Count;
-        int existingPadding = Regex.Matches(chatText, @"\G\r*\n").Count;
-        if (nameLines > existingPadding)
-            chatText = new string('\n', nameLines - existingPadding) + chatText;
+        if (padding > 0)
+            chatText = new string('\n', padding) + chatText;
 
         // Remote free chat on official servers stays on the native owned-object path.
-        if (OfficialAnticheatPolicy.Enabled) return true;
+        if (OfficialAnticheatPolicy.Enabled && !AmongUsClient.Instance.AmHost) return true;
         if (AmongUsClient.Instance.AmClient && DestroyableSingleton<HudManager>.Instance)
             DestroyableSingleton<HudManager>.Instance.Chat.AddChat(__instance, chatText);
         if (chatText.Contains("who", StringComparison.OrdinalIgnoreCase))

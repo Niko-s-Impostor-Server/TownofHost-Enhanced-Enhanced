@@ -46,8 +46,7 @@ internal static class OfficialChat
             string senderName = actor.Data.PlayerName;
             title ??= senderName;
             byte speakerId = actor.PlayerId;
-            // System messages need a living carrier; ghost chat preserves its dead sender
-            // because ChatManager sends it only to recipients whose Data.IsDead is true.
+            // System messages need a living actor. Player chat uses the actual speaker.
             if (!preserveDeadActor)
                 actor = Main.AllPlayerControls.Where(p => p?.Data != null && !p.Data.Disconnected && !p.Data.IsDead)
                     .OrderBy(p => p.PlayerId).FirstOrDefault(p => p == actor)

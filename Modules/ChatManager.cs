@@ -42,14 +42,8 @@ namespace TOHE.Modules.ChatManager
         internal static void SendPlayerText(PlayerControl sender, string text)
         {
             if (sender?.Data == null) return;
-            if (!sender.IsAlive())
-            {
-                foreach (var recipient in Main.AllPlayerControls.Where(p => p?.Data != null && !p.Data.Disconnected && p.Data.IsDead))
-                    OfficialChat.Send(sender, text, recipient.PlayerId, preserveDeadActor: true);
-                return;
-            }
-
-            var pages = OfficialChat.Send(sender, text);
+            var pages = OfficialChat.Send(sender, text, preserveDeadActor: true);
+            if (!sender.IsAlive()) return;
             foreach (var page in pages) RecordPlayerPage(page);
         }
 

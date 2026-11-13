@@ -16,7 +16,7 @@ public static class GameStartManagerMinPlayersPatch
 {
     public static void Prefix(GameStartManager __instance)
     {
-        __instance.MinPlayers = ServerLimits.IsOfficial ? 4 : 1;
+        __instance.MinPlayers = 1;
     }
 }
 public class GameStartManagerPatch
