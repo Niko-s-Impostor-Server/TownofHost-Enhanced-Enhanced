@@ -10,8 +10,9 @@ namespace TOHE.Modules;
 internal static class GhostRoleView
 {
     private static PlayerControl localExile;
-    private static readonly HashSet<object> pendingPublications = [];
+    private static readonly Dictionary<object, byte> pendingPublications = [];
     internal static bool HasPendingPublications => pendingPublications.Count > 0;
+    internal static bool IsPublicationPending(byte playerId) => pendingPublications.ContainsValue(playerId);
     internal static void ResetPending() => pendingPublications.Clear();
 
     internal static bool SuppressNativeAssignment(PlayerControl player) => player != null && player == localExile;
@@ -56,15 +57,14 @@ internal static class GhostRoleView
         var netId = target.NetId;
         var ownerId = target.OwnerId;
         var views = Main.AllPlayerControls
-            .Where(seer => seer != null && seer.Data != null && !seer.Data.Disconnected && seer.GetClientId() >= 0
-                && !AntiBlackout.IsProtectedRecipient(seer.PlayerId))
+            .Where(seer => seer != null && seer.Data != null && !seer.Data.Disconnected && seer.GetClientId() >= 0)
             .Select(seer => (Seer: seer, ClientId: seer.GetClientId(), Role: ForRecipient(target, seer))).ToArray();
         var barrier = CustomRpcTransport.CaptureBarrier();
         if (barrier.IsComplete) SendViews();
         else
         {
             var pending = new object();
-            pendingPublications.Add(pending);
+            pendingPublications.Add(pending, target.PlayerId);
             Main.Instance.StartCoroutine(WaitAndPublish(pending));
         }
 

@@ -41,7 +41,6 @@ internal static class RoleDistributionBusinessGate
         yield return AccessTools.Method(typeof(ExtendedPlayerControl), nameof(ExtendedPlayerControl.RpcChangeRoleBasis));
         yield return AccessTools.Method(typeof(AntiBlackout), nameof(AntiBlackout.SetIsDead));
         yield return AccessTools.Method(typeof(AntiBlackout), nameof(AntiBlackout.RestoreIsDead));
-        yield return AccessTools.Method(typeof(AntiBlackout), nameof(AntiBlackout.SendGameData));
         yield return AccessTools.Method(typeof(AntiBlackout), nameof(AntiBlackout.SetRealPlayerRoles));
         yield return AccessTools.Method(typeof(BlackScreenFix), nameof(BlackScreenFix.Tick));
         yield return AccessTools.Method(typeof(FixedUpdateInNormalGamePatch), nameof(FixedUpdateInNormalGamePatch.Postfix));

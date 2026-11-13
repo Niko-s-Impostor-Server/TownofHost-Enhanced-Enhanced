@@ -422,6 +422,7 @@ class OnPlayerLeftPatch
         }
         try
         {
+            AntiBlackout.OnDisconnect(data, LeftPlayerId);
             if (GameStates.IsNormalGame && GameStates.IsInGame && data.Character != null
                 && Main.PlayerStates.TryGetValue(data.Character.PlayerId, out var state))
             {
@@ -462,7 +463,6 @@ class OnPlayerLeftPatch
                     }
                 }
 
-                AntiBlackout.OnDisconnect(data.Character.Data);
                 PlayerGameOptionsSender.RemoveSender(data.Character);
             }
 

@@ -93,7 +93,7 @@ class ExileControllerWrapUpPatch
 
         bool DecidedWinner = false;
         if (!AmongUsClient.Instance.AmHost) return;
-        AntiBlackout.RestoreIsDead(doSend: false);
+        AntiBlackout.RestoreIsDead();
 
         List<Collector> collectorCL = Utils.GetRoleBasesByType<Collector>()?.ToList();
 

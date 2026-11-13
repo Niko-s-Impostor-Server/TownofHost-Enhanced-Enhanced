@@ -1909,7 +1909,7 @@ class PlayerControlSetRolePatch
             {
                 // The vanilla exile controller still needs the temporary living
                 // roster when it performs its end-of-game check.
-                foreach (var (seer, ghostRole) in GhostRoles.Where(entry => !AntiBlackout.IsProtectedRecipient(entry.Key.PlayerId)))
+                foreach (var (seer, ghostRole) in GhostRoles)
                     target.RpcSetRoleDesync(ghostRole, seer.GetClientId());
                 if (target.HasGhostRole()) GhostRoleAssign.CreateGAMessage(__instance);
                 return false;
