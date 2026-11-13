@@ -14,7 +14,10 @@ $packaging = Join-Path $repoRoot 'packaging'
 $source = Get-Content -LiteralPath (Join-Path $repoRoot 'main.cs') -Raw
 $version = [regex]::Match($source, 'PluginDisplayVersion = "([^"]+)"').Groups[1].Value
 $assemblyVersion = [regex]::Match($source, 'PluginVersion = "([^"]+)"').Groups[1].Value
-$gameVersion = [regex]::Match($source, 'SupportedVersionAU = "([^"]+)"').Groups[1].Value
+$supportedVersionList = [regex]::Match($source, 'SupportedVersionAU\s*=\s*\[([^\]]+)\]').Groups[1].Value
+$supportedGameVersions = @([regex]::Matches($supportedVersionList, '"([0-9]+\.[0-9]+\.[0-9]+)"') |
+    ForEach-Object { $_.Groups[1].Value })
+if ($supportedGameVersions.Count -eq 0) { throw 'Missing supported game versions in main.cs.' }
 if ($version -notmatch '^[A-Za-z0-9][A-Za-z0-9.+-]*$') { throw 'Invalid release version in main.cs.' }
 $dependencies = Get-Content -LiteralPath (Join-Path $packaging 'dependencies.json') -Raw | ConvertFrom-Json
 if (!$OutputDirectory) { $OutputDirectory = Join-Path $repoRoot "artifacts/releases/v$version" }
@@ -32,9 +35,10 @@ $settingsBytes = [IO.File]::ReadAllBytes($settingsPath)
 $versionMarkers = @([regex]::Matches([Text.Encoding]::Latin1.GetString($settingsBytes), '20\d{2}\.\d{1,2}\.\d{1,2}') |
     Where-Object { $_.Index -ge 4 -and [BitConverter]::ToInt32($settingsBytes, $_.Index - 4) -eq $_.Length } |
     ForEach-Object Value | Select-Object -Unique)
-if ($versionMarkers.Count -ne 1 -or $versionMarkers[0] -cne $gameVersion) {
-    throw "Game version marker in globalgamemanagers does not match $gameVersion."
+if ($versionMarkers.Count -ne 1 -or $versionMarkers[0] -cnotin $supportedGameVersions) {
+    throw "Game version marker in globalgamemanagers does not match any supported version: $($supportedGameVersions -join ', ')."
 }
+$gameVersion = $versionMarkers[0]
 
 function Get-PeInfo([string]$Path) {
     $reader = [System.Reflection.PortableExecutable.PEReader]::new([IO.File]::OpenRead($Path))

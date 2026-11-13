@@ -9,7 +9,7 @@ public static class PresetSharing
 {
     public const int FormatVersion = 1;
     public const int MaximumFileBytes = 2 * 1024 * 1024;
-    private const string CompatibleGameVersion = Main.SupportedVersionAU;
+    private static readonly string CompatibleGameVersion = Main.SupportedVersionAU[0];
     private static string PresetDirectory => Path.Combine(DataDirectoryMigration.DataDirectory, "Presets");
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
 
