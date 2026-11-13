@@ -1,4 +1,5 @@
 using System;
+using TOHE.Modules;
 using TOHE.Modules.ChatManager;
 using TOHE.Roles.Impostor;
 using TOHE.Roles.Neutral;
@@ -122,8 +123,12 @@ internal static class FactionChat
         }
 
         string name = sender.GetRealName(clientData: true).RemoveHtmlTags();
-        string title = Utils.ColorString(Utils.GetRoleColor(channel.Faction), $"[{channelName}] {name}");
-        ChatManager.SendPrivateSystem(sender, message, recipients, title);
+        foreach (var group in recipients.GroupBy(recipient => PlayerIdentifiers.Shows(recipient.IsModded(), true)))
+        {
+            string titleName = group.Key ? PlayerIdentifiers.Prefix(sender.PlayerId, name) : name;
+            string title = $"[{channelName}] {titleName}";
+            ChatManager.SendPrivateSystem(sender, message, group.ToArray(), title);
+        }
         return true;
     }
 
