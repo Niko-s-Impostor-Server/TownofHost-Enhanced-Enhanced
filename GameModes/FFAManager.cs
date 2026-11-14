@@ -90,7 +90,8 @@ internal static class FFAManager
         FFAShieldedList = [];
 
         originalSpeed = [];
-        KBScore = [];
+        // Seed scores before role distribution temporarily marks players as disconnected.
+        KBScore = Main.AllAlivePlayerControls.ToDictionary(pc => pc.PlayerId, _ => 0);
 
         if (FFA_DisableVentingWhenKCDIsUp.GetBool())
         {
@@ -104,11 +105,11 @@ internal static class FFAManager
         if (Options.CurrentGameMode != CustomGameMode.FFA) return;
 
         RoundTime = FFA_GameTime.GetInt() + 8;
-        var now = Utils.GetTimeStamp() + 8;
-        foreach (PlayerControl pc in Main.AllAlivePlayerControls)
+        if (FFA_DisableVentingWhenKCDIsUp.GetBool())
         {
-            KBScore[pc.PlayerId] = 0;
-            if (FFA_DisableVentingWhenKCDIsUp.GetBool()) FFALastKill[pc.PlayerId] = now;
+            var now = Utils.GetTimeStamp() + 8;
+            foreach (var playerId in KBScore.Keys)
+                FFALastKill[playerId] = now;
         }
     }
     private static void SendRPCSyncFFAPlayer(byte playerId)
@@ -151,26 +152,19 @@ internal static class FFAManager
     }
     public static string GetDisplayScore(byte playerId)
     {
+        if (!KBScore.TryGetValue(playerId, out var score)) return string.Empty;
+
         int rank = GetRankOfScore(playerId);
-        string score = KBScore.TryGetValue(playerId, out var s) ? $"{s}" : "0";
-        string text = string.Format(GetString("FFADisplayScore"), rank.ToString(), score);
+        string text = string.Format(GetString("FFADisplayScore"), rank, score);
         Color color = Utils.GetRoleColor(CustomRoles.Killer);
         return Utils.ColorString(color, text);
     }
     public static int GetRankOfScore(byte playerId)
     {
-        try
-        {
-            int ms = KBScore[playerId];
-            int rank = 1 + KBScore.Values.Count(x => x > ms);
-            rank += KBScore.Where(x => x.Value == ms).ToList().IndexOf(new(playerId, ms));
-            return rank;
-        }
-        catch (System.Exception rankCalculationError)
-        {
-            Logger.Exception(rankCalculationError, "FFAManager.GetRankOfScore");
-            return Main.AllPlayerControls.Length;
-        }
+        if (!KBScore.TryGetValue(playerId, out var score)) return int.MaxValue;
+
+        int rank = 1 + KBScore.Values.Count(x => x > score);
+        return rank + KBScore.Where(x => x.Value == score).ToList().IndexOf(new(playerId, score));
     }
     public static string GetHudText()
     {
