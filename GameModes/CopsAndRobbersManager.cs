@@ -46,6 +46,8 @@ internal static class CopsAndRobbersManager
     private static int numCops;
     private static int numCaptures;
     private static int numRobbers;
+    private static int robberTaskProgressCompleted;
+    private static int robberTaskProgressGoal;
     public static int RoundTime;
     public static bool IntroRoleInfoActive;
 
@@ -66,10 +68,8 @@ internal static class CopsAndRobbersManager
     private static OptionItem CandR_K9Chance;
     private static OptionItem CandR_ScopeChance;
     private static OptionItem CandR_ScopeIncrease;
-
-
-
     private static OptionItem CandR_NotifyRobbersWhenCaptured;
+    private static OptionItem CandR_RobberTaskWinPercentage;
     private static OptionItem CandR_RobberVentDuration;
     private static OptionItem CandR_RobberVentCooldown;
     private static OptionItem CandR_RobberAbilityDuration;
@@ -204,6 +204,11 @@ internal static class CopsAndRobbersManager
         TextOptionItem.Create(Id + 20, "Robber", TabGroup.ModSettings)
             .SetGameMode(CustomGameMode.CandR)
             .SetColor(new Color32(255, 140, 0, byte.MaxValue));
+
+        CandR_RobberTaskWinPercentage = FloatOptionItem.Create(Id + 36, "C&R_RobberTaskWinPercentage", new(10f, 100f, 2.5f), 100f, TabGroup.ModSettings, false)
+            .SetGameMode(CustomGameMode.CandR)
+            .SetColor(new Color32(255, 140, 0, byte.MaxValue))
+            .SetValueFormat(OptionFormat.Percent);
 
         CandR_NotifyRobbersWhenCaptured = BooleanOptionItem.Create(Id + 21, "C&R_NotifyRobbersWhenCaptured", true, TabGroup.ModSettings, false)
             .SetGameMode(CustomGameMode.CandR)
@@ -358,6 +363,8 @@ internal static class CopsAndRobbersManager
         captured.Clear();
         numCaptures = 0;
         numRobbers = 0;
+        robberTaskProgressCompleted = 0;
+        robberTaskProgressGoal = 0;
         capturedScore.Clear();
         timesCaptured.Clear();
         saved.Clear();
@@ -627,6 +634,10 @@ internal static class CopsAndRobbersManager
             case 10:
                 writer.Write(RoundTime);
                 break;
+            case 12:
+                writer.Write(robberTaskProgressCompleted);
+                writer.Write(robberTaskProgressGoal);
+                break;
         }
 
         CustomRpcTransport.Finish(writer);
@@ -688,6 +699,10 @@ internal static class CopsAndRobbersManager
                 break;
             case 10:
                 RoundTime = reader.ReadInt32();
+                break;
+            case 12:
+                robberTaskProgressCompleted = reader.ReadInt32();
+                robberTaskProgressGoal = reader.ReadInt32();
                 break;
         }
     }
@@ -1176,7 +1191,38 @@ internal static class CopsAndRobbersManager
     }
     public static string GetHudText()
     {
-        return string.Format(GetString("FFATimeRemain"), RoundTime.ToString());
+        var timeText = string.Format(GetString("FFATimeRemain"), RoundTime.ToString());
+        var taskProgress = GetTeamTaskProgressText();
+        return string.IsNullOrEmpty(taskProgress) ? timeText : $"{timeText}\n{taskProgress}";
+    }
+
+    public static int GetRobberTaskWinGoal(int totalTasks)
+    {
+        if (totalTasks <= 0) return 0;
+        return Math.Max(1, (int)(totalTasks * (double)CandR_RobberTaskWinPercentage.GetFloat() / 100));
+    }
+
+    public static string GetTeamTaskProgressText()
+    {
+        if (Options.CurrentGameMode != CustomGameMode.CandR || Options.DisableTaskWin.GetBool() ||
+            CandR_RobberTaskWinPercentage.GetFloat() >= 100f || robberTaskProgressGoal <= 0) return string.Empty;
+
+        return string.Format(GetString("C&R_RobberTeamTaskProgress"), robberTaskProgressCompleted, robberTaskProgressGoal);
+    }
+
+    private static void UpdateRobberTaskProgress()
+    {
+        if (Options.DisableTaskWin.GetBool() || CandR_RobberTaskWinPercentage.GetFloat() >= 100f || GameData.Instance == null) return;
+
+        int totalTasks = GameData.Instance.TotalTasks;
+        int completedTasks = totalTasks > 0 ? GameData.Instance.CompletedTasks : 0;
+        int requiredTasks = GetRobberTaskWinGoal(totalTasks);
+        if (completedTasks == robberTaskProgressCompleted && requiredTasks == robberTaskProgressGoal) return;
+
+        robberTaskProgressCompleted = completedTasks;
+        robberTaskProgressGoal = requiredTasks;
+        SendCandRData(12);
+        Utils.NotifyRoles(ForceLoop: false);
     }
 
     [HarmonyPatch(typeof(PlayerControl), nameof(PlayerControl.FixedUpdate))]
@@ -1202,6 +1248,7 @@ internal static class CopsAndRobbersManager
                 lastRoundTime = now;
                 RoundTime = Math.Max(0, RoundTime - 1);
                 SendCandRData(10);
+                UpdateRobberTaskProgress();
             }
 
             Dictionary<byte, byte> removeCaptured = [];

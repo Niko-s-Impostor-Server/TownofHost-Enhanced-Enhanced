@@ -1983,6 +1983,12 @@ public static class Utils
                         break;
                     case CustomGameMode.CandR:
                         SelfSuffix.Append(CopsAndRobbersManager.GetClosestArrow(seer, seer));
+                        var teamTaskProgress = CopsAndRobbersManager.GetTeamTaskProgressText();
+                        if (teamTaskProgress.Length > 0)
+                        {
+                            if (SelfSuffix.Length > 0) SelfSuffix.Append("\r\n");
+                            SelfSuffix.Append(teamTaskProgress);
+                        }
                         break;
                 }
 
