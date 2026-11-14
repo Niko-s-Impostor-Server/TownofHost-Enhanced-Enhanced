@@ -3917,8 +3917,8 @@
   "Saved": "已救出",
   "C&R_CapturedInReleaseCooldown": "被抓获玩家的释放冷却尚未结束",
   "C&R_RobberInReleaseCooldown": "你的释放冷却尚未结束",
-  "C&R_ReleaseCooldownForCaptured": "被抓获玩家的释放冷却时间",
-  "C&R_ReleaseCooldownForRobber": "劫匪的释放冷却时间",
+  "C&R_ReleaseCooldownForCaptured": "被抓获劫匪可被救出前的最短时间",
+  "C&R_ReleaseCooldownForRobber": "劫匪救出队友后的冷却时间",
   "CandR_GameTime": "最长游戏时间",
   "C&R_ShowChatInGame": "在游戏中显示聊天<color=#ff0000>（可能导致黑屏）</color>",
 

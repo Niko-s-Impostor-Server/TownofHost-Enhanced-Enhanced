@@ -382,11 +382,6 @@ internal static class CopsAndRobbersManager
 
         RoundTime = CandR_GameTime.GetInt();
         FixedUpdateInGameModeCandRPatch.Reset();
-        var now = Utils.GetTimeStamp() + 8;
-        foreach (byte robber in robbers)
-        {
-            releaseTime[robber] = now;
-        }
     }
     public static Dictionary<byte, CustomRoles> SetRoles()
     {
@@ -1217,29 +1212,32 @@ internal static class CopsAndRobbersManager
                         if (dis < 0.3f)
                         {
                             var releaseCDforCapture = now - capturedTime[captureId];
-                            if (releaseCDforCapture < CandR_ReleaseCooldownForCaptured.GetInt())
+                            var captureCooldownRemaining = CandR_ReleaseCooldownForCaptured.GetInt() - releaseCDforCapture;
+                            if (captureCooldownRemaining > 0)
                             {
                                 if (!LastCheckedReleaseCooldownCaptured.ContainsKey(captureId)) LastCheckedReleaseCooldownCaptured[captureId] = now - 1;
                                 if (now != LastCheckedReleaseCooldownCaptured[captureId])
                                 {
                                     LastCheckedReleaseCooldownCaptured[captureId] = now;
-                                    robber.Notify(GetString("C&R_CapturedInReleaseCooldown"), time: CandR_ReleaseCooldownForCaptured.GetInt() - releaseCDforCapture);
-                                    Logger.Info($"Time left in release cooldown for captured player, {captureId}: {now - capturedTime[captureId]}", "release canceled");
+                                    robber.Notify(GetString("C&R_CapturedInReleaseCooldown"), time: captureCooldownRemaining);
+                                    Logger.Info($"Time left in release cooldown for captured player, {captureId}: {captureCooldownRemaining}", "release canceled");
                                 }
                                 continue;
                             }
-                            if (!releaseTime.ContainsKey(robberId)) releaseTime[robberId] = now;
-                            var releaseCDforRobber = now - releaseTime[robberId];
-                            if (releaseCDforRobber < CandR_ReleaseCooldownForRobber.GetInt())
+                            if (releaseTime.TryGetValue(robberId, out var lastReleaseTime))
                             {
-                                if (!LastCheckedReleaseCooldownRobber.ContainsKey(robberId)) LastCheckedReleaseCooldownRobber[robberId] = now - 1;
-                                if (now != LastCheckedReleaseCooldownRobber[robberId])
+                                var robberCooldownRemaining = CandR_ReleaseCooldownForRobber.GetInt() - (now - lastReleaseTime);
+                                if (robberCooldownRemaining > 0)
                                 {
-                                    LastCheckedReleaseCooldownRobber[robberId] = now;
-                                    robber.Notify(GetString("C&R_RobberInReleaseCooldown"), time: CandR_ReleaseCooldownForRobber.GetInt() - releaseCDforRobber);
-                                    Logger.Info($"Time left in release cooldown for robber, {robberId}: {now - releaseTime[robberId]}", "release canceled");
+                                    if (!LastCheckedReleaseCooldownRobber.ContainsKey(robberId)) LastCheckedReleaseCooldownRobber[robberId] = now - 1;
+                                    if (now != LastCheckedReleaseCooldownRobber[robberId])
+                                    {
+                                        LastCheckedReleaseCooldownRobber[robberId] = now;
+                                        robber.Notify(GetString("C&R_RobberInReleaseCooldown"), time: robberCooldownRemaining);
+                                        Logger.Info($"Time left in release cooldown for robber, {robberId}: {robberCooldownRemaining}", "release canceled");
+                                    }
+                                    continue;
                                 }
-                                continue;
                             }
 
                             removeCaptured[captureId] = robberId;
