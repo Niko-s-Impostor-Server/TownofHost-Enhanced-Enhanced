@@ -1,5 +1,6 @@
 using BepInEx.Unity.IL2CPP.Utils.Collections;
 using System;
+using System.Globalization;
 using TMPro;
 using TOHE.Modules;
 using TOHE.Patches;
@@ -29,6 +30,7 @@ public static class GameOptionsMenuPatch
 {
     public static GameOptionsMenu Instance;
     private static readonly Dictionary<int, TabGroup> MenuTabs = [];
+    private static readonly Dictionary<int, int[]> MenuOptionOrder = [];
     private static readonly Dictionary<int, Coroutine> Builds = [];
     private static readonly Dictionary<int, int> BuildVersions = [];
     private static int nextBuildVersion;
@@ -50,6 +52,7 @@ public static class GameOptionsMenuPatch
     {
         CancelReopen();
         MenuTabs.Clear();
+        MenuOptionOrder.Clear();
         Builds.Clear();
         BuildVersions.Clear();
         Instance = null;
@@ -80,6 +83,7 @@ public static class GameOptionsMenuPatch
 
     private static void ClearPartialBuild(GameOptionsMenu menu)
     {
+        MenuOptionOrder.Remove(menu.GetInstanceID());
         if (menu.Children != null)
         {
             foreach (var child in menu.Children.ToArray())
@@ -192,6 +196,42 @@ public static class GameOptionsMenuPatch
         }, 0.2f, "Set Menu", shoudLog: false);
     }
 
+    private static int[] GetOptionDisplayOrder(TabGroup tab)
+    {
+        // Settings RPCs use AllOptions indices. Sort only the menu's view of them.
+        var options = OptionItem.AllOptions;
+        var indices = Enumerable.Range(0, options.Count).Where(index => options[index].Tab == tab).ToArray();
+        if (tab is not (TabGroup.ImpostorRoles or TabGroup.CrewmateRoles or TabGroup.NeutralRoles or TabGroup.Addons))
+            return indices;
+
+        var roleOptions = Options.CustomRoleSpawnChances.Values.ToHashSet<OptionItem>();
+        var comparer = GetCommandLanguage() switch
+        {
+            SupportedLangs.SChinese or SupportedLangs.TChinese => StringComparer.Create(CultureInfo.GetCultureInfo("zh-CN"), ignoreCase: true),
+            SupportedLangs.English => StringComparer.Create(CultureInfo.GetCultureInfo("en-US"), ignoreCase: true),
+            _ => StringComparer.CurrentCultureIgnoreCase,
+        };
+        var order = new List<int>(indices.Length);
+        int section = 0;
+        foreach (var rows in indices.GroupBy(index => options[index] is TextOptionItem ? ++section : section))
+        {
+            var blocks = rows.GroupBy(index =>
+            {
+                var option = options[index];
+                var root = option;
+                while (root.Parent != null) root = root.Parent;
+                return roleOptions.Contains(root) ? root : option;
+            }).ToArray();
+
+            var sortedRoles = new Queue<IGrouping<OptionItem, int>>(blocks
+                .Where(block => roleOptions.Contains(block.Key))
+                .OrderBy(block => block.Key.GetName(disableColor: true).RemoveHtmlTags(), comparer));
+            foreach (var block in blocks)
+                order.AddRange(roleOptions.Contains(block.Key) ? sortedRoles.Dequeue() : block);
+        }
+        return order.ToArray();
+    }
+
     [HarmonyPatch(nameof(GameOptionsMenu.CreateSettings)), HarmonyPrefix]
     private static bool CreateSettingsPrefix(GameOptionsMenu __instance)
     {
@@ -206,7 +246,9 @@ public static class GameOptionsMenuPatch
         // never append into a list copied from a Unity template. A positive
         // capacity also allocates storage without relying on the empty-array path.
         ClearPartialBuild(__instance);
-        int capacity = Math.Max(1, OptionItem.AllOptions.Count(option => option.Tab == modTab && option is not TextOptionItem));
+        var optionOrder = GetOptionDisplayOrder(modTab);
+        MenuOptionOrder[menuId] = optionOrder;
+        int capacity = Math.Max(1, optionOrder.Count(index => OptionItem.AllOptions[index] is not TextOptionItem));
         var children = new Il2CppSystem.Collections.Generic.List<OptionBehaviour>(capacity);
         __instance.Children = children;
         var buildVersion = ++nextBuildVersion;
@@ -222,13 +264,13 @@ public static class GameOptionsMenuPatch
             float num = 2.0f;
             const float posX = 0.952f;
             const float posZ = -2.0f;
-            for (int index = 0; index < OptionItem.AllOptions.Count; index++)
+            for (int row = 0; row < optionOrder.Length; row++)
             {
                 if (__instance == null || !__instance.gameObject.activeInHierarchy ||
                     !BuildVersions.TryGetValue(menuId, out var currentVersion) || currentVersion != buildVersion)
                     yield break;
+                int index = optionOrder[row];
                 var option = OptionItem.AllOptions[index];
-                if (option.Tab != modTab) continue;
 
                 var enabled = !option.IsHiddenOn(Options.CurrentGameMode) && option.Parent?.GetBool() is null or true;
 
@@ -318,7 +360,7 @@ public static class GameOptionsMenuPatch
 
                 if (enabled) num -= 0.45f;
 
-                if (index % 50 == 0) yield return null;
+                if (row % 50 == 0) yield return null;
             }
 
             yield return null;
@@ -335,10 +377,9 @@ public static class GameOptionsMenuPatch
         float CalculateScrollBarYBoundsMax()
         {
             float num = 2.0f;
-            foreach (var option in OptionItem.AllOptions)
+            foreach (int index in optionOrder)
             {
-                if (option.Tab != modTab) continue;
-
+                var option = OptionItem.AllOptions[index];
                 var enabled = !option.IsHiddenOn(Options.CurrentGameMode) && option.Parent?.GetBool() is null or true;
 
                 if (option is TextOptionItem && enabled) num -= 0.63f;
@@ -504,13 +545,12 @@ public static class GameOptionsMenuPatch
     }
     public static void ReCreateSettings(GameOptionsMenu __instance)
     {
-        if (!TryGetTab(__instance, out var modTab)) return;
+        if (__instance == null || !MenuOptionOrder.TryGetValue(__instance.GetInstanceID(), out var optionOrder)) return;
 
         float num = 2.0f;
-        for (int index = 0; index < OptionItem.AllOptions.Count; index++)
+        foreach (int index in optionOrder)
         {
             var option = OptionItem.AllOptions[index];
-            if (option.Tab != modTab) continue;
 
             var enabled = !option.IsHiddenOn(Options.CurrentGameMode) && option.Parent?.GetBool() is null or true;
 
@@ -946,7 +986,14 @@ public static class StringOptionPatch
             }
             //Logger.Info($"{item.Name}, {index}", "StringOption.UpdateValue.TryAdd");
 
-            item.SetValue(__instance.GetInt());
+            var selectedValue = __instance.GetInt();
+            if (item == Options.GameMode && !GameStates.IsHideNSeek && selectedValue == 2)
+            {
+                // Skip the reserved Hide & Seek slot in the direction of the click.
+                selectedValue += item.CurrentValue < selectedValue ? 1 : -1;
+                __instance.Value = selectedValue;
+            }
+            item.SetValue(selectedValue);
             NotificationPopperPatch.AddSettingsChangeMessage(index, item, false);
 
             if (item is PresetOptionItem || (item is StringOptionItem && item.Name == "GameMode"))
