@@ -146,6 +146,8 @@ class CheckMurderPatch
             || target.inMovingPlat // Moving Platform on Airhip and Zipline on Fungle
             || target.MyPhysics.Animations.IsPlayingEnterVentAnimation()
             || target.MyPhysics.Animations.IsPlayingAnyLadderAnimation()
+            || (Options.CurrentGameMode == CustomGameMode.CandR && target.Is(CustomRoles.Robber) && (target.walkingToVent
+                || (CoExitVentPatch.ExitingPlayers.TryGetValue(target.PlayerId, out var exitContext) && exitContext.IsCurrent())))
         )
         {
             Logger.Info("The target is in an unkillable state and the kill is canceled", "CheckMurder");
@@ -1502,12 +1504,24 @@ class PlayerStartPatch
 [HarmonyPatch(typeof(PlayerPhysics), nameof(PlayerPhysics.CoEnterVent))]
 class CoEnterVentPatch
 {
-    public static bool Prefix(PlayerPhysics __instance, [HarmonyArgument(0)] int id)
+    public static bool Prefix(PlayerPhysics __instance, [HarmonyArgument(0)] int id, out bool __state)
     {
+        __state = false;
         if (!AmongUsClient.Instance.AmHost || GameStates.IsHideNSeek) return true;
         Logger.Info($" {__instance.myPlayer.GetNameWithRole().RemoveHtmlTags()}, Vent ID: {id}", "CoEnterVent");
         if (__instance.myPlayer.IsAlive() && GameStates.IsInTask && ShipStatus.Instance
             && ShipStatus.Instance.AllVents.Any(vent => vent.Id == id)) AfkMonitor.RecordActivity(__instance.myPlayer);
+
+        if (Options.CurrentGameMode == CustomGameMode.CandR)
+        {
+            var playerId = __instance.myPlayer.PlayerId;
+            CoExitVentPatch.ExitingPlayers.Remove(playerId);
+            if (CopsAndRobbersManager.captured.ContainsKey(playerId))
+            {
+                __state = true;
+                return true;
+            }
+        }
 
         //FFA
         if (Options.CurrentGameMode == CustomGameMode.FFA && FFAManager.CheckCoEnterVent(__instance, id))
@@ -1539,10 +1553,16 @@ class CoEnterVentPatch
         playerRoleClass?.OnCoEnterVent(__instance, id);
         return true;
     }
-    public static void Postfix()
+    public static void Postfix(PlayerPhysics __instance, bool __state, ref Il2CppSystem.Collections.IEnumerator __result)
     {
+        // A captured remote may already have been teleported far from this vent.
+        if (__state && __result != null && !__instance.myPlayer.AmOwner)
+            __result = SkipCapturedVentEntry().WrapToIl2Cpp();
+
         _ = new LateTask(() => VentSystemDeterioratePatch.ForceUpdate = false, 1f, "Set Force Upadate As False", shoudLog: false);
     }
+
+    private static System.Collections.IEnumerator SkipCapturedVentEntry() { yield break; }
 }
 // Player entered in vent
 [HarmonyPatch(typeof(Vent), nameof(Vent.EnterVent))]
@@ -1570,12 +1590,15 @@ class EnterVentPatch
 [HarmonyPatch(typeof(PlayerPhysics), nameof(PlayerPhysics.CoExitVent))]
 class CoExitVentPatch
 {
+    public static readonly Dictionary<byte, OfficialSessionContext> ExitingPlayers = [];
+
     public static void Postfix(PlayerPhysics __instance, [HarmonyArgument(0)] int id, ref Il2CppSystem.Collections.IEnumerator __result)
     {
         if (GameStates.IsHideNSeek) return;
         Logger.Info($" {__instance.myPlayer.GetNameWithRole().RemoveHtmlTags()}, Vent ID: {id}", "CoExitVent");
 
         var player = __instance.myPlayer;
+        if (Options.CurrentGameMode == CustomGameMode.CandR) player.walkingToVent = false;
         if (Options.CurrentGameMode == CustomGameMode.FFA && FFAManager.FFA_DisableVentingWhenKCDIsUp.GetBool())
         {
             FFAManager.CoExitVent(player);
@@ -1583,8 +1606,13 @@ class CoExitVentPatch
 
         if (!AmongUsClient.Instance.AmHost) return;
 
-        if (Options.CurrentGameMode == CustomGameMode.CandR && __result != null)
-            __result = AfterExitVent(__result, player, OfficialSessionContext.Capture()).WrapToIl2Cpp();
+        if (Options.CurrentGameMode == CustomGameMode.CandR && player.Is(CustomRoles.Robber) && __result != null)
+        {
+            // Native exit clears inVent before its animation and movement lock finish.
+            var context = OfficialSessionContext.Capture();
+            ExitingPlayers[player.PlayerId] = context;
+            __result = AfterExitVent(__result, player, context).WrapToIl2Cpp();
+        }
 
         player.GetRoleClass()?.OnExitVent(player, id);
 
@@ -1596,10 +1624,19 @@ class CoExitVentPatch
         try
         {
             while (context.IsCurrent() && original.MoveNext()) yield return original.Current;
-            if (context.IsCurrent() && AmongUsClient.Instance.AmHost && GameStates.IsInTask && Options.CurrentGameMode == CustomGameMode.CandR)
+            if (context.IsCurrent() && AmongUsClient.Instance.AmHost && GameStates.IsInTask && !GameStates.IsEnded && Options.CurrentGameMode == CustomGameMode.CandR)
+            {
+                if (CopsAndRobbersManager.captured.TryGetValue(player.PlayerId, out var location))
+                    player.RpcTeleport(location);
                 CopsAndRobbersManager.OnRobberExitVent(player);
+            }
         }
-        finally { original.TryCast<Il2CppSystem.IDisposable>()?.Dispose(); }
+        finally
+        {
+            if (ExitingPlayers.TryGetValue(player.PlayerId, out var exitContext) && exitContext == context)
+                ExitingPlayers.Remove(player.PlayerId);
+            original.TryCast<Il2CppSystem.IDisposable>()?.Dispose();
+        }
     }
 }
 [HarmonyPatch(typeof(PlayerControl), nameof(PlayerControl.CompleteTask))]

@@ -27,6 +27,26 @@ static class PerformVentOpPatch
 
         return true;
     }
+
+    public static void Postfix(VentilationSystem __instance, [HarmonyArgument(0)] byte playerId,
+        [HarmonyArgument(1)] VentilationSystem.Operation op, [HarmonyArgument(2)] byte ventId)
+    {
+        if (!AmongUsClient.Instance.AmHost || Options.CurrentGameMode != CustomGameMode.CandR
+            || op != VentilationSystem.Operation.Enter || !CopsAndRobbersManager.captured.ContainsKey(playerId)) return;
+
+        // The owner reports Enter only after its native entry coroutine has finished.
+        var context = OfficialSessionContext.Capture();
+        _ = new LateTask(() =>
+        {
+            if (!context.IsCurrent() || !AmongUsClient.Instance.AmHost || !GameStates.IsInTask || GameStates.IsEnded
+                || Options.CurrentGameMode != CustomGameMode.CandR || !CopsAndRobbersManager.captured.ContainsKey(playerId)
+                || !__instance.PlayersInsideVents.TryGetValue(playerId, out var currentVent) || currentVent != ventId
+                || CoExitVentPatch.ExitingPlayers.ContainsKey(playerId)) return;
+
+            var player = Utils.GetPlayerById(playerId);
+            if (player.IsAlive() && !player.IsDisconnected()) player.MyPhysics.RpcBootFromVent(ventId);
+        }, 0f, "Boot captured robber after vent entry");
+    }
 }
 [HarmonyPatch(typeof(VentilationSystem), nameof(VentilationSystem.Deteriorate))]
 static class VentSystemDeterioratePatch
