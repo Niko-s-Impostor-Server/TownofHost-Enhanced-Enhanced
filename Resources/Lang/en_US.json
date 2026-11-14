@@ -4061,6 +4061,8 @@
   "C&R_ReleaseCooldownForRobber": "Cooldown after a robber frees someone",
   "CandR_GameTime": "Maximum Game Length",
   "C&R_ShowChatInGame": "Show chat in game <color=#ff0000>(may cause black screens)</color>",
+  "C&R_UseTeamNames": "Show team names instead of player names during the round",
+  "C&R_Prisoner": "Prisoner",
 
   "FFA": "Free For All",
   "ModeFFA": "Gamemode: FFA",

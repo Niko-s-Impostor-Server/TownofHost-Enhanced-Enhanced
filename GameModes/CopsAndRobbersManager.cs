@@ -85,6 +85,10 @@ internal static class CopsAndRobbersManager
     private static OptionItem CandR_ReleaseCooldownForRobber;
     private static OptionItem CandR_GameTime;
     public static OptionItem CandR_ShowChatInGame;
+    private static OptionItem CandR_UseTeamNames;
+
+    public static bool ShowTeamNames => GameStates.IsInTask && Options.CurrentGameMode == CustomGameMode.CandR
+        && CandR_UseTeamNames.GetBool() && !GameStates.IsEnded && !GameEndCheckerForNormal.ForEndGame;
 
 
     public static void SetupCustomOption()
@@ -95,6 +99,9 @@ internal static class CopsAndRobbersManager
             .SetHeader(true);
 
         CandR_ShowChatInGame = BooleanOptionItem.Create(Id + 1, "C&R_ShowChatInGame", false, TabGroup.ModSettings, false)
+            .SetGameMode(CustomGameMode.CandR);
+
+        CandR_UseTeamNames = BooleanOptionItem.Create(Id + 35, "C&R_UseTeamNames", false, TabGroup.ModSettings, false)
             .SetGameMode(CustomGameMode.CandR);
 
         /*********** Cops ***********/
@@ -479,6 +486,7 @@ internal static class CopsAndRobbersManager
         robber.RpcSetVentInteraction();
         robber.MarkDirtySettings();
         SendCandRData(9, robberId);
+        RefreshTeamName(robber);
 
         if (sentTeleport)
         {
@@ -503,6 +511,20 @@ internal static class CopsAndRobbersManager
         SendCandRData(9, rescued.PlayerId);
         rescued.RpcSetVentInteraction();
         rescued?.MarkDirtySettings();
+        RefreshTeamName(rescued);
+    }
+
+    public static string GetTeamName(byte playerId)
+    {
+        if (cops.Contains(playerId)) return GetString("Cop");
+        if (!robbers.Contains(playerId)) return null;
+        if (captured.ContainsKey(playerId)) return GetString("C&R_Prisoner");
+        return GetString(disguise.Contains(playerId) ? "Cop" : "Robber");
+    }
+
+    private static void RefreshTeamName(PlayerControl player)
+    {
+        if (ShowTeamNames) Utils.NotifyRoles(SpecifyTarget: player);
     }
 
     public static void SetCostume(this RoleType opMode, byte playerId)
@@ -598,6 +620,10 @@ internal static class CopsAndRobbersManager
                     writer.Write(position.y);
                 }
                 break;
+            case 11:
+                writer.Write(playerId);
+                writer.Write(disguise.Contains(playerId));
+                break;
             case 10:
                 writer.Write(RoundTime);
                 break;
@@ -654,6 +680,11 @@ internal static class CopsAndRobbersManager
                 byte capturedId = reader.ReadByte();
                 if (reader.ReadBoolean()) captured[capturedId] = new Vector2(reader.ReadSingle(), reader.ReadSingle());
                 else captured.Remove(capturedId);
+                break;
+            case 11:
+                byte disguisedId = reader.ReadByte();
+                if (reader.ReadBoolean()) disguise.Add(disguisedId);
+                else disguise.Remove(disguisedId);
                 break;
             case 10:
                 RoundTime = reader.ReadInt32();
@@ -884,12 +915,14 @@ internal static class CopsAndRobbersManager
                 break;
             case RobberAbility.Disguise:
                 disguise.Remove(robber.PlayerId);
+                if (CandR_UseTeamNames.GetBool()) SendCandRData(11, robber.PlayerId);
                 if (captured.ContainsKey(robber.PlayerId))
                 {
                     Logger.Info($"disguise finished for captured player {robber.PlayerId}", "disguise finish");
                     break;
                 }
                 RoleType.Robber.SetCostume(robber.PlayerId);
+                RefreshTeamName(robber);
                 Logger.Info($"reverting costume because disguise finished for player: {robber.PlayerId}", "disguise finish");
                 break;
             case RobberAbility.Radar:
@@ -923,6 +956,8 @@ internal static class CopsAndRobbersManager
             case RobberAbility.Disguise:
                 RoleType.Cop.SetCostume(robber.PlayerId);
                 disguise.Add(robber.PlayerId);
+                if (CandR_UseTeamNames.GetBool()) SendCandRData(11, robber.PlayerId);
+                RefreshTeamName(robber);
                 break;
             case RobberAbility.Radar:
                 if (radar.ContainsKey(robber.PlayerId))

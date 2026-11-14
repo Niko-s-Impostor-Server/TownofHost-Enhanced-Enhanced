@@ -3921,6 +3921,8 @@
   "C&R_ReleaseCooldownForRobber": "劫匪救出队友后的冷却时间",
   "CandR_GameTime": "最长游戏时间",
   "C&R_ShowChatInGame": "在游戏中显示聊天<color=#ff0000>（可能导致黑屏）</color>",
+  "C&R_UseTeamNames": "局内用阵营称呼替代玩家昵称",
+  "C&R_Prisoner": "囚犯",
 
   "FFA": "自由对战",
   "ModeFFA": "游戏模式：自由对战",

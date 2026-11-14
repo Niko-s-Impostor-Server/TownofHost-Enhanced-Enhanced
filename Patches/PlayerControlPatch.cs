@@ -1258,6 +1258,18 @@ class FixedUpdateInNormalGamePatch
             }
             if (GameStates.IsInGame)
             {
+                string teamName = CopsAndRobbersManager.ShowTeamNames
+                    ? CopsAndRobbersManager.GetTeamName(__instance.PlayerId)
+                    : null;
+                if (teamName != null && !__instance.AmOwner)
+                {
+                    RoleText.enabled = false;
+                    string displayName = Utils.ColorString(Color.white, teamName);
+                    if (__instance.cosmetics.nameText.text != displayName)
+                        __instance.cosmetics.nameText.text = displayName;
+                    return Task.CompletedTask;
+                }
+
                 var RoleTextData = Utils.GetRoleAndSubText(PlayerControl.LocalPlayer.PlayerId, __instance.PlayerId, useShortNames: true);
                 RoleText.text = RoleTextData.Item1;
                 RoleText.color = RoleTextData.Item2;
@@ -1290,7 +1302,7 @@ class FixedUpdateInNormalGamePatch
                 if (seer != target && seer != DollMaster.DollMasterTarget)
                     target = DollMaster.SwapPlayerInfo(target); // If a player is possessed by the Dollmaster swap each other's controllers.
 
-                string RealName = target.GetRealName();
+                string RealName = teamName ?? target.GetRealName();
 
                 Mark.Clear();
                 Suffix.Clear();
@@ -1312,7 +1324,7 @@ class FixedUpdateInNormalGamePatch
                 }
 
                 RealName = RealName.ApplyNameColorData(seer, target, false);
-                if (PlayerIdentifiers.Shows(true, false))
+                if (teamName == null && PlayerIdentifiers.Shows(true, false))
                     RealName = PlayerIdentifiers.Prefix(target.PlayerId, RealName);
                 var seerRole = seer.GetCustomRole();
 

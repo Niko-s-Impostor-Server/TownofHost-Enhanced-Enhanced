@@ -1919,6 +1919,7 @@ public static class Utils
         using var nameSender = OfficialAnticheatPolicy.Enabled ? CustomRpcSender.Create(nameof(DoNotifyRoles)) : null;
         var recipients = new HashSet<int>();
         int setNameCount = 0;
+        bool showTeamNames = !isForMeeting && CopsAndRobbersManager.ShowTeamNames;
         //seer: player who updates the nickname/role/mark
         //target: seer updates nickname/role/mark of other targets
         foreach (var seer in seerList)
@@ -1988,8 +1989,9 @@ public static class Utils
 
                 // ====== Get SeerRealName ======
 
-                string SeerRealName = seer.GetRealName(isForMeeting);
-                if (PlayerIdentifiers.Shows(false, isForMeeting))
+                string teamName = showTeamNames ? CopsAndRobbersManager.GetTeamName(seer.PlayerId) : null;
+                string SeerRealName = teamName ?? seer.GetRealName(isForMeeting);
+                if (teamName == null && PlayerIdentifiers.Shows(false, isForMeeting))
                     SeerRealName = PlayerIdentifiers.Prefix(seer.PlayerId, SeerRealName);
 
                 // ====== Combine SelfRoleName, SelfTaskText, SelfName, SelfDeathReason for seer ======
@@ -2053,7 +2055,7 @@ public static class Utils
                 if (!CamouflageIsForMeeting && Camouflage.IsCamouflage)
                     SelfName = $"<size=0%>{SelfName}</size>";
 
-                if (!Regex.IsMatch(SelfName, seer.GetRealName()))
+                if (!Regex.IsMatch(SelfName, teamName == null ? seer.GetRealName() : Regex.Escape(teamName)))
                     IsDisplayInfo = false;
 
                 switch (Options.CurrentGameMode)
@@ -2103,6 +2105,13 @@ public static class Utils
                     }
                     else
                     {
+                        string teamName = showTeamNames ? CopsAndRobbersManager.GetTeamName(target.PlayerId) : null;
+                        if (teamName != null)
+                        {
+                            SendName(realTarget, ColorString(Color.white, teamName), seer);
+                            continue;
+                        }
+
                         // ====== Add TargetMark for target ======
 
                         TargetMark.Clear();
