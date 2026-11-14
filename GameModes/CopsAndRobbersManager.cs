@@ -804,6 +804,8 @@ internal static class CopsAndRobbersManager
                     if (pid == byte.MaxValue) continue;
                     PlayerControl pc = Utils.GetPlayerById(pid);
                     pc?.KillFlash();
+                    if (pid != robber.PlayerId && pc != null && !pc.IsModded())
+                        pc.Notify(GetString("C&R_OtherRobberCaptured"), 2f);
                 }
             }
 

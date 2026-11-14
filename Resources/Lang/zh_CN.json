@@ -3887,6 +3887,7 @@
   "C&R_AlreadyCaptured": "该劫匪已经被抓获。",
   "C&R_EnergyShieldBlocked": "能量护盾抵挡了抓捕。",
   "C&R_NotifyRobbersWhenCaptured": "抓获时通知其他劫匪",
+  "C&R_OtherRobberCaptured": "另一名劫匪被抓获了！",
   "Robber": "劫匪",
   "RobberInfo": "完成所有任务即可获胜",
   "RobberInfoLong": "劫匪完成所有任务或场上没有警察时获胜。触碰被抓获的队友即可将其救出，但释放有冷却时间。离开通风管道时会触发随机能力。\n\n输入 <b>/ability robber</b> 查看所有能力。",

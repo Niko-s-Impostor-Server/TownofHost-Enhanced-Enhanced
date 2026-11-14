@@ -4027,6 +4027,7 @@
   "C&R_AlreadyCaptured": "This robber has already been captured.",
   "C&R_EnergyShieldBlocked": "Capture blocked by an energy shield.",
   "C&R_NotifyRobbersWhenCaptured": "Notify Robbers when captured",
+  "C&R_OtherRobberCaptured": "Another robber was captured!",
   "Robber": "Robber",
   "RobberInfo": "Complete all tasks to win",
   "RobberInfoLong": "Robbers win when all tasks are complete or no cops remain. Touch a captured teammate to free them, subject to your release cooldown. Leaving a vent grants a random ability.\n\nUse <b>/ability robber</b> to see all abilities.",
