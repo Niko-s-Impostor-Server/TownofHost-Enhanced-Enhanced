@@ -412,9 +412,9 @@ class SetUpRoleTextPatch
             // Return if game is ended or player in lobby or player is null
             if (AmongUsClient.Instance.IsGameOver || GameStates.IsLobby || PlayerControl.LocalPlayer == null) return;
 
-            var realName = Main.AllPlayerNames[PlayerControl.LocalPlayer.PlayerId];
-            // Don't use RpcSetName because the modded client needs to set the name locally
-            PlayerControl.LocalPlayer.SetName(realName);
+            // Keep the color name broadcast by the host in color mode.
+            if (Options.FormatNameMode.GetInt() != 1)
+                PlayerControl.LocalPlayer.SetName(Main.AllPlayerNames[PlayerControl.LocalPlayer.PlayerId]);
 
             Utils.DoNotifyRoles(NoCache: true);
         }, 1f, "Reset Name For Modded Players");

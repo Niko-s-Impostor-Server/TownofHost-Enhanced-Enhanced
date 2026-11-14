@@ -33,7 +33,7 @@ internal static class HudToolbox
     private static string depthMenu;
 
     private enum Section { Meeting, Lobby, Diagnostics, Debug }
-    private enum ActionKind { None, StartMeeting, Settle, ForceSkip, StartGameNow, CancelCountdown, ExportLog, ShowChat, CrewWin, ImpostorWin }
+    private enum ActionKind { None, StartMeeting, Settle, ForceSkip, StartGameNow, CancelCountdown, ExportLog, ShowChat, CrewWin, ImpostorWin, RobbersWin, CopsWin, Draw }
 
     internal static void Update(HudManager hud)
     {
@@ -213,7 +213,7 @@ internal static class HudToolbox
         if (CanExecute(ActionKind.ForceSkip)) value |= 2;
         if (CanExecute(ActionKind.StartGameNow)) value |= 4;
         if (CanExecute(ActionKind.CancelCountdown)) value |= 8;
-        if (CanExecute(ActionKind.CrewWin)) value |= 16;
+        if (GameEndCheckerForNormal.CanForceEnd()) value |= 16;
         if (Options.NoGameEnd.GetBool()) value |= 32;
         if (CanExecute(ActionKind.StartMeeting)) value |= 64;
         return value;
@@ -225,7 +225,17 @@ internal static class HudToolbox
         if (action == ActionKind.ExportLog) return true;
         if (action == ActionKind.ShowChat) return ownerHud.Chat != null;
         if (!AmongUsClient.Instance.AmHost) return false;
-        if (action is ActionKind.CrewWin or ActionKind.ImpostorWin) return GameEndCheckerForNormal.CanEndWithTeam();
+        if (action is ActionKind.CrewWin or ActionKind.ImpostorWin or ActionKind.RobbersWin or ActionKind.CopsWin or ActionKind.Draw)
+        {
+            if (!GameEndCheckerForNormal.CanForceEnd()) return false;
+            if (GameStates.IsHideNSeek) return action is ActionKind.CrewWin or ActionKind.ImpostorWin;
+            return Options.CurrentGameMode switch
+            {
+                CustomGameMode.FFA => action == ActionKind.Draw,
+                CustomGameMode.CandR => action is ActionKind.RobbersWin or ActionKind.CopsWin,
+                _ => action is ActionKind.CrewWin or ActionKind.ImpostorWin
+            };
+        }
         if (action == ActionKind.StartMeeting)
             return GameStates.IsInGame && !GameStates.IsEnded && !GameStates.IsHideNSeek && !MeetingHud.Instance && !Main.MeetingIsStarted &&
                 !ownerHud.IsIntroDisplayed && ShipStatus.Instance != null && !RoleDistribution.BlocksHostGameEnd;
@@ -290,8 +300,11 @@ internal static class HudToolbox
                 break;
             case ActionKind.CancelCountdown: ControllerManagerUpdatePatch.CancelCountdown(); break;
             case ActionKind.ShowChat: ownerHud.Chat.SetVisible(true); break;
-            case ActionKind.CrewWin: GameEndCheckerForNormal.EndWithTeam(CustomWinner.Crewmate); break;
-            case ActionKind.ImpostorWin: GameEndCheckerForNormal.EndWithTeam(CustomWinner.Impostor); break;
+            case ActionKind.CrewWin: GameEndCheckerForNormal.ForceEnd(CustomWinner.Crewmate); break;
+            case ActionKind.ImpostorWin: GameEndCheckerForNormal.ForceEnd(CustomWinner.Impostor); break;
+            case ActionKind.RobbersWin: GameEndCheckerForNormal.ForceEnd(CustomWinner.Robbers); break;
+            case ActionKind.CopsWin: GameEndCheckerForNormal.ForceEnd(CustomWinner.Cops); break;
+            case ActionKind.Draw: GameEndCheckerForNormal.ForceEnd(CustomWinner.Draw); break;
         }
     }
 
@@ -326,6 +339,9 @@ internal static class HudToolbox
                 ActionKind.ExportLog => "ToolboxExportLog",
                 ActionKind.ShowChat => "ToolboxShowChat",
                 ActionKind.CrewWin => "ToolboxCrewWin",
+                ActionKind.RobbersWin => "ToolboxRobbersWin",
+                ActionKind.CopsWin => "ToolboxCopsWin",
+                ActionKind.Draw => "ToolboxDrawGame",
                 _ => "ToolboxImpostorWin"
             };
             var heading = visuals.Label(content.transform, "ConfirmationTitle", Translator.GetString(key), new Vector3(0f, 0.85f, -2f), new Vector2(5.3f, 0.5f), 2.4f, TextAlignmentOptions.Center);
@@ -382,8 +398,20 @@ internal static class HudToolbox
                     visuals.Surface(content.transform, "EndGameRow", new Vector3(0f, -0.19f, -0.5f), new Vector2(5.8f, 0.74f), new Color(0.12f, 0.19f, 0.21f, 0.6f));
                     var endTitle = visuals.Label(content.transform, "EndGameTitle", Translator.GetString("ToolboxEndGame"), new Vector3(-1.25f, 0.01f, -2f), new Vector2(3.3f, 0.3f), 1.65f, TextAlignmentOptions.Left);
                     endTitle.color = CaptionColor;
-                    EndGameButton(ActionKind.CrewWin, "ToolboxCrewWin", -1.42f);
-                    EndGameButton(ActionKind.ImpostorWin, "ToolboxImpostorWin", 1.42f);
+                    if (!GameStates.IsHideNSeek && Options.CurrentGameMode == CustomGameMode.CandR)
+                    {
+                        EndGameButton(ActionKind.RobbersWin, "ToolboxRobbersWin", -1.42f);
+                        EndGameButton(ActionKind.CopsWin, "ToolboxCopsWin", 1.42f);
+                    }
+                    else if (!GameStates.IsHideNSeek && Options.CurrentGameMode == CustomGameMode.FFA)
+                    {
+                        EndGameButton(ActionKind.Draw, "ToolboxDrawGame", 0f);
+                    }
+                    else
+                    {
+                        EndGameButton(ActionKind.CrewWin, "ToolboxCrewWin", -1.42f);
+                        EndGameButton(ActionKind.ImpostorWin, "ToolboxImpostorWin", 1.42f);
+                    }
                     visuals.Surface(content.transform, "NoGameEndRow", new Vector3(0f, -0.96f, -0.5f), new Vector2(5.8f, 0.56f), new Color(0.12f, 0.19f, 0.21f, 0.6f));
                     var noEndLabel = visuals.Label(content.transform, "NoGameEndLabel", Translator.GetString("ToolboxNoGameEnd"), new Vector3(-0.85f, -0.96f, -2f), new Vector2(3.9f, 0.4f), 1.6f, TextAlignmentOptions.Left);
                     noEndLabel.color = CaptionColor;

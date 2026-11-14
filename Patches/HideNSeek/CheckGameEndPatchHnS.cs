@@ -19,7 +19,7 @@ class OnGameEndForHnS
     {
         if (!AmongUsClient.Instance.AmHost) return true;
 
-        if (Options.NoGameEnd.GetBool() && CustomWinnerHolder.WinnerTeam is not CustomWinner.Draw and not CustomWinner.Error) return false;
+        if (Options.NoGameEnd.GetBool() && !GameEndCheckerForNormal.ForEndGame && CustomWinnerHolder.WinnerTeam is not CustomWinner.Draw and not CustomWinner.Error) return false;
 
         return true;
     }

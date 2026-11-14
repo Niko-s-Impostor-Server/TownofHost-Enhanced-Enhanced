@@ -185,7 +185,7 @@ class SetEverythingUpPatch
         string AdditionalWinnerText = "";
         string CustomWinnerColor = Utils.GetRoleColorCode(CustomRoles.Crewmate);
 
-        if (Options.CurrentGameMode == CustomGameMode.FFA)
+        if (Options.CurrentGameMode == CustomGameMode.FFA && CustomWinnerHolder.WinnerTeam != CustomWinner.Draw)
         {
             var winnerId = CustomWinnerHolder.WinnerIds.FirstOrDefault();
             __instance.BackgroundBar.material.color = new Color32(0, 255, 255, 255);
@@ -233,7 +233,7 @@ class SetEverythingUpPatch
                 __instance.BackgroundBar.material.color = Utils.GetRoleColor(CustomRoles.Lovers);
                 break;
             case CustomWinner.Draw:
-                __instance.WinText.text = GetString("ForceEnd");
+                __instance.WinText.text = GetString(Options.CurrentGameMode == CustomGameMode.FFA ? "ToolboxDrawResult" : "ForceEnd");
                 __instance.WinText.color = Color.white;
                 __instance.BackgroundBar.material.color = Color.gray;
                 WinnerText.text = GetString("ForceEndText");

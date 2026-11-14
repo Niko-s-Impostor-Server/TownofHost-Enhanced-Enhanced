@@ -1114,11 +1114,11 @@ static class ExtendedPlayerControl
                 return player.GetClient().PlayerName;
             }
         }
-        // Cops stay shapeshifted to expose the unshift ability button. Their
-        // borrowed native outfit must not replace their own displayed name.
+        // Cops stay shapeshifted to expose the unshift ability button. Use the
+        // default outfit's host-broadcast color name instead of the borrowed outfit name.
         if (player != null && GameStates.IsInGame && Options.CurrentGameMode == CustomGameMode.CandR
             && Main.AllPlayerNames.TryGetValue(player.PlayerId, out var modeName))
-            return modeName;
+            return Options.FormatNameMode.GetInt() == 1 ? player.Data.PlayerName : modeName;
         return isMeeting || player == null ? player?.Data?.PlayerName : player?.name;
     }
     public static bool IsShieldedFromFirstDeath(this PlayerControl player) => MeetingStates.FirstMeeting

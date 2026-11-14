@@ -41,26 +41,50 @@ class GameEndCheckerForNormal
     public static bool GameIsEnded = false;
     public static bool ShouldNotCheck = false;
 
-    internal static bool CanEndWithTeam() => AmongUsClient.Instance != null && AmongUsClient.Instance.AmHost &&
-        GameStates.IsInGame && !GameStates.IsEnded && !GameStates.IsHideNSeek && Options.CurrentGameMode == CustomGameMode.Standard &&
-        ShipStatus.Instance != null && predicate != null && !ShouldNotCheck && !ForEndGame && !RoleDistribution.BlocksHostGameEnd;
+    internal static bool CanForceEnd() => AmongUsClient.Instance != null && AmongUsClient.Instance.AmHost &&
+        GameStates.IsInGame && !GameStates.IsEnded && ShipStatus.Instance != null && (GameStates.IsHideNSeek || predicate != null) &&
+        !ShouldNotCheck && !ForEndGame && !RoleDistribution.BlocksHostGameEnd;
 
-    internal static void EndWithTeam(CustomWinner team)
+    internal static void ForceEnd(CustomWinner winner)
     {
-        if (!CanEndWithTeam()) return;
-        NameNotifyManager.Reset();
-        Main.AllPlayerControls.Do(pc => Camouflage.RpcSetSkin(pc, ForceRevert: true, RevertToDefault: true, GameEnd: true));
-        GameIsEnded = true;
-        Utils.DoNotifyRoles(ForceLoop: true, NoCache: true);
-        ResetAndSetWinner(team);
-        foreach (var pc in Main.AllPlayerControls)
+        if (!CanForceEnd()) return;
+        if (GameStates.IsHideNSeek)
         {
-            var countType = Main.PlayerStates[pc.PlayerId].countTypes;
-            if (IsTeamWinner(pc, countType, team)) WinnerIds.Add(pc.PlayerId);
+            ForEndGame = true;
+            GameManager.Instance.RpcEndGame(winner == CustomWinner.Crewmate
+                ? GameOverReason.HideAndSeek_CrewmatesByTimer
+                : GameOverReason.HideAndSeek_ImpostorsByKills, false);
+            return;
         }
+
+        if (Options.CurrentGameMode == CustomGameMode.Standard)
+        {
+            NameNotifyManager.Reset();
+            Main.AllPlayerControls.Do(pc => Camouflage.RpcSetSkin(pc, ForceRevert: true, RevertToDefault: true, GameEnd: true));
+            GameIsEnded = true;
+            Utils.DoNotifyRoles(ForceLoop: true, NoCache: true);
+        }
+
+        ResetAndSetWinner(winner);
+        if (Options.CurrentGameMode == CustomGameMode.Standard)
+        {
+            foreach (var pc in Main.AllPlayerControls)
+            {
+                var countType = Main.PlayerStates[pc.PlayerId].countTypes;
+                if (IsTeamWinner(pc, countType, winner)) WinnerIds.Add(pc.PlayerId);
+            }
+        }
+        else if (Options.CurrentGameMode == CustomGameMode.CandR)
+            WinnerIds.UnionWith(winner == CustomWinner.Cops ? CopsAndRobbersManager.cops : CopsAndRobbersManager.robbers);
+
         ShipStatus.Instance.enabled = false;
         predicate = null;
-        StartEndGame(team == CustomWinner.Crewmate ? GameOverReason.CrewmatesByVote : GameOverReason.ImpostorsByKill);
+        StartEndGame(winner switch
+        {
+            CustomWinner.Draw => GameOverReason.ImpostorDisconnect,
+            CustomWinner.Crewmate or CustomWinner.Robbers => GameOverReason.CrewmatesByVote,
+            _ => GameOverReason.ImpostorsByKill
+        });
     }
 
     private static bool IsTeamWinner(PlayerControl pc, CountTypes countType, CustomWinner team) => team == CustomWinner.Crewmate
