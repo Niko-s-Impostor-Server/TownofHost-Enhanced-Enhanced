@@ -4006,7 +4006,7 @@
   "C&R_SpikeStripRadius": "Spike Strip trigger radius",
   "C&R_SpikeStripDuration": "Spike Strip duration",
   "C&R_FlashBangChance": "Flash Bang activation chance",
-  "C&R_FlashBangRadius": "Flash Bang radius",
+  "C&R_FlashBangRadius": "Flash Bang radius (map units)",
   "C&R_FlashBangDuration": "Flash Bang duration",
   "C&R_K9Chance": "K9 chance",
   "C&R_ScopeChance": "Scope chance",

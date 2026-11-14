@@ -166,7 +166,7 @@ internal static class CopsAndRobbersManager
         CandR_FlashBangRadius = FloatOptionItem.Create(Id + 15, "C&R_FlashBangRadius", new(0.5f, 2f, 0.5f), 1f, TabGroup.ModSettings, false)
             .SetGameMode(CustomGameMode.CandR)
             .SetColor(new Color32(0, 123, 255, byte.MaxValue))
-            .SetValueFormat(OptionFormat.Multiplier)
+            .SetValueFormat(OptionFormat.None)
             .SetParent(CandR_FlashBangChance);
         CandR_FlashBangDuration = IntegerOptionItem.Create(Id + 16, "C&R_FlashBangDuration", new(1, 10, 1), 5, TabGroup.ModSettings, false)
             .SetGameMode(CustomGameMode.CandR)
@@ -730,6 +730,10 @@ internal static class CopsAndRobbersManager
                     return;
                 }
                 trapLocation.Add(loc, ability);
+                if (ability == CopAbility.FlashBang)
+                {
+                    Logger.Info($"Placed flash bang trap at ({loc.x:F2}, {loc.y:F2}) with {CandR_FlashBangRadius.GetFloat():F1} map unit radius", "Flash trap");
+                }
                 break;
 
             case CopAbility.K9:
@@ -1331,7 +1335,7 @@ internal static class CopsAndRobbersManager
                         {
                             flashTrigger[robberId] = now;
                             robber.MarkDirtySettings();
-                            Logger.Info($"added {robberId} to flashTrigger", "Flash trigger");
+                            Logger.Info($"Robber {robberId} triggered flash bang at distance {trapDistance:F2} (radius {CandR_FlashBangRadius.GetFloat():F1} map units)", "Flash trigger");
                             removeTrap.Add(trap.Key);
                             break;
                         }

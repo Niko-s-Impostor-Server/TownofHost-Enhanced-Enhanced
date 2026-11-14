@@ -3866,7 +3866,7 @@
   "C&R_SpikeStripRadius": "尖刺路障触发范围",
   "C&R_SpikeStripDuration": "尖刺路障持续时间",
   "C&R_FlashBangChance": "闪光弹触发概率",
-  "C&R_FlashBangRadius": "闪光弹范围",
+  "C&R_FlashBangRadius": "闪光弹半径（地图单位）",
   "C&R_FlashBangDuration": "闪光弹持续时间",
   "C&R_K9Chance": "警犬触发概率",
   "C&R_ScopeChance": "瞄准镜触发概率",
