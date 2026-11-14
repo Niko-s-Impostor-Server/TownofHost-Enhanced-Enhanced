@@ -444,7 +444,9 @@ internal static class CopsAndRobbersManager
     }
     private static void AddCaptured(this PlayerControl robber, Vector2 capturedLocation)
     {
-        RoleType.Captured.SetCostume(playerId: robber.PlayerId);
+        byte robberId = robber.PlayerId;
+        RoleType.Captured.SetCostume(robberId);
+        bool sentTeleport = false;
         if (CandR_TeleportCaptureToRandomLoc.GetBool())
         {
             var rand = IRandom.Instance;
@@ -471,14 +473,28 @@ internal static class CopsAndRobbersManager
                 var vent = ShipStatus.Instance.AllVents.RandomElement();
                 capturedLocation = new Vector2(vent.transform.position.x, vent.transform.position.y + 0.3636f);
             }
-            robber.RpcTeleport(capturedLocation);
-
+            sentTeleport = robber.RpcTeleport(capturedLocation);
+            if (!sentTeleport) capturedLocation = robber.GetCustomPosition();
         }
-        captured[robber.PlayerId] = capturedLocation;
-        Main.AllPlayerSpeed[robber.PlayerId] = Main.MinSpeed;
+
+        captured[robberId] = capturedLocation;
+        capturedTime[robberId] = Utils.GetTimeStamp();
+        int captureCount = ++timesCaptured[robberId];
+        Main.AllPlayerSpeed[robberId] = Main.MinSpeed;
         robber.RpcSetVentInteraction();
         robber.MarkDirtySettings();
-        SendCandRData(9, robber.PlayerId);
+        SendCandRData(9, robberId);
+
+        if (sentTeleport)
+        {
+            var context = OfficialSessionContext.Capture();
+            _ = new LateTask(() =>
+            {
+                if (!context.IsCurrent() || !AmongUsClient.Instance.AmHost || !GameStates.IsInTask || GameStates.IsEnded) return;
+                if (robber != null && captured.ContainsKey(robberId) && timesCaptured[robberId] == captureCount)
+                    robber.RpcTeleport(capturedLocation);
+            }, 0.6f, "Repeat captured robber teleport");
+        }
     }
     private static void RemoveCaptured(this PlayerControl rescued)
     {
@@ -812,10 +828,6 @@ internal static class CopsAndRobbersManager
             if (!capturedScore.ContainsKey(cop.PlayerId)) capturedScore[cop.PlayerId] = 0;
             capturedScore[cop.PlayerId]++;
 
-            capturedTime[robber.PlayerId] = Utils.GetTimeStamp();
-
-            if (!timesCaptured.ContainsKey(robber.PlayerId)) timesCaptured[robber.PlayerId] = 0;
-            timesCaptured[robber.PlayerId]++;
             SendCandRData(4, capturedCount: numCaptures);
             SendCandRData(8, playerId: cop.PlayerId);
         }

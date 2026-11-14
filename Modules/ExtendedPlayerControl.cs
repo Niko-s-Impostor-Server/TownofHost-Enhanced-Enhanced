@@ -859,7 +859,7 @@ static class ExtendedPlayerControl
         writer.Write(newSid);
         AmongUsClient.Instance.FinishImmediate(writer);
     }
-    public static void RpcTeleport(this PlayerControl player, Vector2 position, bool isRandomSpawn = false, bool sendInfoInLogs = true,
+    public static bool RpcTeleport(this PlayerControl player, Vector2 position, bool isRandomSpawn = false, bool sendInfoInLogs = true,
         OfficialPacketBuilder.Batch batch = null)
     {
         if (sendInfoInLogs)
@@ -892,7 +892,7 @@ static class ExtendedPlayerControl
             if (cancelTeleport)
             {
                 player.Notify(Utils.ColorString(Utils.GetRoleColor(CustomRoles.Impostor), GetString("ErrorTeleport")));
-                return;
+                return false;
             }
         }
 
@@ -918,12 +918,13 @@ static class ExtendedPlayerControl
                 writer.Write(newSid);
                 writer.EndMessage();
             });
-            return;
+            return true;
         }
         MessageWriter messageWriter = AmongUsClient.Instance.StartImmediate(netTransform.NetId, (byte)RpcCalls.SnapTo, SendOption.Reliable);
         NetHelpers.WriteVector2(position, messageWriter);
         messageWriter.Write(newSid);
         AmongUsClient.Instance.FinishImmediate(messageWriter);
+        return true;
     }
     public static void RpcRandomVentTeleport(this PlayerControl player)
     {
